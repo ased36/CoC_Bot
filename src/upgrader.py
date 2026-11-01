@@ -674,6 +674,19 @@ class Upgrader:
         Input_Handler.click(icon_x - 0.035, 0.88)
         return True
 
+    @staticmethod
+    def _selected_wall_level():
+        """Level in the "Wall (Level 12)" title over the selected wall, or None. The ")" is sometimes read as a 1 ("Level 131")."""
+        import re
+        frame = Frame_Handler.get_frame(grayscale=False)
+        for text in OCR_Handler.get_text(Frame_Handler.crop(frame, 0.15, 0.45, 0.80, 0.72)):
+            m = re.search(r"wall.*level\s*(\d+)", text.lower())
+            if not m: continue
+            digits = m.group(1)[:2]
+            if int(digits) > 18: digits = digits[:1]
+            return int(digits)
+        return None
+
     @require_exit(x=0.99, y=0.01)
     def wall_upgrade(self):
         """Upgrade the cheapest wall that leaves the panel minimums. Returns the resource paid, or None."""
@@ -693,9 +706,31 @@ class Upgrader:
                 fmt = lambda v: "-" if v is None else f"{v:,}".replace(",", ".")
                 logger.info(f"Walls skipped: gold {fmt(last.get('gold'))} min {fmt(Settings_Handler.get('walls', 'min_gold', 0))}, elixir {fmt(last.get('elixir'))} min {fmt(Settings_Handler.get('walls', 'min_elixir', 0))}")
                 return None
-            row = min(walls, key=lambda r: r["cost"])
+            # Panel levels: tap each wall row (cheapest first) and read "Wall (Level N)" over the selected wall; levels by cost are remembered
+            levels = set(Settings_Handler.get("walls", "levels", []) or [])
+            known = getattr(self, "_wall_levels", {})
+            self._wall_levels = known
+            row = None
+            for r in sorted(walls, key=lambda r: r["cost"]):
+                if levels and known.get(r["cost"]) is not None and known[r["cost"]] not in levels: continue
+                if not self._goto_row("home", bounds, r, page): return None
+                page = r["page"]
+                if levels:
+                    level = None
+                    for _ in range(3): # the view slides to the wall first
+                        time.sleep(0.7)
+                        level = self._selected_wall_level()
+                        if level is not None: break
+                    known[r["cost"]] = level
+                    if level not in levels:
+                        logger.info(f"Wall level {level if level is not None else '?'} not chosen ({r['cost']:,})".replace(",", "."))
+                        continue
+                row = r
+                break
+            if row is None:
+                logger.info(f"No wall of the chosen levels ({', '.join(map(str, sorted(levels)))})")
+                return None
             resource = self._wall_payment(row["cost"])
-            if not self._goto_row("home", bounds, row, page): return None
             if not self._click_wall_button(resource):
                 logger.warning(f"Wall {resource} button not found")
                 return None
