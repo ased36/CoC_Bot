@@ -323,13 +323,14 @@ class Attacker:
         start = time.time()
         while time.time() - start < 60:
             shot(f"result_{int(time.time() - start):02d}")
-            if self._click_button("return_home", timeout=1):
-                time.sleep(3)
+            # The village takes a few seconds to load after Return Home (clouds): wait for it instead of looking again
+            pressed = self._click_button("return_home", timeout=1)
+            for _ in range(15 if pressed else 1):
                 if in_home_base():
                     TEMP_CACHE["location"] = "home_base"
                     logger.info("Battle over, back home")
                     return True
-            time.sleep(1)
+                time.sleep(1)
         logger.warning("Return Home not found, restarting CoC instead")
         if restart: start_coc()
         else: stop_coc()
