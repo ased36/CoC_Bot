@@ -275,17 +275,35 @@ class Attacker:
         x1, y1, x2, y2 = self.SAFE_BOX
         return min(max(x, x1), x2), min(max(y, y1), y2)
 
-    def _sweep_path(self, ring, start, sweep, lead_in=0.05):
-        """Points of one finger sweep around the village from angle start over sweep degrees, just outside the red line,
-        drifting slowly in and out like a hand. The recorded sweeps even cut through the village in places: troops only
-        land outside the line, so a drift inside only costs a moment. The finger never starts on a HUD button.
-        It starts well away from the village and comes in over the first part (Emre starts at the screen edge): a press
-        on the red area or a building moved the view instead of dropping troops (20:04, 11 of 60 dropped)."""
+    # Emre's drop sweeps (27 sweeps, recordings 01.11 19:12 and 20:33) seen from the screen point (0.48, 0.47), in
+    # 15 degree steps from 0 (right, 90 bottom): the middle of where his finger went and its outer quarter, as
+    # distance / screen height. After the search the view is always as far out and centered, so the map's outer grass
+    # band is on the same screen spot for every village: the outer quarter stays on it, the middle is near big villages
+    EMRE_CENTER = (0.48, 0.47)
+    EMRE_MID = (0.547, 0.444, 0.358, 0.313, 0.291, 0.294, 0.303, 0.313, 0.344, 0.405, 0.442, 0.518,
+                0.587, 0.454, 0.392, 0.384, 0.387, 0.396, 0.387, 0.385, 0.394, 0.427, 0.513, 0.606)
+    EMRE_OUTER = (0.641, 0.526, 0.442, 0.356, 0.318, 0.312, 0.314, 0.32, 0.389, 0.428, 0.497, 0.592,
+                  0.688, 0.585, 0.427, 0.428, 0.43, 0.437, 0.47, 0.477, 0.475, 0.474, 0.586, 0.665)
+
+    def _emre_ring(self, profile, shift=(0, 0)):
+        """A ring in the form _deploy_ring returns ((center px), radius px per 2 degrees) from one of Emre's profiles,
+        moved with the view (shift in px)."""
+        import numpy as np
+        bins = np.arange(len(profile)) * 15 + 7.5
+        angles = np.arange(180) * 2
+        radius = np.interp(angles, np.r_[bins - 360, bins, bins + 360], np.r_[profile, profile, profile]) * 1080
+        return (self.EMRE_CENTER[0] * 1920 + shift[0], self.EMRE_CENTER[1] * 1080 + shift[1]), radius
+
+    def _sweep_path(self, ring, start, sweep, lead_in=0.03, margins=(-0.01, 0.01)):
+        """Points of one finger sweep from angle start over sweep degrees along the ring (Emre's outer band), drifting
+        slowly in and out like a hand. The recorded sweeps even cut through the village in places: troops only land
+        outside the line, so a drift inside only costs a moment. The finger never starts on a HUD button and starts a
+        little further out (Emre starts at the screen edge)."""
         import numpy as np, random
         for _ in range(12):
-            if not self._in_hud(*self._ring_point(ring, start, 0.04 + lead_in)): break
+            if not self._in_hud(*self._ring_point(ring, start, lead_in)): break
             start += 8 if sweep > 0 else -8
-        phase, waves, base = random.uniform(0, 2 * np.pi), random.uniform(1.5, 3), random.uniform(0.05, 0.07) # further out: the line guessed from red building parts is too tight (Emre 20:20)
+        phase, waves, base = random.uniform(0, 2 * np.pi), random.uniform(1.5, 3), random.uniform(*margins)
         n = max(int(abs(sweep) / 5), 8)
         def margin(i): return base + 0.012 * np.sin(phase + waves * 2 * np.pi * i / n) + lead_in * max(0.0, 1 - i / (0.15 * n))
         return [self._ring_point(ring, start + sweep * i / n, margin(i)) for i in range(n + 1)]
@@ -330,15 +348,22 @@ class Attacker:
             self._tap(cards[name], self.CARD_Y, spread=0.006)
             self._pause(style.get("card_to_drop", [0.3, 0.7]))
 
-        # The view can move during the attack: the line and the spots are looked at again from a fresh frame
+        # Not the line guessed from red building parts (too tight, 20:30: 7 of 60 dropped) but Emre's own paths:
+        # spots and leftovers on the middle of his sweeps, the sweeps on their outer quarter. If the view moves
+        # during the attack the rings move with it (the shift is measured from a fresh frame)
+        moved = [0.0, 0.0]
+        ring, ring_out = self._emre_ring(self.EMRE_MID), self._emre_ring(self.EMRE_OUTER)
         last = {"frame": Frame_Handler.get_frame(grayscale=False)}
         def fresh_ring(label):
-            nonlocal ring
+            nonlocal ring, ring_out
             frame = Frame_Handler.get_frame(grayscale=False)
             dx, dy = self._view_shift(last["frame"], frame)
-            if abs(dx) > 15 or abs(dy) > 15: logger.warning(f"View moved {dx:+.0f}, {dy:+.0f} px ({label})")
             last["frame"] = frame
-            ring = self._deploy_ring(frame) or ring
+            if abs(dx) > 15 or abs(dy) > 15:
+                logger.warning(f"View moved {dx:+.0f}, {dy:+.0f} px ({label})")
+                moved[0] += dx
+                moved[1] += dy
+                ring, ring_out = self._emre_ring(self.EMRE_MID, moved), self._emre_ring(self.EMRE_OUTER, moved)
 
         # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
         spots = []
@@ -394,25 +419,38 @@ class Attacker:
         tap_card(troops["card"])
         hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
         jitter = lambda: random.uniform(-12, 12)
-        if random.random() < troops.get("halves", 0.7):
+        # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
+        # comes back down and the top half is swept. Without it the bottom stays partly under the troop bar
+        use_pan = troops.get("pan", False)
+        pans = [None, None]
+        if use_pan or random.random() < troops.get("halves", 0.7):
             s1 = random.choice((0, 180))
-            top_first = random.random() < 0.5
+            top_first = False if use_pan else random.random() < 0.5
             # top half from the left: 180 -> 360 over 270; from the right: 0 -> -180. Bottom half the other way round
             def half(s, top): return s + jitter(), (180 if (s == 180) == top else -180) + jitter()
             first = half(s1, top_first)
             sweeps = [first, half(180 - s1, not top_first)]
             share = random.uniform(0.45, 0.55)
             times = [hold * share, hold * (1 - share)]
+            if use_pan:
+                by = troops.get("pan_by", 0.3)
+                pans = [-by, by]
         else:
             sweeps = [(random.choice((0, 180, 270)) + jitter(), random.choice((360, -360)))]
             times = [hold]
+        def pan(dy):
+            # Like BlueStacks' W / S: a quick swipe from the middle; a finger that moves at once moves the view, even with a
+            # card selected. The rings follow from the shift measured afterwards
+            Input_Handler.swipe(0.52, 0.51, 0.52 + random.uniform(-0.01, 0.01), 0.51 + dy, duration=300, hold_end_time=200, inter_points=6)
+            time.sleep(random.uniform(0.4, 0.6))
         empty, done = self._watch_empty(troop_x, shots)
         battle_start = battle_start or time.time()
         try:
             for i, ((start, sweep), seconds) in enumerate(zip(sweeps, times)):
                 if empty.is_set(): break
+                if pans[i]: pan(pans[i])
                 fresh_ring(f"before sweep {i + 1}")
-                Input_Handler.drag_path(self._sweep_path(ring, start, sweep), seconds, stop=empty.is_set,
+                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep), seconds, stop=empty.is_set,
                                         hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
                 self._pause(troops.get("sweep_pause", [0.25, 0.6]))
         finally:
