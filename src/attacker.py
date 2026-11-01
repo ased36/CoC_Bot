@@ -39,6 +39,22 @@ class Attacker:
             timeout=timeout
         )
 
+    def _wait_battle_end(self, location, timeout):
+        import time
+
+        # Let the battle play out and leave through the results screen instead of restarting CoC
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if self._click_return_home(timeout=2):
+                time.sleep(3)
+                self._click_okay(timeout=2)
+                TEMP_CACHE["location"] = location
+                logger.info(f"Battle ended after {int(time.time() - start_time)}s, returned home")
+                return True
+            time.sleep(2)
+        logger.warning(f"Return Home not found within {timeout}s, restarting CoC instead")
+        return False
+
     def start_normal_attack(self, timeout=60):
         import time, numpy as np
 
@@ -298,7 +314,11 @@ class Attacker:
                 break
             elif last_card_left is None:
                 break
-        
+
+        if getattr(configs, "WAIT_FOR_BATTLE_END", True) and self._wait_battle_end("home_base", timeout=210):
+            if not restart: stop_coc()
+            return
+
         # Close and reopen CoC to auto complete battle
         if restart:
             start_coc()
@@ -313,7 +333,12 @@ class Attacker:
         
         card_centers = np.linspace(0.1, 0.9, 11)
         self.deploy_troops(card_centers, card_counts=[4]*len(card_centers))
-        
+
+        # builder battles can run two stages, so allow longer before falling back
+        if getattr(configs, "WAIT_FOR_BATTLE_END", True) and self._wait_battle_end("builder_base", timeout=300):
+            if not restart: stop_coc()
+            return
+
         # Close and reopen CoC to auto complete battle
         if restart:
             start_coc()

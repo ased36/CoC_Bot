@@ -10,6 +10,8 @@ class Upgrader:
     def __init__(self):
         self.assets = Asset_Manager.upgrader_assets
         self.misc_assets = Asset_Manager.misc_assets
+        self.walls_blocked = False
+        self.walls_reason = None
 
     # ============================================================
     # 📱 Screen Interaction
@@ -267,6 +269,25 @@ class Upgrader:
             templates += [render_text(text, "SupercellMagic", font_size, color=(180, 247, 86)) for text in upgrade_text]
         return templates
     
+    def _home_blocked_names(self):
+        """Home base upgrades the panel forbids right now, as {lowercase name: in-game name}."""
+        blocked = {name.lower(): name for name in Settings_Handler.get("home", "excluded", [])}
+        if not Settings_Handler.get("home", "town_hall", True): blocked["town hall"] = "Town Hall"
+        if self.walls_blocked: blocked["wall"] = "Wall"
+        return blocked
+
+    def _update_walls_blocked(self):
+        # Walls only when switched on in the panel and both gold and elixir are at or above the minimums
+        gold, elixir = Resource_Reader.last.get("gold"), Resource_Reader.last.get("elixir")
+        min_gold, min_elixir = Settings_Handler.get("walls", "min_gold", 0), Settings_Handler.get("walls", "min_elixir", 0)
+        if not Settings_Handler.get("walls", "enabled", False): reason = "disabled"
+        elif gold is None or elixir is None: reason = "resources unknown"
+        elif gold < min_gold or elixir < min_elixir: reason = f"gold {gold:,} min {min_gold:,}, elixir {elixir:,} min {min_elixir:,}".replace(",", ".").replace(". ", ", ")
+        else: reason = None
+        if reason and reason != self.walls_reason: logger.info(f"Walls skipped: {reason}")
+        self.walls_reason = reason
+        self.walls_blocked = reason is not None
+
     def _get_sufficient_resources(self, section):
         return not check_color((255, 123, 114), section, tol=10)
 
@@ -403,10 +424,12 @@ class Upgrader:
                 self._scroll_to_menu_bottom(menu_left, menu_right, menu_top, menu_bottom)
             
             town_hall_template = [render_text("Town Hall", "SupercellMagic", 17)]
-            hero_templates = [render_text(text, "SupercellMagic", 17) for text in Cache_Manager.get("vocab", get_vocab())["heroes"]]
+            hero_templates = [render_text(text, "SupercellMagic", 17) for text in (Cache_Manager.get("vocab") or get_vocab())["heroes"]]
             seasonal_defense_template = [render_text("Crafting Station", "SupercellMagic", 17)]
             heros_excluded = Task_Handler.excluded("heroes")
-            
+            blocked = self._home_blocked_names()
+            blocked_templates = [render_text(name, "SupercellMagic", 17) for key, name in blocked.items() if key != "town hall"]
+
             def locate_upgrade():
                 frame = Frame_Handler.get_frame(grayscale=False)
                 menu = Frame_Handler.crop(frame, menu_left, menu_top, menu_right, menu_bottom)
@@ -417,13 +440,14 @@ class Upgrader:
                 if len(potential_y_locs) == 0: return None, None
                 potential_y_locs = potential_y_locs / WINDOW_DIMS[1] + menu_top
                 # if y_sug is not None: potential_y_locs = potential_y_locs[potential_y_locs > y_sug]
-                
+
                 # Locate invalid upgrades
-                invalid_templates = town_hall_template + hero_templates + seasonal_defense_template
+                invalid_templates = town_hall_template + hero_templates + seasonal_defense_template + blocked_templates
                 locs = Frame_Handler.batch_locate(invalid_templates, menu, thresh=0.75, ref="lc", null_val=-1, grayscale=True, normalize=False, return_all=True)
-                town_hall_loc, hero_locs, seasonal_defense_locs = chunk_list(locs, [1, len(hero_templates), 1])
+                town_hall_loc, hero_locs, seasonal_defense_locs, blocked_locs = chunk_list(locs, [1, len(hero_templates), 1, len(blocked_templates)])
                 invalid_locs = town_hall_loc[0] + seasonal_defense_locs[0]
                 town_hall_loc = town_hall_loc[0][0]
+                for locs in blocked_locs: invalid_locs += locs
                 if heros_excluded:
                     for locs in hero_locs: invalid_locs += locs
                 invalid_y_locs = np.array(invalid_locs)[:, 1] / WINDOW_DIMS[1] + menu_top
@@ -453,7 +477,7 @@ class Upgrader:
 
                 if x_upgrade is None or y_upgrade is None:
                     # If no valid upgrades found but town hall is found, then upgrade it
-                    if town_hall_loc != (-1, -1) and min(abs(town_hall_loc[1] - potential_y_locs)) < 0.02:
+                    if "town hall" not in blocked and town_hall_loc != (-1, -1) and min(abs(town_hall_loc[1] - potential_y_locs)) < 0.02:
                         x_upgrade, y_upgrade = menu_center, town_hall_loc[1]
                     else: return None, None
                 return x_upgrade, y_upgrade
@@ -484,8 +508,9 @@ class Upgrader:
             ])
             
             # Hero upgrades go directly to confirm screen now
-            in_hero_hall = upgrade_name in Cache_Manager.get("vocab", get_vocab())["heroes"]
-            if in_hero_hall and Task_Handler.excluded("heros"): return None
+            in_hero_hall = upgrade_name in [hero.lower() for hero in (Cache_Manager.get("vocab") or get_vocab())["heroes"]]
+            if in_hero_hall and Task_Handler.excluded("heroes"): return None
+            if upgrade_name in blocked: return None
             
             # Click confirm button
             if not self._click_home_confirm(): return None
@@ -504,7 +529,9 @@ class Upgrader:
             # Render templates
             if type(upgrade_text) == str: upgrade_text = [upgrade_text]
             if Task_Handler.excluded("heroes"):
-                upgrade_text = list(set(upgrade_text) - set(Cache_Manager.get("vocab", get_vocab())["heroes"]))
+                upgrade_text = list(set(upgrade_text) - set((Cache_Manager.get("vocab") or get_vocab())["heroes"]))
+            blocked = self._home_blocked_names()
+            upgrade_text = [text for text in upgrade_text if text.lower() not in blocked]
             if len(upgrade_text) == 0: return None
             templates = self._get_upgrade_templates(upgrade_text, include_new=False)
             np.random.shuffle(templates)
@@ -583,9 +610,10 @@ class Upgrader:
             ])
             
             # Hero upgrades go directly to confirm screen now
-            in_hero_hall = upgrade_name in Cache_Manager.get("vocab", get_vocab())["heroes"]
+            in_hero_hall = upgrade_name in [hero.lower() for hero in (Cache_Manager.get("vocab") or get_vocab())["heroes"]]
             if in_hero_hall:
                 if Task_Handler.excluded("heroes"): return None
+            if upgrade_name in blocked: return None
             
             # Click confirm button
             if not self._click_home_confirm(): return None
@@ -1388,11 +1416,13 @@ class Upgrader:
         upgrades_started = []
         if not exclude_base:
             counter = 0
-            while counter < MAX_UPGRADES_PER_CHECK:
+            resources = Resource_Reader.last
+            while counter < configs.MAX_UPGRADES_PER_CHECK:
                 counter += 1
                 try:
+                    self._update_walls_blocked()
                     initial_builders = self.get_home_builders(1)
-                    if initial_builders <= max(0, OPEN_HOME_BUILDERS): break
+                    if initial_builders <= max(0, configs.OPEN_HOME_BUILDERS): break
                     upgraded = self.home_upgrade()
                     time.sleep(0.5)
                     final_builders = self.get_home_builders(1)
@@ -1401,6 +1431,14 @@ class Upgrader:
                         if final_builders < initial_builders: upgrades_started.append(upgraded)
                         elif final_builders == initial_builders and upgraded != "wall": break
                     else: break
+                    # Walls finish instantly, so a wall counts only if gold or elixir actually went down
+                    new_resources = Resource_Reader.read() or {}
+                    if upgraded == "wall" and any(
+                        (new_resources.get(k) or 0) < (resources.get(k) or 0) for k in ("gold", "elixir")
+                    ):
+                        logger.info("Upgraded wall")
+                        report("wall")
+                    resources = new_resources
                 except (KeyboardInterrupt, SystemExit): raise
                 except:
                     logger.warning("Encountered an error while attempting to upgrade home base. Retrying...")
@@ -1432,6 +1470,10 @@ class Upgrader:
         except (KeyboardInterrupt, SystemExit): raise
         except: pass
 
+        for kind, started in (("home", upgrades_started), ("home_lab", lab_upgrades_started), ("pet", pet_upgrades_started)):
+            for upgrade in started:
+                logger.info(f"Started upgrading {upgrade} ({kind})")
+                report("upgrade", kind=kind, name=upgrade)
         for upgrade in upgrades_started + lab_upgrades_started + pet_upgrades_started:
             send_notification(f"Started upgrading {upgrade}")
     
@@ -1445,11 +1487,11 @@ class Upgrader:
         upgrades_started = []
         if not exclude_base:
             counter = 0
-            while counter < MAX_UPGRADES_PER_CHECK:
+            while counter < configs.MAX_UPGRADES_PER_CHECK:
                 counter += 1
                 try:
                     initial_builders = self.get_builder_builders(1)
-                    if initial_builders <= max(0, OPEN_BUILDER_BUILDERS): break
+                    if initial_builders <= max(0, configs.OPEN_BUILDER_BUILDERS): break
                     upgraded = self.builder_upgrade()
                     time.sleep(0.5)
                     final_builders = self.get_builder_builders(1)
@@ -1474,5 +1516,9 @@ class Upgrader:
         except:
             logger.warning("Encountered an error while attempting to upgrade builder lab. Retrying...")
         
+        for kind, started in (("builder", upgrades_started), ("builder_lab", lab_upgrades_started)):
+            for upgrade in started:
+                logger.info(f"Started upgrading {upgrade} ({kind})")
+                report("upgrade", kind=kind, name=upgrade)
         for upgrade in upgrades_started + lab_upgrades_started:
             send_notification(f"Started upgrading {upgrade}")

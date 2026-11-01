@@ -10,16 +10,18 @@ def gui_disable_sleep():
 
 def launch_proc(args):
     from log import enable_logging
-    from utils import parse_args, init_instance
+    from utils import parse_args, init_instance, attach_error_reporter
     from coc_bot import CoC_Bot
-    
+
     parse_args(args.debug, args.id, args.gui, args.gui_port)
     init_instance(args.id)
     enable_logging(args.id)
+    attach_error_reporter()
     bot = CoC_Bot()
     bot.run()
 
 def cmd_launch(args):
+    import utils
     if DISABLE_DEVICE_SLEEP: utils.disable_sleep()
     launch_proc(args)
 
@@ -37,6 +39,7 @@ def gui_launch(args):
         sleep_proc = Process(target=gui_disable_sleep, daemon=True)
         sleep_proc.start()
 
+    # The bot process starts with the window but only reads the village until the panel's Start button
     if args.id is not None:
         p = Process(target=launch_proc, args=(args,), daemon=True)
         p.start()

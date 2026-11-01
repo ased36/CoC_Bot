@@ -10,35 +10,77 @@ else:
 sys.path.append(str(path))
 
 import os
+import json
 import time
+import threading
 from flask import Flask, render_template, jsonify, abort, request
 try:
     from configs import *
 except:
     from configs_build import *
+import settings as settings_store
+from log_translate import parse_lines, translate_message
 
 app = Flask(__name__)
 bot_pipe = None
+settings_lock = threading.Lock()
+
+if getattr(sys, "frozen", False):
+    LOG_DIR = Path.home() / ".CoC_Bot" / "debug"
+else:
+    LOG_DIR = Path("debug")
+VOCAB_PATH = settings_store.DATA_DIR / "vocab.json"
+
+UPGRADE_KINDS = {
+    "home": ("upgrades_home", "Ana köy"),
+    "home_lab": ("upgrades_home_lab", "Laboratuvar"),
+    "pet": ("upgrades_pet", "Evcil hayvan"),
+    "builder": ("upgrades_builder", "Usta üssü"),
+    "builder_lab": ("upgrades_builder_lab", "Usta laboratuvarı"),
+}
 
 class Instance:
     def __init__(self, id=None):
         self.id = id if id is not None else ""
         self.run_status = ""
         self.end_time = 0
-        task_settings = {
-            "heroes": not UPGRADE_HEROES,
-            "home_base": not UPGRADE_HOME_BASE,
-            "builder_base": not UPGRADE_BUILDER_BASE,
-            "home_lab": not UPGRADE_HOME_LAB,
-            "builder_lab": not UPGRADE_BUILDER_LAB,
-            "home_attacks": not ATTACK_HOME_BASE,
-            "builder_attacks": not ATTACK_BUILDER_BASE,
-            "lab_assistant": not ASSIGN_LAB_ASSISTANT,
-            "builder_apprentice": not ASSIGN_BUILDER_APPRENTICE,
-        }
-        self.exclusions = set(k for k, v in task_settings.items() if v)
+        self.next_check = 0
+        self.active = True # False: the bot process idles until the Start button (only reads the village when asked)
+        self.scan_requested = False
+        self.settings = settings_store.load(self.id)
+        settings_store.save(self.id, self.settings)
+
+    @property
+    def exclusions(self):
+        return settings_store.exclusions(self.settings)
+
+    def save(self):
+        settings_store.save(self.id, self.settings)
+
+    @property
+    def mode(self):
+        # run: full rounds · scan: read the village once, touch nothing · paused / idle: wait
+        if self.end_time > time.time(): return "paused"
+        if self.active: return "run"
+        if self.scan_requested: return "scan"
+        return "idle"
+
+    def add_event(self, text):
+        events = self.settings["stats"]["events"]
+        now = time.time()
+        if events and events[-1]["text"] == text:
+            events[-1]["count"] = events[-1].get("count", 1) + 1
+            events[-1]["t"] = now
+        else:
+            events.append({"t": now, "text": text})
+        del events[:-50]
 
 instances = {}
+
+def get_instance(id):
+    instance = instances.get(id)
+    if not instance: abort(404)
+    return instance
 
 @app.route("/", methods=["GET"])
 def home():
@@ -49,17 +91,8 @@ def home():
 
 @app.route("/instances/<id>", methods=["GET"])
 def handle_instance(id):
-    instance = instances.get(id)
-    if not instance: abort(404)
-    return render_template(
-        "instance.html",
-        id=id,
-        web_app_url=WEB_APP_URL,
-        end_time=instance.end_time,
-        current_time=time.time(),
-        run_status=instance.run_status,
-        exclusions=list(instance.exclusions),
-    )
+    get_instance(id)
+    return render_template("instance.html", id=id)
 
 @app.route("/instance_action", methods=["POST"])
 def handle_instance_start_stop():
@@ -70,13 +103,21 @@ def handle_instance_start_stop():
         if id not in INSTANCE_IDS:
             return jsonify(0)
         if id not in instances:
+            # new instance from the home page: start its bot process, idle until Start
             instances[id] = Instance(id)
+            instances[id].active = False
+            instances[id].scan_requested = True
             bot_pipe.send({"action": "start", "id": id})
+            return jsonify(1)
+        instance = instances[id]
+        instance.active = True
+        instance.next_check = 0
         return jsonify(1)
     elif action == "stop":
-        instance = instances.pop(id, None)
+        instance = instances.get(id)
         if instance:
-            bot_pipe.send({"action": "stop", "id": id})
+            instance.active = False
+            instance.next_check = 0
         return jsonify(1)
     return jsonify(0)
 
@@ -86,8 +127,7 @@ def handle_current_time():
 
 @app.route("/instances/<id>/end_time", methods=["GET", "POST"])
 def handle_end_time(id):
-    instance = instances.get(id)
-    if not instance: abort(404)
+    instance = get_instance(id)
     if request.method == "POST":
         data = request.json.get("time", 0)
         instance.end_time = int(data) * 60 + time.time()
@@ -95,45 +135,159 @@ def handle_end_time(id):
 
 @app.route("/instances/<id>/running", methods=["GET"])
 def handle_running(id):
-    instance = instances.get(id)
-    if not instance: abort(404)
-    return {"running": instance.end_time == 0 or instance.end_time < time.time()}
+    instance = get_instance(id)
+    return {"running": instance.mode in ("run", "scan")}
+
+@app.route("/instances/<id>/mode", methods=["GET"])
+def handle_mode(id):
+    return {"mode": get_instance(id).mode}
+
+@app.route("/instances/<id>/scan", methods=["POST"])
+def handle_scan(id):
+    instance = get_instance(id)
+    instance.scan_requested = True
+    return {"mode": instance.mode}
 
 @app.route("/instances/<id>/status", methods=["GET", "POST"])
 def handle_status(id):
-    instance = instances.get(id)
-    if not instance: abort(404)
+    instance = get_instance(id)
     if request.method == "POST":
         data = request.json
         instance.run_status = data.get("status", "")
     return {"status": instance.run_status}
 
+@app.route("/instances/<id>/state", methods=["GET"])
+def handle_state(id):
+    # Everything the bottom bar needs in one request
+    instance = get_instance(id)
+    return {
+        "current_time": time.time(),
+        "active": instance.active,
+        "mode": instance.mode,
+        "scan_requested": instance.scan_requested,
+        "status": instance.run_status,
+        "end_time": instance.end_time,
+        "next_check": instance.next_check,
+        "resources": instance.settings.get("resources", {}),
+    }
+
 @app.route("/instances/<id>/exclude", methods=["GET", "POST"])
 def handle_exclude(id):
-    instance = instances.get(id)
-    if not instance: abort(404)
+    instance = get_instance(id)
     if request.method == "POST":
         data = request.json
         action = data.get("action", "")
         item = data.get("item", "")
-        if action == "add":
-            instance.exclusions.add(item)
-        elif action == "remove":
-            instance.exclusions.discard(item)
-    return {"exclusions": sorted(list(instance.exclusions))}
+        if item in instance.settings["tasks"]:
+            with settings_lock:
+                if action == "add":
+                    instance.settings["tasks"][item] = False
+                elif action == "remove":
+                    instance.settings["tasks"][item] = True
+                instance.save()
+    return {"exclusions": instance.exclusions}
+
+@app.route("/instances/<id>/settings", methods=["GET", "POST"])
+def handle_settings(id):
+    instance = get_instance(id)
+    if request.method == "POST":
+        update = request.json or {}
+        update.pop("stats", None)
+        update.pop("resources", None)
+        with settings_lock:
+            settings_store.merge(instance.settings, update)
+            instance.save()
+    return instance.settings
+
+@app.route("/instances/<id>/stats/reset", methods=["POST"])
+def handle_stats_reset(id):
+    instance = get_instance(id)
+    with settings_lock:
+        instance.settings["stats"] = dict(json.loads(json.dumps(settings_store.EMPTY_STATS)), since=time.time())
+        instance.save()
+    return instance.settings["stats"]
+
+@app.route("/instances/<id>/report", methods=["POST"])
+def handle_report(id):
+    instance = get_instance(id)
+    data = request.json or {}
+    kind = data.get("type", "")
+    if kind == "vocab":
+        settings_store.DATA_DIR.mkdir(parents=True, exist_ok=True)
+        VOCAB_PATH.write_text(json.dumps(data.get("vocab", {}), ensure_ascii=False), encoding="utf-8")
+        return jsonify(1)
+    with settings_lock:
+        stats = instance.settings["stats"]
+        if kind == "resources":
+            instance.settings["resources"] = dict(data.get("values", {}), t=time.time())
+        elif kind == "round_start":
+            stats["rounds"] += 1
+            instance.next_check = 0
+            instance.add_event("Tur başladı")
+        elif kind == "scan_done":
+            if instance.scan_requested: instance.add_event("Köy okundu")
+            instance.scan_requested = False
+        elif kind == "round_end":
+            instance.next_check = data.get("next_check", 0)
+            instance.add_event(f"Tur bitti ({int(data.get('duration', 0))} sn)")
+        elif kind == "upgrade":
+            key, label = UPGRADE_KINDS.get(data.get("kind"), (None, ""))
+            if key:
+                stats[key] += 1
+                instance.add_event(f"Geliştirme başladı: {data.get('name', '?')} ({label})")
+        elif kind == "wall":
+            stats["walls"] += 1
+            instance.add_event("Duvar geliştirildi")
+        elif kind == "attack":
+            base = data.get("base")
+            if base in ("home", "builder"):
+                stats[f"attacks_{base}"] += 1
+                instance.add_event("Saldırı: " + ("ana köy" if base == "home" else "usta üssü"))
+        elif kind == "error":
+            stats["errors"] += 1
+            instance.add_event("Hata: " + translate_message(data.get("text", "")))
+        elif kind == "event":
+            instance.add_event(translate_message(data.get("text", "")))
+        else:
+            return jsonify(0)
+        instance.save()
+    return jsonify(1)
+
+@app.route("/instances/<id>/log", methods=["GET"])
+def handle_log(id):
+    get_instance(id)
+    n = min(int(request.args.get("n", 300)), 2000)
+    log_path = LOG_DIR / f"{id}.log"
+    if not log_path.exists(): return {"entries": []}
+    with open(log_path, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        f.seek(max(0, size - 400_000))
+        lines = f.read().decode("utf-8", errors="replace").splitlines()
+    if size > 400_000: lines = lines[1:]
+    return {"entries": parse_lines(lines)[-n:]}
+
+@app.route("/vocab", methods=["GET"])
+def handle_vocab():
+    if VOCAB_PATH.exists():
+        try: return json.loads(VOCAB_PATH.read_text(encoding="utf-8"))
+        except Exception: pass
+    return {}
 
 def start_server(pipe, port, id=None, debug=False):
     global bot_pipe
     bot_pipe = pipe
-    
+
     if not debug:
         sys.stdout = open(os.devnull, 'w')
         sys.stderr = open(os.devnull, 'w')
 
     if id is not None:
         instances[id] = Instance(id)
-    
-    app.run(port=port, debug=debug)
+        instances[id].active = False # actions start from the panel's Start button
+        instances[id].scan_requested = True # but read the village right away
+
+    app.run(port=port, debug=debug, threaded=True)
 
 if __name__ == "__main__":
     from multiprocessing import Pipe

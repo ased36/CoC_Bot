@@ -1,476 +1,523 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
+    <meta charset="utf-8">
     <title>CoC Bot</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
 </head>
 <body>
-    <div id="home">
-        <header>
-            <img src="{{ url_for('static', filename='coc_bot_logo.png') }}" alt="CoC Bot">
-            <h1 class="themed_text">CoC Bot</h1>
-        </header>
-
-        <div class="container">
-            <form method="POST" class="custom-input-form">
-                <input type="text" name="id" placeholder="ID" required title="Instance ID" autofocus>
-                <button type="submit" name="id"><i class="fas fa-arrow-right"></i></button>
-            </form>
+    <header class="topbar">
+        <div class="brand">
+            <img src="{{ url_for('static', filename='coc_bot_logo.png') }}" alt="">
+            CoC Bot <span class="instance">{{ id }}</span>
         </div>
-    </div>
+        <nav class="tabs">
+            <button class="tab active" data-page="log">Kayıt</button>
+            <button class="tab" data-page="village">Köy</button>
+            <button class="tab" data-page="general">Genel</button>
+            <button class="tab" data-page="stats">İstatistik</button>
+        </nav>
+        <div class="save-state" id="save_state"></div>
+    </header>
 
-    <div id="control" style="display: none;">
-        <header>
-            <a href="/" style="text-decoration:none; color:inherit;">
-                <div class="instance_tag">
-                    <strong class="instance_id" id="instance_id">{{ id }}</strong>
+    <main>
+        <!-- Kayıt -->
+        <section class="page active" id="page_log">
+            <div class="log-tools">
+                <label><input type="checkbox" id="log_important"> Yalnız uyarı ve hatalar</label>
+                <label><input type="checkbox" id="log_details"> Hata ayrıntılarını göster</label>
+                <label><input type="checkbox" id="log_follow" checked> En alta kaydır</label>
+            </div>
+            <div class="log" id="log"></div>
+        </section>
+
+        <!-- Köy -->
+        <section class="page" id="page_village">
+            <h3 class="section-title">Ana köy</h3>
+            <div class="grid">
+                <div class="card">
+                    <h2>Görevler</h2>
+                    <p class="hint">Kapalı olan görev turda atlanır.</p>
+                    <div class="row"><div class="label">Binalar</div><label class="switch"><input type="checkbox" data-task="home_base"><span></span></label></div>
+                    <div class="row"><div class="label">Kahramanlar</div><label class="switch"><input type="checkbox" data-task="heroes"><span></span></label></div>
+                    <div class="row"><div class="label">Belediye binası<small>Kapalıysa Town Hall hiç geliştirilmez</small></div><label class="switch"><input type="checkbox" data-path="home.town_hall"><span></span></label></div>
+                    <div class="row"><div class="label">Laboratuvar</div><label class="switch"><input type="checkbox" data-task="home_lab"><span></span></label></div>
+                    <div class="row"><div class="label">Evcil hayvanlar</div><label class="switch"><input type="checkbox" data-task="pet_house"><span></span></label></div>
+                    <div class="row"><div class="label">Usta çırağı ata</div><label class="switch"><input type="checkbox" data-task="builder_apprentice"><span></span></label></div>
+                    <div class="row"><div class="label">Lab asistanı ata</div><label class="switch"><input type="checkbox" data-task="lab_assistant"><span></span></label></div>
                 </div>
-            </a>
 
-            <img src="{{ url_for('static', filename='coc_bot_logo.png') }}" alt="CoC Bot">
-            <h1 class="themed_text">CoC Bot</h1>
-        </header>
+                <div class="card">
+                    <h2>Sınırlar</h2>
+                    <p class="hint">Bir turda ne kadar iş yapılacağı.</p>
+                    <div class="row"><div class="label">Tur başına en fazla geliştirme<small>Ana köy ve usta üssü için ayrı ayrı</small></div><input type="number" min="1" max="50" data-path="home.max_upgrades"></div>
+                    <div class="row"><div class="label">Boşta bırakılacak usta<small>Bu kadar usta hep boş kalır</small></div><input type="number" min="0" max="6" data-path="home.open_builders"></div>
 
-        <div class="container">
+                    <h2 style="margin-top:18px">Duvar</h2>
+                    <p class="hint">Kapalıyken bot hiç duvar yapmaz. Açıkken altın ya da iksir bu sayının altındaysa yine yapmaz.</p>
+                    <div class="row"><div class="label">Duvar geliştir</div><label class="switch"><input type="checkbox" data-path="walls.enabled"><span></span></label></div>
+                    <div class="row"><div class="label">Kalacak en az altın</div><input type="text" inputmode="numeric" data-path="walls.min_gold" data-big></div>
+                    <div class="row"><div class="label">Kalacak en az iksir</div><input type="text" inputmode="numeric" data-path="walls.min_elixir" data-big></div>
+                    <div class="info">Şimdilik bot duvarın maliyetini okumuyor: geliştirmeden önce kaynağın bu sınırın üstünde olduğuna bakar. Maliyet düşülerek tam hesap 2. oturumda gelecek.</div>
+                </div>
 
-            <div style="margin-bottom:15px;">
-                <p>
-                    <span class="themed_padding" id="left_padding"></span><!--
-                --><strong class="themed_text" id="countdown_title"></strong><!--
-                --><span class="themed_text" id="countdown_time"></span><!--
-                --><span class="themed_padding" id="right_padding">.</span>
-                </p>
-                <strong class="themed_text" id="run_status" style="font-size:1em; padding:0;"></strong>
+                <div class="card wide">
+                    <h2>Hariç tutulacak binalar</h2>
+                    <p class="hint">Buradaki binalar ne öncelik listesinden ne de rastgele seçimde geliştirilir. Ad oyundaki İngilizce adla aynı yazılmalı.</p>
+                    <div class="chips" id="excluded_chips"></div>
+                </div>
+
+                <div class="card wide" data-prio="home.priority" data-prio-task="home_base_priority" data-vocab="buildings/home-village,traps/home-village,heroes">
+                    <h2>Öncelik listesi — binalar</h2>
+                </div>
+                <div class="card wide" data-prio="home.lab_priority" data-prio-task="home_lab_priority" data-vocab="troops,spells">
+                    <h2>Öncelik listesi — laboratuvar</h2>
+                </div>
+                <div class="card wide" data-prio="home.pet_priority" data-prio-task="pet_house_priority" data-vocab="pets">
+                    <h2>Öncelik listesi — evcil hayvanlar</h2>
+                </div>
             </div>
 
-            <form method="POST" class="stacked-buttons">
-                <button type="submit" name="time" value="5">5 min</button>
-                <button type="submit" name="time" value="15">15 min</button>
-                <button type="submit" name="time" value="30">30 min</button>
-            </form>
-
-            <form method="POST" class="custom-input-form">
-                <input type="text" name="custom_time" placeholder="Custom" min="1" required title="Minutes">
-                <button type="submit" name="custom_time"><i class="fas fa-arrow-right"></i></button>
-            </form>
-
-            <form method="POST" class="cancel-button">
-                <button type="submit" name="time" value="0">Cancel</button>
-            </form>
-
-            <!-- <div id="notifications" class="notifications" style="margin-top:30px;">
-                <h1 class="notifications_title">Recent Notifications</h1>
-            </div> -->
-
-            <div id="exclusions" class="exclusions" style="margin-top:30px;">
-                <h1 class="exclusions_title">Task Settings</h1>
-                <form method="POST" class="exclusions-form"></form>
+            <h3 class="section-title">Usta üssü</h3>
+            <div class="grid">
+                <div class="card">
+                    <h2>Görevler</h2>
+                    <div class="row"><div class="label">Binalar</div><label class="switch"><input type="checkbox" data-task="builder_base"><span></span></label></div>
+                    <div class="row"><div class="label">Laboratuvar</div><label class="switch"><input type="checkbox" data-task="builder_lab"><span></span></label></div>
+                    <div class="row"><div class="label">Boşta bırakılacak usta</div><input type="number" min="0" max="6" data-path="builder.open_builders"></div>
+                </div>
+                <div class="card wide" data-prio="builder.priority" data-prio-task="builder_base_priority" data-vocab="buildings/builder-base,traps/builder-base">
+                    <h2>Öncelik listesi — binalar</h2>
+                </div>
+                <div class="card wide" data-prio="builder.lab_priority" data-prio-task="builder_lab_priority" data-vocab="troops">
+                    <h2>Öncelik listesi — laboratuvar</h2>
+                </div>
             </div>
+        </section>
 
-            <form method="POST" class="cancel-button" style="margin-top:30px;">
-                <button type="submit" name="shutdown">Shutdown</button>
-            </form>
+        <!-- Genel -->
+        <section class="page" id="page_general">
+            <div class="grid">
+                <div class="card">
+                    <h2>Tur zamanlaması</h2>
+                    <p class="hint">Ayar değişiklikleri bir sonraki turun başında geçerli olur.</p>
+                    <div class="row"><div class="label">Kontrol aralığı<small>İki tur arası, dakika</small></div><input type="number" min="1" max="240" data-path="general.check_interval"></div>
+                    <div class="row"><div class="label">Rastgele bekleme payı<small>Aralık her tur ± bu kadar % değişir</small></div><input type="number" min="0" max="90" data-path="general.jitter_pct"></div>
+                    <div class="row"><div class="label">Tur sonunda oyunu kapat<small>Kapalıysa oyun turlar arasında açık kalır</small></div><label class="switch"><input type="checkbox" data-path="general.close_game"><span></span></label></div>
+                </div>
+                <div class="card">
+                    <h2>Çalışma saatleri</h2>
+                    <p class="hint">Açıksa bot yalnızca bu saatler arasında tur atar. Gece yarısını geçen aralık da olur (ör. 22:00–06:00).</p>
+                    <div class="row"><div class="label">Çalışma saatlerini kullan</div><label class="switch"><input type="checkbox" data-path="general.hours_enabled"><span></span></label></div>
+                    <div class="row"><div class="label">Saat aralığı</div><div class="pair"><input type="time" data-path="general.hours_start"> – <input type="time" data-path="general.hours_end"></div></div>
+                </div>
+                <div class="card">
+                    <h2>Saldırı</h2>
+                    <div class="info" style="margin-top:4px">Saldırılar kapalı. Saldırı ayarları bu panele 4. oturumda gelecek.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- İstatistik -->
+        <section class="page" id="page_stats">
+            <div class="prio-head">
+                <div class="hint" id="stats_since"></div>
+                <button class="btn danger" id="stats_reset">Sıfırla</button>
+            </div>
+            <div class="tiles" id="stats_tiles"></div>
+            <div class="card">
+                <h2>Son olaylar</h2>
+                <ul class="events" id="events"></ul>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bottombar">
+        <button class="btn primary" id="btn_toggle">Başlat</button>
+        <button class="btn small" id="btn_scan" title="Oyunu açıp kaynakları okur, hiçbir şeye dokunmaz">Köyü oku</button>
+        <div class="group">
+            <span class="lbl">Duraklat</span>
+            <button class="btn small" data-pause="5">5 dk</button>
+            <button class="btn small" data-pause="15">15 dk</button>
+            <button class="btn small" data-pause="30">30 dk</button>
+            <input class="custom" id="pause_custom" inputmode="numeric" placeholder="dk">
+            <button class="btn small" id="pause_custom_btn">Uygula</button>
+            <button class="btn small" id="btn_resume" style="display:none">Devam et</button>
         </div>
-    </div>
+        <div class="status" id="status"><span class="dot"></span><span id="status_text">…</span></div>
+        <div class="res">
+            <span class="gold" title="Altın"><i></i><b id="r_gold">–</b></span>
+            <span class="elixir" title="İksir"><i></i><b id="r_elixir">–</b></span>
+            <span class="dark" title="Kara iksir"><i></i><b id="r_dark">–</b></span>
+            <span class="gems" title="Mücevher"><i></i><b id="r_gems">–</b></span>
+            <span class="builders" title="Boş usta / toplam"><i></i><b id="r_builders">–</b></span>
+            <span class="when" id="r_when"></span>
+        </div>
+    </footer>
 
     <script>
-        let id = "{{ id }}";
-        let start = Date.now();
-        let current_time = {{ current_time }};
-        let end_time = {{ end_time }};
-        let run_status = {{ run_status | tojson }};
-        let exclusions = {{ exclusions | tojson }};
-        const web_app_url = "{{ web_app_url }}";
-        const time_labels = ['d', 'h', 'm', 's'];
+        const ID = {{ id | tojson }};
+        const API = `/instances/${encodeURIComponent(ID)}`;
+        let settings = null;
+        let vocab = {};
+        let clockOffset = 0; // server time - browser time, seconds
 
-        const exclusion_options = new Map()
-        // Home Base
-        exclusion_options.set("Home Base Priority", ["Will upgrade according to priority", "Will upgrade randomly"]);
-        exclusion_options.set("Home Base", ["Home base building upgrades ENABLED", "Home base building upgrades DISABLED"]);
-        exclusion_options.set("Heroes", ["Hero upgrades ENABLED", "Hero upgrades DISABLED"]);
-        exclusion_options.set("Builder Apprentice", ["Builder apprentice assignment ENABLED", "Builder apprentice assignment DISABLED"]);
-        exclusion_options.set("Home Lab Priority", ["Will upgrade according to priority", "Will upgrade randomly"]);
-        exclusion_options.set("Home Lab", ["Home lab upgrades ENABLED", "Home lab upgrades DISABLED"]);
-        exclusion_options.set("Lab Assistant", ["Lab assistant assignment ENABLED", "Lab assistant assignment DISABLED"]);
-        exclusion_options.set("Pet House Priority", ["Will upgrade according to priority", "Will upgrade randomly"]);
-        exclusion_options.set("Pet House", ["Pet house upgrades ENABLED", "Pet house upgrades DISABLED"]);
-        // Builder Base
-        exclusion_options.set("Builder Base Priority", ["Will upgrade according to priority", "Will upgrade randomly"]);
-        exclusion_options.set("Builder Base", ["Builder base building upgrades ENABLED", "Builder base building upgrades DISABLED"]);
-        exclusion_options.set("Builder Lab Priority", ["Will upgrade according to priority", "Will upgrade randomly"]);
-        exclusion_options.set("Builder Lab", ["Builder lab upgrades ENABLED", "Builder lab upgrades DISABLED"]);
-        exclusion_options.set("Home Attacks", ["Home attacks ENABLED", "Home attacks DISABLED"]);
-        exclusion_options.set("Builder Attacks", ["Builder attacks ENABLED", "Builder attacks DISABLED"]);
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+        const now = () => Date.now() / 1000 + clockOffset;
+        const fmtNum = v => (v === null || v === undefined) ? "–" : Number(v).toLocaleString("tr-TR");
+        const pad = n => String(n).padStart(2, "0");
+        const fmtClock = t => { const d = new Date(t * 1000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+        const fmtDayClock = t => { const d = new Date(t * 1000); return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${fmtClock(t)}`; };
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 
-        async function fetchExclusions() {
+        async function api(path, body) {
+            const opts = body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)};
+            const res = await fetch(API + path, opts);
+            if (!res.ok) throw new Error(res.status);
+            return res.json();
+        }
+
+        // ---------- Tabs ----------
+        $$(".tab").forEach(tab => tab.addEventListener("click", () => {
+            $$(".tab").forEach(t => t.classList.toggle("active", t === tab));
+            $$(".page").forEach(p => p.classList.toggle("active", p.id === `page_${tab.dataset.page}`));
+            try { localStorage.setItem("tab", tab.dataset.page); } catch (e) {}
+            if (tab.dataset.page === "stats") refreshStats();
+        }));
+        try {
+            const saved = location.hash.slice(1) || localStorage.getItem("tab");
+            if (saved && $(`.tab[data-page="${saved}"]`)) $(`.tab[data-page="${saved}"]`).click();
+        } catch (e) {}
+
+        // ---------- Saving ----------
+        let saveTimer = null;
+        function showSave(state, text) {
+            const el = $("#save_state");
+            el.className = `save-state ${state}`;
+            el.textContent = text;
+            clearTimeout(saveTimer);
+            if (state === "ok") saveTimer = setTimeout(() => { el.textContent = ""; }, 2500);
+        }
+
+        function nested(path, value) {
+            const keys = path.split(".");
+            const out = {};
+            let cur = out;
+            keys.slice(0, -1).forEach(k => { cur = cur[k] = {}; });
+            cur[keys[keys.length - 1]] = value;
+            return out;
+        }
+
+        function getPath(path) {
+            return path.split(".").reduce((o, k) => (o || {})[k], settings);
+        }
+
+        async function save(update) {
+            showSave("", "Kaydediliyor…");
             try {
-                const url = web_app_url ? `${web_app_url}/instances/${id}/exclude` : `/instances/${id}/exclude`;
-                const response = await fetch(url);
-                const data = await response.json();
-                exclusions = data.exclusions;
-            } catch (error) {
-                console.error('Error fetching exclusions from web app:', error);
+                settings = await api("/settings", update);
+                showSave("ok", "Kaydedildi ✓");
+            } catch (e) {
+                showSave("err", "Kaydedilemedi");
             }
         }
 
-        async function fetchNotifications() {
-            try {
-                const url = web_app_url ? `${web_app_url}/instances/${id}/notifications` : `/instances/${id}/notifications`;
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(3),
-                });
-                const data = await response.json();
-                const latest_notif = (notifications.length > 0) ? notifications[0].time_stamp : 0;
-                notifications = data;
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
-            }
-        }
-
-        async function fetchCurrentTime() {
-            try {
-                const url = web_app_url ? `${web_app_url}/current_time` : `/current_time`;
-                const response = await fetch(url);
-                const data = await response.json();
-                current_time = data.current_time;
-                start = Date.now();
-            } catch (error) {
-                console.error('Error fetching current time:', error);
-            }
-        }
-
-        async function fetchEndTime() {
-            try {
-                const url = web_app_url ? `${web_app_url}/instances/${id}/end_time` : `/instances/${id}/end_time`;
-                const response = await fetch(url);
-                const data = await response.json();
-                end_time = data.end_time;
-            } catch (error) {
-                console.error('Error fetching countdown end time:', error);
-            }
-        }
-
-        async function fetchStatus() {
-            try {
-                url = web_app_url ? `${web_app_url}/instances/${id}/status` : `/instances/${id}/status`;
-                const response = await fetch(url);
-                const data = await response.json();
-                run_status = data.status;
-            } catch (error) {
-                console.error('Error fetching status:', error);
-            }
-        }
-
-        async function setEndTime(minutes) {
-            try {
-                const url = web_app_url ? `${web_app_url}/instances/${id}/end_time` : `/instances/${id}/end_time`;
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        time: minutes
-                    })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    end_time = data.end_time;
-                }
-            } catch (error) {
-                console.error('Error setting end time:', error);
-            }
-        }
-
-        async function setExclusion(item, action) {
-            try {
-                const url = web_app_url ? `${web_app_url}/instances/${id}/exclude` : `/instances/${id}/exclude`;
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        action: action,
-                        item: item
-                    })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    exclusions = data.exclusions;
-                }
-            } catch (error) {
-                console.error('Error updating exclusion:', error);
-            }
-        }
-
-        async function shutdown() {
-            try {
-                const url = `/instance_action`;
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        action: "stop",
-                        id: id
-                    })
-                });
-            } catch (error) {
-                console.error('Error shutting down instance:', error);
-            }
-        }
-
-        if (id) {
-            document.getElementById("instance_id").textContent = id;
-            document.getElementById("home").style.display = "none";
-            document.getElementById("control").style.display = "block";
-        }
-
-        function fetchAll() {
-            if (!id) return;
-            fetchEndTime();
-            fetchStatus();
-            // fetchNotifications();
-            fetchExclusions();
-        }
-
-        setInterval(fetchAll, 1000);
-
-        function get_hms(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = Math.floor(seconds % 60);
-            return {hours, minutes, seconds: secs};
-        }
-
-        function updateNotifications() {
-            let currentIndex = 0;
-            while (currentIndex < notifications.length) {
-                const now = Date.now();
-
-                const notif = notifications[currentIndex];
-
-                const age = current_time - notif.time_stamp + (now - start) / 1000;
-                const days = Math.floor(age / 86400);
-                if (days > 7) {
-                    currentIndex++;
-                    continue;
-                }
-                const hours = Math.floor((age % 86400) / 3600);
-                const minutes = Math.floor((age % 3600) / 60);
-                const seconds = Math.floor(age % 60);
-                const time_array = [days, hours, minutes, seconds];
-                let time_index = 0;
-                while (time_index < time_array.length-1 && time_array[time_index]===0) {
-                    time_index++;
-                }
-                const time_string = time_array[time_index] + time_labels[time_index];
-
-                if (document.getElementById(`notif_${currentIndex}`)) {
-                    document.getElementById(`notif_${currentIndex}`).innerHTML = `
-                    <div class="notif">
-                        <div class="notif_data">${notif.data}</div>
-                        <div class="notif_age">${time_string}</div>
-                    </div>
-                    `;
-                } else {
-                    const notifDiv = document.createElement("div");
-                    notifDiv.className = "notification";
-                    notifDiv.id = `notif_${currentIndex}`;
-                    notifDiv.innerHTML = `
-                    <div class="notif">
-                        <div class="notif_data">${notif.data}</div>
-                        <div class="notif_age">${time_string}</div>
-                    </div>
-                    `;
-
-                    document.getElementById("notifications").appendChild(notifDiv);
-                }
-
-                currentIndex++;
-            }
-        }
-        
-        function updateLastChecked() {
-            const now = Date.now();
-            let last_checked_string = "";
-            if (typeof run_status === "number") {
-                const age = Math.max(0, current_time - run_status + (now - start) / 1000);
-                const days = Math.floor(age / 86400);
-                if (days < 7) {
-                    const {hours, minutes, seconds} = get_hms(age);
-                    const time_array = [days, hours, minutes, seconds];
-                    let time_index = 0;
-                    while (time_index < time_array.length-1 && time_array[time_index]===0) {
-                        time_index++;
-                    }
-                    last_checked_string = `Checked ${time_array[time_index] + time_labels[time_index]} ago`;
-                }
-            } else if (run_status == "now") {
-                last_checked_string = `Checking now`;
-            } else if (run_status == "error") {
-                last_checked_string = ``;
-            }
-            document.getElementById('run_status').innerText = last_checked_string;
-        }
-
-        function updateCountdown() {
-            const now = Date.now();
-            const total_time_left = end_time - current_time;
-            const time_left = Math.max(0, total_time_left - (now - start) / 1000);
-
-            if (run_status == "error") {
-                document.getElementById('countdown_title').innerText = `Error!`;
-                document.getElementById('countdown_time').innerText = ``;
-                document.getElementById('left_padding').innerText = ``;
-                document.getElementById('right_padding').innerText = ``;
-            } else if (time_left > 0) {
-                const {hours, minutes, seconds} = get_hms(time_left);
-                const time_array = [hours, minutes, seconds];
-                let time_index = 0;
-                while (time_index < time_array.length-2 && time_array[time_index] === 0) {
-                    time_index++;
-                }
-                let time_string = "";
-                if (time_array[time_index] !== 0) {
-                    time_string = `${time_array[time_index] + time_labels[time_index+1]} ${time_array[time_index+1] + time_labels[time_index+2]}`;
-                } else {
-                    time_string = `${time_array[time_index+1] + time_labels[time_index+2]}`;
-                }
-
-                document.getElementById('countdown_title').innerText = `Paused:`;
-                document.getElementById('countdown_time').innerText = ` ${time_string}`;
-                document.getElementById('left_padding').innerText = ``;
-                document.getElementById('right_padding').innerText = ``;
-            } else {
-                const num_dots = Math.floor((now / 500) % 4);
-                const dots = '.'.repeat(num_dots);
-                const padding_dots = '.'.repeat(3 - num_dots);
-
-                document.getElementById('countdown_title').innerText = `Running`;
-                document.getElementById('countdown_time').innerText = dots;
-                document.getElementById('left_padding').innerText = `...`;
-                document.getElementById('right_padding').innerText = padding_dots;
-            }
-        }
-
-        function initExclusions() {
-            const exclusion_form = document.querySelector(".exclusions-form");
-            exclusion_options.forEach((option_desc, option_name) => {
-                let button = document.createElement("button");
-                button.className = "exclusion";
-                button.name = "exclude";
-                button.type = "submit";
-                let value = option_name.toLowerCase().replaceAll(" ", "_");
-                button.value = value;
-                button.innerText = option_name;
-                if (exclusions.includes(value)) {
-                    button.classList.add("active");
-                    button.title = option_desc[1];
-                } else {
-                    button.classList.add("inactive");
-                    button.title = option_desc[0];
-                }
-                exclusion_form.appendChild(button);
+        // ---------- Simple fields ----------
+        function bindFields() {
+            $$("[data-task]").forEach(input => {
+                input.checked = !!settings.tasks[input.dataset.task];
+                input.onchange = () => save({tasks: {[input.dataset.task]: input.checked}});
             });
-        }
-
-        function updateExclusions() {
-            document.querySelectorAll(".exclusion").forEach(button => {
-                let name = button.value;
-                if (exclusions.includes(name)) {
-                    button.classList.remove("inactive");
-                    button.classList.add("active");
-                    button.title = exclusion_options.get(button.innerText)[1];
+            $$("[data-path]").forEach(input => {
+                const path = input.dataset.path;
+                const value = getPath(path);
+                if (input.type === "checkbox") {
+                    input.checked = !!value;
+                    input.onchange = () => save(nested(path, input.checked));
+                } else if (input.hasAttribute("data-big")) {
+                    input.value = fmtNum(value);
+                    input.onchange = () => {
+                        const v = parseInt(input.value.replace(/\D/g, "") || "0", 10);
+                        input.value = fmtNum(v);
+                        save(nested(path, v));
+                    };
+                } else if (input.type === "number") {
+                    input.value = value;
+                    input.onchange = () => {
+                        let v = parseInt(input.value, 10);
+                        if (isNaN(v)) v = Number(input.min) || 0;
+                        v = Math.max(Number(input.min), Math.min(Number(input.max), v));
+                        input.value = v;
+                        save(nested(path, v));
+                    };
                 } else {
-                    button.classList.remove("active");
-                    button.classList.add("inactive");
-                    button.title = exclusion_options.get(button.innerText)[0];
+                    input.value = value;
+                    input.onchange = () => save(nested(path, input.value));
                 }
             });
         }
 
-        function updateAll() {
-            updateCountdown();
-            updateLastChecked();
-            // updateNotifications();
-            updateExclusions();
-            requestAnimationFrame(updateAll);
+        // ---------- Name lists (priority levels, exclusions) ----------
+        function vocabFor(categories) {
+            const names = new Set();
+            categories.forEach(c => (vocab[c] || []).forEach(n => names.add(n)));
+            return Array.from(names).sort();
         }
 
-        initExclusions();
-        updateAll();
+        let datalistCount = 0;
+        function nameInput(options, onAdd) {
+            const id = `dl_${datalistCount++}`;
+            const wrap = document.createElement("span");
+            wrap.innerHTML = `<input class="chip-input" list="${id}" placeholder="+ ad ekle"><datalist id="${id}">${options.map(o => `<option value="${esc(o)}">`).join("")}</datalist>`;
+            const input = $("input", wrap);
+            const add = () => {
+                const v = input.value.trim();
+                if (v) onAdd(v);
+            };
+            input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); add(); } });
+            input.addEventListener("change", () => { if (options.includes(input.value.trim())) add(); });
+            return wrap;
+        }
 
-        window.addEventListener(
-            "keydown",
-            (event) => {
-                if (event.key === "Escape") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    window.location.href = "/";
-                }
-            },
-            true
-        );
+        function chip(name, known, onRemove) {
+            const el = document.createElement("span");
+            el.className = "chip" + (known ? "" : " unknown");
+            if (!known) el.title = "Bu ad oyun listesinde bulunamadı; yazımı oyundakiyle aynı mı?";
+            el.innerHTML = `${esc(name)}<button title="Kaldır">×</button>`;
+            $("button", el).onclick = onRemove;
+            return el;
+        }
 
-        document.getElementsByName("custom_time").forEach(input => {
-            input.addEventListener('input', () => {
-                input.value = input.value.replace(/\D/g, '');
+        function renderExcluded() {
+            const box = $("#excluded_chips");
+            const list = settings.home.excluded || [];
+            const options = vocabFor(["buildings/home-village", "traps/home-village"]);
+            const known = new Set(options);
+            box.innerHTML = "";
+            list.forEach((name, i) => box.appendChild(chip(name, !options.length || known.has(name), () => {
+                const next = list.filter((_, j) => j !== i);
+                save({home: {excluded: next}}).then(renderExcluded);
+            })));
+            const input = nameInput(options, name => {
+                if (list.includes(name)) return;
+                save({home: {excluded: [...list, name]}}).then(renderExcluded).then(() => $(".chip-input", box).focus());
             });
-        });
+            box.appendChild(input);
+        }
 
-        document.querySelectorAll("form").forEach(form => {
-            form.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                
-                const submitter = e.submitter;
-                const formData = new FormData(form);
+        function renderPriority(card) {
+            const path = card.dataset.prio;
+            const task = card.dataset.prioTask;
+            const options = vocabFor(card.dataset.vocab.split(","));
+            const known = new Set(options);
+            const levels = JSON.parse(JSON.stringify(getPath(path) || []));
+            const commit = next => save(nested(path, next)).then(() => renderPriority(card));
 
-                if (submitter.name === "id") {
-                    const valid = await setID(formData.get("id"));
-                    if (!valid) return;
-                    fetchCurrentTime();
-                    fetchEndTime();
-                    fetchStatus();
-                    // fetchNotifications();
-                    fetchExclusions();
-                    document.getElementById("instance_id").textContent = id;
-                    document.getElementById("home").style.display = "none";
-                    document.getElementById("control").style.display = "block";
-                } else if (submitter.name === "time") {
-                    setEndTime(submitter.value);
-                    fetchCurrentTime();
-                } else if (submitter.name === "custom_time") {
-                    setEndTime(formData.get("custom_time"));
-                    fetchCurrentTime();
-                } else if (submitter.name === "exclude") {
-                    let action;
-                    if (submitter.classList.contains("active")) {
-                        submitter.classList.remove("active");
-                        submitter.classList.add("inactive");
-                        action = "remove";
-                    } else {
-                        submitter.classList.remove("inactive");
-                        submitter.classList.add("active");
-                        action = "add";
-                    }
-                    setExclusion(submitter.value, action);
-                } else if (submitter.name === "shutdown") {
-                    await shutdown();
-                    window.location.href = "/";
-                }
+            $$(".prio-body, .prio-head, .hint", card).forEach(el => el.remove());
+            const head = document.createElement("div");
+            head.className = "prio-head";
+            head.innerHTML = `<p class="hint" style="margin:0">Her satır bir öncelik seviyesi; üstteki satır önce denenir, aynı satırdakiler arasında rastgele seçilir. Listede uygun olan yoksa rastgele geliştirilir.</p>
+                <label class="switch" title="Öncelik listesini kullan"><input type="checkbox"><span></span></label>`;
+            const toggle = $("input", head);
+            toggle.checked = !!settings.tasks[task];
+            toggle.onchange = () => save({tasks: {[task]: toggle.checked}}).then(() => renderPriority(card));
+            card.appendChild(head);
 
-                form.reset();
+            const body = document.createElement("div");
+            body.className = "prio-body" + (settings.tasks[task] ? "" : " disabled-block");
+            levels.forEach((names, i) => {
+                const level = document.createElement("div");
+                level.className = "prio-level";
+                level.innerHTML = `<span class="num">${i + 1}</span><div class="chips"></div><div class="tools">
+                    <button class="btn icon" title="Yukarı" ${i === 0 ? "disabled" : ""}>↑</button>
+                    <button class="btn icon" title="Aşağı" ${i === levels.length - 1 ? "disabled" : ""}>↓</button>
+                    <button class="btn icon danger" title="Satırı sil">🗑</button></div>`;
+                const chips = $(".chips", level);
+                names.forEach((name, j) => chips.appendChild(chip(name, !options.length || known.has(name), () => {
+                    levels[i].splice(j, 1);
+                    commit(levels);
+                })));
+                chips.appendChild(nameInput(options, name => {
+                    if (levels[i].includes(name)) return;
+                    levels[i].push(name);
+                    commit(levels);
+                }));
+                const [up, down, del] = $$(".tools button", level);
+                up.onclick = () => { [levels[i - 1], levels[i]] = [levels[i], levels[i - 1]]; commit(levels); };
+                down.onclick = () => { [levels[i + 1], levels[i]] = [levels[i], levels[i + 1]]; commit(levels); };
+                del.onclick = () => {
+                    if (names.length && !confirm(`${i + 1}. satır silinsin mi? (${names.join(", ")})`)) return;
+                    levels.splice(i, 1);
+                    commit(levels);
+                };
+                body.appendChild(level);
             });
-        });
+            const addRow = document.createElement("button");
+            addRow.className = "btn small";
+            addRow.textContent = "+ Satır ekle";
+            addRow.onclick = () => { levels.push([]); commit(levels); };
+            body.appendChild(addRow);
+            card.appendChild(body);
+        }
+
+        function renderAll() {
+            bindFields();
+            renderExcluded();
+            $$("[data-prio]").forEach(renderPriority);
+        }
+
+        // ---------- Log ----------
+        let logSignature = "";
+        async function refreshLog() {
+            let data;
+            try { data = await api("/log?n=400"); } catch (e) { return; }
+            const entries = data.entries || [];
+            const important = $("#log_important").checked;
+            const details = $("#log_details").checked;
+            const last = entries[entries.length - 1];
+            const sig = `${entries.length}|${last ? last.date + last.time + last.text : ""}|${important}|${details}`;
+            if (sig === logSignature) return;
+            logSignature = sig;
+
+            const box = $("#log");
+            const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+            let html = "";
+            let day = "";
+            entries.forEach(e => {
+                if (important && e.level !== "uyarı" && e.level !== "hata") return;
+                if (e.date !== day) {
+                    day = e.date;
+                    const [y, m, d] = day.split("-");
+                    html += `<div class="log-day">${d}.${m}.${y}</div>`;
+                }
+                const detail = details && e.detail.length ? `<pre>${esc(e.detail.join("\n"))}</pre>` : "";
+                html += `<div class="log-line ${e.level}"><span class="time">${e.time}</span><span class="lvl">${e.level}</span><span class="text">${esc(e.text)}</span>${detail}</div>`;
+            });
+            box.innerHTML = html || `<div class="log-day">Kayıt yok</div>`;
+            if ($("#log_follow").checked && (atBottom || box.dataset.first !== "1")) box.scrollTop = box.scrollHeight;
+            box.dataset.first = "1";
+        }
+        ["#log_important", "#log_details"].forEach(sel => $(sel).addEventListener("change", refreshLog));
+
+        // ---------- Stats ----------
+        const TILES = [
+            ["rounds", "Tur"],
+            ["upgrades_home", "Bina geliştirme"],
+            ["upgrades_home_lab", "Laboratuvar"],
+            ["upgrades_pet", "Evcil hayvan"],
+            ["walls", "Duvar"],
+            ["upgrades_builder", "Usta üssü bina"],
+            ["upgrades_builder_lab", "Usta üssü lab"],
+            ["attacks_home", "Saldırı (ana köy)"],
+            ["attacks_builder", "Saldırı (usta üssü)"],
+            ["errors", "Hata"],
+        ];
+
+        async function refreshStats() {
+            let s;
+            try { s = await api("/settings"); } catch (e) { return; }
+            const st = s.stats;
+            $("#stats_since").textContent = st.since ? `${fmtDayClock(st.since)} tarihinden beri` : "";
+            $("#stats_tiles").innerHTML = TILES.map(([k, label]) =>
+                `<div class="tile ${k === "errors" && st[k] ? "err" : ""}"><div class="v">${fmtNum(st[k] || 0)}</div><div class="k">${label}</div></div>`).join("");
+            const events = (st.events || []).slice().reverse();
+            $("#events").innerHTML = events.length
+                ? events.map(e => `<li><span class="t">${fmtDayClock(e.t)}</span><span>${esc(e.text)}${e.count > 1 ? ` <span class="n">×${e.count}</span>` : ""}</span></li>`).join("")
+                : `<li><span class="t"></span><span class="n">Henüz olay yok</span></li>`;
+        }
+
+        $("#stats_reset").onclick = async () => {
+            if (!confirm("İstatistikler sıfırlansın mı?")) return;
+            try { await api("/stats/reset", {}); } catch (e) {}
+            refreshStats();
+        };
+
+        // ---------- Bottom bar ----------
+        let state = null;
+        async function refreshState() {
+            try {
+                state = await api("/state");
+                clockOffset = state.current_time - Date.now() / 1000;
+            } catch (e) {
+                state = null;
+            }
+            renderState();
+        }
+
+        function renderState() {
+            const box = $("#status");
+            const text = $("#status_text");
+            if (!state) { box.className = "status err"; text.textContent = "Panel sunucusuna ulaşılamıyor"; return; }
+            const t = now();
+            const paused = state.end_time > t;
+            let cls = "run", msg = "Çalışıyor";
+            if (paused) {
+                const left = Math.ceil(state.end_time - t);
+                cls = "pause"; msg = `Duraklatıldı · ${Math.floor(left / 60)}:${pad(left % 60)} kaldı`;
+            }
+            else if (!state.active && state.scan_requested) { cls = "busy"; msg = "Köy okunuyor…"; }
+            else if (!state.active && state.status === "now") { cls = "busy"; msg = "Durduruluyor · elindeki adımı bitiriyor"; }
+            else if (!state.active) { cls = ""; msg = "Bekliyor · geliştirme ve saldırı için Başlat"; }
+            else if (state.status === "now") { cls = "busy"; msg = "Tur sürüyor"; }
+            else if (state.status === "error") { cls = "err"; msg = "Son turda hata"; }
+            else if (state.status === "hours") { cls = "pause"; msg = "Çalışma saatleri dışında"; }
+            else if (state.next_check > t) { msg = `Bekliyor · sonraki tur ${fmtClock(state.next_check)}`; }
+            box.className = `status ${cls}`;
+            text.textContent = msg;
+
+            $("#btn_toggle").textContent = state.active ? "Durdur" : "Başlat";
+            $("#btn_resume").style.display = paused ? "" : "none";
+
+            const r = state.resources || {};
+            $("#r_gold").textContent = fmtNum(r.gold);
+            $("#r_elixir").textContent = fmtNum(r.elixir);
+            $("#r_dark").textContent = fmtNum(r.dark);
+            $("#r_gems").textContent = fmtNum(r.gems);
+            $("#r_builders").textContent = r.builders_free === undefined || r.builders_free === null ? "–" : `${r.builders_free}/${r.builders_total}`;
+            $("#r_when").textContent = r.t ? `okuma ${fmtClock(r.t)}` : "";
+        }
+
+        $("#btn_toggle").onclick = async () => {
+            if (!state) return;
+            const action = state.active ? "stop" : "start";
+            await fetch("/instance_action", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action, id: ID})});
+            refreshState();
+        };
+
+        $("#btn_scan").onclick = async () => {
+            try { await api("/scan", {}); } catch (e) {}
+            refreshState();
+        };
+
+        async function pause(minutes) {
+            try { await api("/end_time", {time: minutes}); } catch (e) {}
+            refreshState();
+        }
+        $$("[data-pause]").forEach(b => b.onclick = () => pause(Number(b.dataset.pause)));
+        $("#pause_custom").addEventListener("input", e => { e.target.value = e.target.value.replace(/\D/g, ""); });
+        $("#pause_custom_btn").onclick = () => {
+            const v = parseInt($("#pause_custom").value, 10);
+            if (v > 0) { pause(v); $("#pause_custom").value = ""; }
+        };
+        $("#btn_resume").onclick = () => pause(0);
+
+        // ---------- Start ----------
+        (async () => {
+            try { vocab = await (await fetch("/vocab")).json(); } catch (e) {}
+            try {
+                settings = await api("/settings");
+                renderAll();
+            } catch (e) {
+                showSave("err", "Ayarlar okunamadı");
+            }
+        })();
+        refreshLog();
+        refreshState();
+        setInterval(refreshLog, 2000);
+        setInterval(refreshState, 2000);
+        setInterval(renderState, 1000);
+        setInterval(() => { if ($("#page_stats").classList.contains("active")) refreshStats(); }, 3000);
     </script>
 </body>
 </html>

@@ -195,10 +195,12 @@ def online(timeout=1):
 def running():
     import requests
     
-    if WEB_APP_URL == "": return True
+    if WEB_APP_URL != "": url = f"{WEB_APP_URL}/instances/{INSTANCE_ID}/running"
+    elif (gui_port := TEMP_CACHE.get("gui_port")) is not None: url = f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/running"
+    else: return True
     try:
         response = requests.get(
-            f"{WEB_APP_URL}/instances/{INSTANCE_ID}/running",
+            url,
             timeout=(1, 2)
         )
         if response.status_code == 200:
@@ -439,6 +441,127 @@ def update_status(status):
         except (KeyboardInterrupt, SystemExit): raise
         except Exception as e:
             logger.error(f"update_status: {e}")
+
+def bot_mode():
+    """run / scan / paused / idle from the local panel; without a panel the bot just runs."""
+    import requests
+
+    if (gui_port := TEMP_CACHE.get("gui_port")) is None: return "run" if running() else "paused"
+    try:
+        res = requests.get(f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/mode", timeout=(1, 2))
+        if res.status_code == 200: return res.json().get("mode", "idle")
+    except (KeyboardInterrupt, SystemExit): raise
+    except Exception as e:
+        logger.error(f"bot_mode: {e}")
+    return "idle"
+
+def report(type, **data):
+    """Send an event to the local panel (stats, resources, event list). Never raises, never logs."""
+    import requests
+
+    if (gui_port := TEMP_CACHE.get("gui_port")) is None: return False
+    try:
+        res = requests.post(
+            f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/report",
+            json={"type": type, **data},
+            timeout=(1, 3)
+        )
+        return res.status_code == 200
+    except (KeyboardInterrupt, SystemExit): raise
+    except Exception:
+        return False
+
+def attach_error_reporter():
+    # Count every logged error in the panel's statistics
+    logger.add(lambda message: report("error", text=message.record["message"]), level="ERROR", enqueue=True)
+
+class Settings_Handler:
+    """Panel settings (data/<id>.json), re-read at the start of every round."""
+
+    current = None
+    vocab_sent = False
+
+    @classmethod
+    def load(cls):
+        import requests
+        import settings as settings_store
+
+        data = None
+        if (gui_port := TEMP_CACHE.get("gui_port")) is not None:
+            try:
+                res = requests.get(f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/settings", timeout=(1, 5))
+                if res.status_code == 200: data = res.json()
+            except (KeyboardInterrupt, SystemExit): raise
+            except Exception as e:
+                logger.error(f"Settings_Handler.load: {e}")
+        if data is None: data = settings_store.load(INSTANCE_ID)
+        cls.current = data
+        cls.apply(data)
+
+        if not cls.vocab_sent and TEMP_CACHE.get("gui_port") is not None:
+            vocab = Cache_Manager.get("vocab") or get_vocab()
+            if vocab: cls.vocab_sent = report("vocab", vocab=vocab)
+        return data
+
+    @classmethod
+    def apply(cls, s):
+        general, home, builder = s["general"], s["home"], s["builder"]
+        configs.CHECK_INTERVAL = general["check_interval"]
+        configs.MAX_UPGRADES_PER_CHECK = home["max_upgrades"]
+        configs.OPEN_HOME_BUILDERS = home["open_builders"]
+        configs.OPEN_BUILDER_BUILDERS = builder["open_builders"]
+        configs.HOME_BASE_UPGRADE_PRIORITY = home["priority"]
+        configs.HOME_LAB_UPGRADE_PRIORITY = home["lab_priority"]
+        configs.PET_HOUSE_UPGRADE_PRIORITY = home["pet_priority"]
+        configs.BUILDER_BASE_UPGRADE_PRIORITY = builder["priority"]
+        configs.BUILDER_LAB_UPGRADE_PRIORITY = builder["lab_priority"]
+
+    @classmethod
+    def get(cls, section, key, default=None):
+        if cls.current is None: return default
+        return cls.current.get(section, {}).get(key, default)
+
+class Resource_Reader:
+    # (x1, y1, x2, y2) fractions of the home village screen, measured at 1920x1080
+    REGIONS = {
+        "gold": (0.835, 0.030, 0.955, 0.080),
+        "elixir": (0.835, 0.098, 0.955, 0.148),
+        "dark": (0.865, 0.165, 0.955, 0.215),
+        "gems": (0.905, 0.233, 0.955, 0.283), # starts right of the badge next to the gem count
+        "builders": (0.885, 0.750, 0.935, 0.790),
+    }
+    last = {}
+
+    @classmethod
+    def read(cls):
+        import re
+
+        try:
+            if not in_home_base(): return None
+            frame = Frame_Handler.get_frame(grayscale=False, use_cached=True)
+            values = {}
+            for name, region in cls.REGIONS.items():
+                digits = re.sub(r"\D", "", OCR_Handler.read_digits(Frame_Handler.crop(frame, *region)))
+                if name == "builders":
+                    # "0/5"; the slash is sometimes read as 7, so take the first and last digit
+                    values["builders_free"] = int(digits[0]) if len(digits) >= 2 else None
+                    values["builders_total"] = int(digits[-1]) if len(digits) >= 2 else None
+                else:
+                    values[name] = int(digits) if digits else None
+        except (KeyboardInterrupt, SystemExit): raise
+        except Exception as e:
+            logger.error(f"Resource_Reader.read: {e}")
+            return None
+
+        if values.get("gold") is None or values.get("elixir") is None:
+            logger.warning("Resources could not be read")
+        if values != cls.last:
+            fmt = lambda v: "-" if v is None else f"{v:,}".replace(",", ".")
+            builders = f"{fmt(values['builders_free'])}/{fmt(values['builders_total'])}"
+            logger.info(f"Resources: gold={fmt(values['gold'])} elixir={fmt(values['elixir'])} dark={fmt(values['dark'])} gems={fmt(values['gems'])} builders={builders}")
+        cls.last = values
+        report("resources", values=values)
+        return values
 
 def extend_pythonanywhere_hosting(username, password):
     import requests
@@ -1079,7 +1202,7 @@ class Task_Handler:
     task_defaults = {
         "home_base_priority": "PRIORITY_HOME_BASE_UPGRADES",
         "home_lab_priority": "PRIORITY_HOME_LAB_UPGRADES",
-        "pet_house_priority": "PRIORITY_PETS_UPGRADES",
+        "pet_house_priority": "PRIORITY_PET_UPGRADES",
         "builder_base_priority": "PRIORITY_BUILDER_BASE_UPGRADES",
         "builder_lab_priority": "PRIORITY_BUILDER_LAB_UPGRADES",
         "heroes": "UPGRADE_HEROES",
@@ -1167,6 +1290,19 @@ class OCR_Handler:
             cls.reader = easyocr.Reader(['en'], gpu=True)
         result = cls.reader.readtext(frame, detail=0)
         return [text for text in result if text.strip()]
+
+    @classmethod
+    def read_digits(cls, section):
+        """Read white in-game digits (resource bar, builder count) from an RGB section."""
+        import cv2, numpy as np
+        if not hasattr(cls, 'reader'):
+            import easyocr
+            cls.reader = easyocr.Reader(['en'], gpu=True)
+        # Keep only the white text and upscale; easyocr drops narrow "1"s on the raw image
+        mask = 255 - (section.min(axis=2) > 200).astype(np.uint8) * 255
+        mask = cv2.copyMakeBorder(mask, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
+        mask = cv2.resize(mask, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+        return "".join(cls.reader.readtext(mask, detail=0, allowlist="0123456789/ "))
 
     @classmethod
     def external_ocr(cls, frame):

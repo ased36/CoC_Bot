@@ -139,6 +139,7 @@ ATTACK_SLOT_RANGE = (0, 100) # inclusive, first slot is index 0
 EXCLUDE_CLAN_TROOPS = True
 ATTACK_HOME_BASE = True # can be overridden on desktop or web app
 ATTACK_BUILDER_BASE = True # can be overridden on desktop or web app
+WAIT_FOR_BATTLE_END = True # wait for the battle to finish and press Return Home instead of restarting CoC right after deploying
 
 ########################
 # == System Configs == #

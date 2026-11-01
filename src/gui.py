@@ -11,29 +11,23 @@ def find_open_port():
         s.bind(('', 0))
         return s.getsockname()[1]
 
-def run_gui(server_port, pipe, debug=False):
+def run_gui(server_port, pipe, debug=False, id=None):
     import sys, webview
     
-    url = f"http://127.0.0.1:{server_port}"
+    url = f"http://127.0.0.1:{server_port}" + (f"/instances/{id}" if id is not None else "")
     window = webview.create_window(
         "CoC Bot",
         url=url,
-        width=400,
-        height=600,
-        min_size=(400, 600),
-        resizable=(sys.platform == "darwin"),
+        width=1180,
+        height=800,
+        min_size=(900, 620),
+        resizable=True,
     )
     
     def on_closed():
         pipe.send(-1)
     
-    def set_aspect_ratio():
-        if sys.platform != "darwin": return
-        nswindow = window.native
-        nswindow.setAspectRatio_((2, 3))
-
     window.events.closed += on_closed
-    window.events.loaded += set_aspect_ratio
     webview.start(debug=debug)
 
 class GUI:
@@ -49,7 +43,7 @@ class GUI:
         self.server_port = find_open_port()
         self.server_proc = Process(target=start_server, args=(child_conn, self.server_port, id, False,))
         self.server_proc.start()
-        self.window_proc = Process(target=run_gui, args=(self.server_port, child_conn, self.debug))
+        self.window_proc = Process(target=run_gui, args=(self.server_port, child_conn, self.debug, id))
     
     def start(self):
         self.window_proc.start()
