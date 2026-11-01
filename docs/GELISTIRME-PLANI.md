@@ -387,3 +387,12 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 - BlueStacks dökümleri: 02.11 00:17 ve 00:39 (bot 23:46'da durmuştu).
 
 **Emre'ye sorulan seçenekler:** sohbette numaralı (1 kalan barbar / kahraman yeri, 2 mola + günlük sınır, 3 Telegram, 4 klan kalesi, 5 kara iksir, 6 usta üssü saldırısı); yapılmaması önerilenler: ordu kontrolü, hazine / toplayıcı / maden arabası, Hammer Jam (15.11'de bitiyor, menü zaten indirimli fiyatı okuyor), Okay / Village did not load (çok seyrek).
+
+## 02.11 — Emre'nin seçimleri (1A 2A 3A 4A 5A 6B) ve yapılanlar
+
+- **1A ✅ kod, canlıda denenmedi (e7ef9cf):** kırmızı alan okununca kalan barbarlar çizginin %0,6 / %1,1 / %1,6 (+0–0,4) dışında (`RED_LEFTOVER`), kahraman / kuşatma noktası %0,8 (+0–0,5) (`RED_SPOT`); kahraman inmezse biraz içeri (−%0,4), biraz dışarı (+%0,6), sonra başka kenarın ortası. Kırmızı alan okunmazsa eski yol aynı. Kayıtlı 10 köyde kuru çizim (`scratchpad/yeni_noktalar.py`): noktalar çizgi ile orman arasındaki çimende; 23:32'de sağ üstte çizgi bir binanın etrafında içeri kıvrılıyor, oradaki 1–2 nokta bina üstünde.
+- **3A ✅ kod, canlıda denenmedi (ee9671b):** Telegram (anahtar `src/configs.py` 10. satır, git'e girmez; Emre BotFather'dan alıp kendisi yazar). Mesajlar: her saldırı (sonuç ekranı resmi + kazanılan ganimet + depo, sessiz), günlük özet (yeni günün ilk turunda), tur hatası (15 dk'da bir), BlueStacks yeniden açıldı / açılamadı, bot başladı / durduruldu / duraklatıldı, mola ve günlük sınır, geliştirme başladı. Ayrı iş parçacığında gönderilir. Taklit `requests` ile denendi.
+- **2A ✅ kod, canlıda denenmedi (c2a106f):** Genel → "İnsan gibi oyna": 15–25 saldırıda bir 20–40 dk mola (oyun kapanır), günde 30–45 saldırı (sonra ertesi gün 00:05–00:30), 24 saatlik ızgara (varsayılan 02:00–09:00 kapalı); her satırda "?" ile öneri. Sayaçlar `src/cache.json` "play" (bot kapanıp açılınca sıfırlanmaz). Durum çubuğunda "Mola · sonraki tur" / "Günlük sınır doldu". Mantık sahte saatle denendi (23. saldırıda 32 dk mola, 35'te günlük sınır); panel 1280 / 500 ekran görüntüsü alındı (ızgara taşması düzeltildi).
+- **4A (klan kalesi isteği + pasta varsa ücretsiz doldur):** kod yok; ölçüm gerekiyor (kale boşken ordu penceresi, istek penceresi; pasta etkinken düğme). Oyuna dokunduğu için Emre'nin onayıyla, Emre oyunu oynamıyorken.
+- **5A:** Emre panelden Kahramanlar + Evcil'i açacak (kod yok).
+- **6B:** usta üssü saldırısı yok.
