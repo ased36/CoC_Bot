@@ -183,4 +183,4 @@ class CoC_Bot:
                 logger.exception("CoC_Bot.run:")
                 stop_coc()
                 update_status("error")
-                time.sleep(60 * configs.CHECK_INTERVAL)
+                time.sleep(60) # the next round starts the emulator again if it closed (it used to wait the whole check interval)

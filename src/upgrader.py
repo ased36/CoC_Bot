@@ -743,13 +743,19 @@ class Upgrader:
                 if not r["affordable"] or self._wall_payment(r["cost"]) is None: continue
                 if levels and known.get(r["cost"]) is not None and known[r["cost"]] not in levels: continue
                 Input_Handler.click((left + right) / 2, r["name_y"])
-                if levels:
-                    level = None
-                    for _ in range(3): # the view slides to the wall first
-                        time.sleep(0.7)
-                        level = self._selected_wall_level()
-                        if level is not None: break
-                    known[r["cost"]] = level
+                if levels and known.get(r["cost"]) in levels: time.sleep(0.7) # level already confirmed for this cost
+                elif levels:
+                    # OCR once read 12 as 11 and the walls were skipped for the rest of the session:
+                    # a level counts only when two reads agree, and only an agreed level is remembered
+                    reads = []
+                    for _ in range(5): # the view slides to the wall first
+                        time.sleep(0.6)
+                        value = self._selected_wall_level()
+                        if value is not None: reads.append(value)
+                        if len(reads) >= 2 and reads[-1] == reads[-2]: break
+                    agreed = len(reads) >= 2 and reads[-1] == reads[-2]
+                    level = reads[-1] if agreed else None
+                    if agreed: known[r["cost"]] = level
                     if level not in levels:
                         logger.info(f"Wall level {level if level is not None else '?'} not chosen ({r['cost']:,})".replace(",", "."))
                         continue
