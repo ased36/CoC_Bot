@@ -1309,7 +1309,7 @@ class Upgrader:
     # 📡 Upgrade Monitoring
     # ============================================================
     
-    def run_home_base(self, exclude_base=False, exclude_lab=False, exclude_pet=False):
+    def run_home_base(self, exclude_base=False, exclude_lab=False, exclude_pet=False, walls=True):
         import time
         
         Input_Handler.zoom(dir="out")
@@ -1361,10 +1361,11 @@ class Upgrader:
         except (KeyboardInterrupt, SystemExit): raise
         except: pass
 
-        # Walls last, with what the upgrades above left over
+        # Walls last, with what the upgrades above left over (when attacking, the bot runs them after the attack instead)
         try:
-            Resource_Reader.read()
-            self.run_walls()
+            if walls:
+                Resource_Reader.read()
+                self.run_walls()
         except (KeyboardInterrupt, SystemExit): raise
         except:
             logger.warning("Encountered an error while attempting to upgrade walls")

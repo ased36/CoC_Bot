@@ -17,7 +17,8 @@ def in_working_hours(general):
 def next_check_delay(general):
     import random
     jitter = max(0, min(90, general.get("jitter_pct", 0))) / 100
-    return 60 * configs.CHECK_INTERVAL * (1 + random.uniform(-jitter, jitter))
+    # The panel's interval (it used to be ignored: the configs value was always used); 0 = next round right away
+    return 60 * general.get("check_interval", configs.CHECK_INTERVAL) * (1 + random.uniform(-jitter, jitter))
 
 class CoC_Bot:
     def __init__(self):
@@ -134,11 +135,20 @@ class CoC_Bot:
 
                     if not skip_home_base_upgrades and not stopped():
                         logger.info("Upgrading home base")
-                        self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets)
+                        # Attacking: walls wait until after the attack, so they are paid with its loot
+                        self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=exclude_home_attacks)
                     if not exclude_home_attacks and not stopped():
                         logger.info("Attacking home base")
                         report("attack", base="home")
                         self.attacker.run_home_base(restart=not skip_home_base_upgrades or not skip_builder_base_upgrades)
+                        if Settings_Handler.get("walls", "enabled", False) and not stopped():
+                            try:
+                                to_home_base()
+                                Resource_Reader.read()
+                                self.upgrader.run_walls()
+                            except (KeyboardInterrupt, SystemExit): raise
+                            except Exception:
+                                logger.exception("Walls after the attack:")
 
                     # Check builder base
                     builder_base_stopped = stopped()
