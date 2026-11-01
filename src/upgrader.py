@@ -50,8 +50,9 @@ class Upgrader:
         return click_with_timeout(locate, timeout=timeout)
 
     def _click_home_confirm(self, timeout=5):
+        # A fresh frame on every try: the cached one was taken before the dialog opened, so Confirm was never seen
         return click_with_timeout(
-            lambda: Frame_Handler.locate(self.assets["confirm"], grayscale=False, thresh=0.85, use_cached=True),
+            lambda: Frame_Handler.locate(self.assets["confirm"], grayscale=False, thresh=0.85),
             timeout=timeout
         )
 
