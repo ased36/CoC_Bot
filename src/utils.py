@@ -904,7 +904,7 @@ class _Emulator_Manager:
     @classmethod
     def init(cls):
         Exit_Handler.register(cls.stop)
-        cls.restart()
+        cls.start() # an emulator that is already open stays as it is (a restart powers Android down, BlueStacks then shows "Unexpected shutdown")
 
     @classmethod
     def check(cls):
@@ -1116,8 +1116,12 @@ class BlueStacks_Manager(_Emulator_Manager):
             if not cls.check():
                 logger.info("BlueStacks stopped.")
                 return
+            # After the Android power down BlueStacks shows an "Unexpected shutdown" window and waits for a click: close it ourselves
+            if time.time() - start_time > 10:
+                try: psutil.Process(cls.pid).terminate()
+                except psutil.NoSuchProcess: pass
             time.sleep(0.5)
-        
+
         raise Exception("BlueStacks failed to stop.")
 
 class MuMu_Manager(_Emulator_Manager):
