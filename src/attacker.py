@@ -353,10 +353,20 @@ class Attacker:
         m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((25, 25), np.uint8))
         n, lab, st, cent = cv2.connectedComponentsWithStats(m)
         if n < 2: return None
-        big = 1 + np.argmax(st[1:, cv2.CC_STAT_AREA])
-        if st[big, cv2.CC_STAT_AREA] < 0.08 * h * w: return None # a few moving troops, not the zone (or not shown yet)
-        cs, _ = cv2.findContours((lab == big).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        # Walls and tall buildings cut the tint into pieces (23:07: the largest piece was a quarter of the zone):
+        # every piece that is not a stray troop belongs to it, the outline goes around all of them
+        keep = [i for i in range(1, n) if st[i, cv2.CC_STAT_AREA] >= 0.002 * h * w]
+        total = sum(st[i, cv2.CC_STAT_AREA] for i in keep)
+        if total < 0.08 * h * w: return None # a few moving troops, not the zone (or not shown yet)
+        zone = np.isin(lab, keep).astype(np.uint8)
+        ys, xs = np.nonzero(zone)
+        hull = cv2.convexHull(np.stack([xs, ys], axis=1).astype(np.int32))
+        # Outline: the outer edge of the pieces, bridged where they are cut (close with a big kernel, inside the hull)
+        bridged = cv2.morphologyEx(zone, cv2.MORPH_CLOSE, np.ones((61, 61), np.uint8))
+        cs, _ = cv2.findContours(bridged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         pts = max(cs, key=cv2.contourArea)[:, 0, :].astype(float)
+        cent = {0: (float(xs.mean()), float(ys.mean()))}
+        big = 0
         # Edge points that touch a HUD box or the screen edge are where the zone is hidden, not where it ends
         near = cv2.dilate(hud, np.ones((21, 21), np.uint8))
         xi, yi = pts[:, 0].astype(int), pts[:, 1].astype(int)
@@ -376,7 +386,23 @@ class Attacker:
         # circular median over 22 degrees
         wrap = np.r_[radius[-5:], radius, radius[:5]]
         radius = np.array([np.median(wrap[i:i + 11]) for i in range(180)])
-        return (cx * 1920 / w, cy * 1080 / h), radius * 1920 / w
+        center, radius = (cx * 1920 / w, cy * 1080 / h), radius * 1920 / w
+        # The zone covers every building. Where the outline is well inside the buildings' red details the tint was only
+        # partly seen (23:07: the left half of the village); such a ring would send troops into the village
+        guess = cls._deploy_ring(cls, cv2.resize(after, (1920, 1080)) if (h, w) != (1080, 1920) else after)
+        if guess is not None:
+            (gx, gy), grad = guess
+            short = 0
+            for i in range(0, 180, 3):
+                t = np.radians(i * 2)
+                ex, ey = gx + grad[i] * np.cos(t), gy + grad[i] * np.sin(t) # a far building edge
+                if cls._in_hud(ex / 1920, ey / 1080): continue
+                a = int(round((np.degrees(np.arctan2(ey - center[1], ex - center[0])) % 360) / 2)) % 180
+                if radius[a] < 0.85 * np.hypot(ex - center[0], ey - center[1]): short += 1
+            if short > 10:
+                logger.info(f"Red area only partly seen ({short} directions inside the buildings)")
+                return None
+        return center, radius
 
     def _start_battle(self, ring_mid, ring_out):
         """The troop card is selected: one troop on a spot that is surely on the map and outside the red line starts the
