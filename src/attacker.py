@@ -383,9 +383,12 @@ class Attacker:
         narrow parts of the map; the battle is on once the scouting Next button is gone (22:47: the first spot was off a
         stone themed map). Returns whether it started."""
         import time, random
+        # First the screen's left and right edges, where Emre's sweeps start (farthest from any village; 22:51 every
+        # spot near the band was inside a big village's red area), then spots along his paths
+        edges = random.sample([(random.uniform(0.04, 0.07), random.uniform(0.42, 0.55)), (random.uniform(0.93, 0.96), random.uniform(0.38, 0.52))], 2)
         sides = random.sample((0, 180), 2)
-        spots = [self._ring_point(ring_out, a + random.uniform(-6, 6), m) for m in (-0.05, -0.1) for a in sides]
-        spots += [self._ring_point(ring_mid, a, 0.02) for a in sides + [90, 270]]
+        spots = edges + [self._ring_point(ring_out, a + random.uniform(-6, 6), m) for m in (-0.05, 0.03) for a in sides]
+        spots += [self._ring_point(ring_out, a, -0.03) for a in (30, 150, 210, 330)]
         for x, y in spots:
             if self._in_hud(x, y): continue
             self._tap(x, y, spread=0.004)
@@ -532,7 +535,21 @@ class Attacker:
         # comes back down and the top half is swept. Without it the bottom stays partly under the troop bar
         use_pan = random.random() < float(troops.get("pan", 0)) # a share of the attacks (Emre 1C), true = every attack
         pans = [None, None]
-        if use_pan or random.random() < troops.get("halves", 0.7):
+        per_side = troops.get("per_side")
+        if per_side:
+            # Emre 22:53: each of the village's four sides gets 13-15 troops in its own short sweep, the top two first,
+            # then the view is pushed up (W) and the bottom two (the bottom stayed under the troop bar and got nothing)
+            rate = troops.get("per_second", 7.3)
+            counts = [random.randint(*per_side) for _ in range(3)]
+            counts.append(max(troops.get("count", 60) - sum(counts), 8))
+            centers = random.sample([225, 315], 2) + random.sample([45, 135], 2)
+            sweeps = []
+            for c in centers:
+                d = random.choice((1, -1))
+                sweeps.append((c - d * 45 + random.uniform(-4, 4), d * 90))
+            times = [k / rate for k in counts]
+            pans = [None, None, -troops.get("pan_by", 0.3), None]
+        elif use_pan or random.random() < troops.get("halves", 0.7):
             s1 = random.choice((0, 180))
             top_first = False if use_pan else random.random() < 0.5
             # top half from the left: 180 -> 360 over 270; from the right: 0 -> -180. Bottom half the other way round

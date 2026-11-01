@@ -10,6 +10,7 @@ troops:
   count: 60
   per_second: 7.3          # basılı tutunca inen asker (kayıttan ölçüldü: 1,5 sn'de ~11)
   hold_share: [0.9, 0.96]  # sürükleme kartın bitmesinden biraz önce biter; kalan 2–6 barbar tek tek (Emre de böyle)
+  per_side: [13, 15]       # Emre 22:53: dört kenarın her birine 13–15, kenar başına kısa sürükleme; önce üst iki, sonra görüntü yukarı → alt iki (yoksa aşağıdaki halves / pan)
   halves: 0.7              # 10 saldırının 7'sinde iki yarım (üst + alt), 3'ünde tek tur
   sweep_pause: [0.25, 0.6] # iki yarım arası
   pan: 0.4                 # saldırıların bu kadarında Emre'nin W / S'si gibi: görüntüyü yukarı it, alt yarıyı sürükle, geri indir, üst yarıyı (Emre 1C)
