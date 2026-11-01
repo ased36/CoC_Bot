@@ -242,6 +242,22 @@ class Attacker:
         with open(Asset_Manager.resource_path(f"attacks/{name}.yaml"), encoding="utf-8") as f:
             return yaml.safe_load(f)
 
+    @staticmethod
+    def _panel_style(style):
+        """The panel's Saldırı -> Dağıtım / Savaş sonu values (settings "attack_style") put over the yaml style."""
+        p = Settings_Handler.get_section("attack_style") or {}
+        troops, heroes, spells, end = (style.setdefault(k, {}) for k in ("troops", "heroes", "spells", "end"))
+        if p.get("count"): troops["count"] = int(p["count"])
+        if p.get("per_side_max"): troops["per_side"] = sorted((int(p.get("per_side_min") or p["per_side_max"]), int(p["per_side_max"])))
+        if "red_line" in p: troops["red_line"] = bool(p["red_line"])
+        if "lead_first" in p: heroes["lead_first"] = max(0, min(100, int(p["lead_first"] or 0))) / 100
+        if p.get("bats"): spells["count"] = int(p["bats"])
+        if "loot_left_max" in p:
+            hi = int(p["loot_left_max"] or 0)
+            end["loot_left"] = sorted((int(p.get("loot_left_min") or hi), hi)) if hi else None
+        if p.get("idle_seconds"): end["idle_seconds"] = int(p["idle_seconds"])
+        return style
+
     def _leftover_troops(self, ring, troop_x, select_card, margins=(0.06, 0.09, 0.12), pause=0.25, around=None, spread=60, jitter=0.015):
         """Troops a tap or a drag could not drop (red area): select the card again and drop them one by one further out.
         Whole visible edges, not only corners, further out each round, until the card is empty (at most 60 taps).
@@ -798,7 +814,7 @@ class Attacker:
     def scripted_attack(self, style_name="yayma", restart=True):
         """Play an attack style on the village on screen (search screen, nothing deployed yet). Returns True when back home."""
         import time, random, cv2, datetime
-        style = self.load_style(style_name)
+        style = self._panel_style(self.load_style(style_name))
         shots = DEBUG_DIR / "attacks" / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         shots.mkdir(parents=True, exist_ok=True)
         self.last_result = shots / "result.png" # the results screen with the loot won, sent with the Telegram attack message

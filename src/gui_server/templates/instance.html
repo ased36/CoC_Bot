@@ -67,75 +67,123 @@
             <div class="log" id="log"></div>
         </section>
 
-        <!-- Geliştirme -->
+        <!-- Geliştirme: alt sekmeler (02.11, 1A) -->
         <section class="page" id="page_village">
-            <h3 class="section-title">Ana köy</h3>
-            <div class="grid">
+            <nav class="subtabs" data-page="village">
+                <button data-sub="heroes" data-flag="tasks.heroes">Kahramanlar</button>
+                <button data-sub="buildings" data-flag="tasks.home_base">Binalar</button>
+                <button data-sub="lab" data-flag="tasks.home_lab">Laboratuvar</button>
+                <button data-sub="pets" data-flag="tasks.pet_house">Evcil</button>
+                <button data-sub="walls" data-flag="walls.enabled">Duvar</button>
+                <button data-sub="rules">Kurallar</button>
+                <button data-sub="builder" data-flag="tasks.builder_base">Usta üssü</button>
+            </nav>
+
+            <div class="subpage" data-sub="heroes">
                 <div class="card wide">
-                    <h2>Bot neleri geliştirsin?</h2>
-                    <p class="hint">Açık olanları bot, Başlat'a basıldıktan sonra her turda yapar; kapalı olanlara hiç dokunmaz. <span class="tag spend">kaynak harcar</span> yazanlar oyunda gerçek geliştirme başlatır.</p>
-                    <div class="row"><div class="label">Binalar <span class="tag spend">kaynak harcar</span><small>Boş usta varsa bina ya da tuzak geliştirmesi başlatır (altın / iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_base"><span></span></label></div>
-                    <div class="row sub"><div class="label">Kahramanlar dahil<small>Kapalıysa kahramanlar seçilmez. "Binalar" kapalıyken hiç geliştirilmez</small></div><label class="switch"><input type="checkbox" data-task="heroes"><span></span></label></div>
-                    <div class="row sub"><div class="label">Belediye binası dahil<small>Kapalıysa Town Hall hiç seçilmez; açıksa yalnız başka uygun geliştirme yokken</small></div><label class="switch"><input type="checkbox" data-path="home.town_hall"><span></span></label></div>
-                    <div class="picker" data-picker="home"></div>
-                    <div class="row"><div class="label">Laboratuvar <span class="tag spend">kaynak harcar</span><small>Laboratuvar boşsa asker ya da büyü araştırması başlatır (iksir / kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_lab"><span></span></label></div>
-                    <div class="picker" data-picker="lab"></div>
-                    <div class="row"><div class="label">Evcil hayvanlar <span class="tag spend">kaynak harcar</span><small>Pet House boşsa evcil hayvan geliştirir (kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="pet_house"><span></span></label></div>
-                    <div class="picker" data-picker="pet"></div>
-                    <div class="row"><div class="label">Usta çırağı ata <span class="tag free">ücretsiz</span><small>Süren bir bina geliştirmesine çırağı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="builder_apprentice"><span></span></label></div>
-                    <div class="row"><div class="label">Lab asistanı ata <span class="tag free">ücretsiz</span><small>Süren laboratuvar araştırmasına asistanı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="lab_assistant"><span></span></label></div>
-                    <div class="info">Bir görevi açınca altında öncelik sırası açılır: simgelere tıkladığınız sırayla numaralanır. Duvar ayrı yönetilir ("Sınırlar" kartındaki "Duvar" bölümü). Saldırı ayarları "Saldırı" sekmesinde.</div>
+                    <h2>Kahramanlar <span class="tag spend">kaynak harcar</span></h2>
+                    <p class="hint">Boş usta çıkınca sıradaki kahramanı geliştirir. Yükselmedeki kahraman saldırıda kullanılamaz; bot onu atlar, saldırı diğerleriyle sürer.</p>
+                    <div class="cols">
+                        <div class="row"><div class="label">Kahramanları geliştir<small>Kapalıysa kahramanlara hiç dokunulmaz. Binalar kapalıyken de çalışır (o zaman yalnız kahraman geliştirilir).</small></div><label class="switch"><input type="checkbox" data-task="heroes"><span></span></label></div>
+                        <div class="row"><div class="label">Önce kahramanlar<span class="q" tabindex="0" data-tip="Önerim açık. Boş usta çıkınca önce aşağıdaki sıradaki kahraman denenir, indirimli binalardan da önce. Kapalıysa kahramanlar binaların sırasından sonra gelir.">?</span></div><label class="switch"><input type="checkbox" data-path="home.heroes_first"><span></span></label></div>
+                        <div class="row"><div class="label">Kahramanlara ayrılan usta<span class="q" tabindex="0" data-tip="Boş usta sayısı bu sayıya inince kalan ustalar yalnız kahramana gider (MyBot'taki gibi). Önerim 1: binalar bütün ustaları kapıp kahramanı bekletmesin. 0 = ayırma yok.">?</span></div><input type="number" min="0" max="6" data-path="home.hero_builders"></div>
+                    </div>
+                    <div class="picker" data-picker="hero"></div>
                 </div>
-
-                <div class="card">
-                    <h2>Sınırlar</h2>
-                    <p class="hint">Bir turda en çok ne kadar iş yapılacağı.</p>
-                    <div class="row"><div class="label">Tur başına en fazla geliştirme<small>Ana köy ve usta üssü için ayrı ayrı sayılır</small></div><input type="number" min="1" max="50" data-path="home.max_upgrades"></div>
-                    <div class="row"><div class="label">Boşta bırakılacak usta<small>Bu kadar usta hiç kullanılmaz (0 = hepsi kullanılır)</small></div><input type="number" min="0" max="6" data-path="home.open_builders"></div>
-
-                    <h2 class="split">Duvar <span class="tag spend">kaynak harcar</span></h2>
-                    <p class="hint">Kapalıyken bot hiç duvar yapmaz. Açıkken turun sonunda, binalardan artan kaynakla yapar. Duvar usta beklemez, ustalar doluyken de yapılır.</p>
-                    <div class="row"><div class="label">Duvar geliştir</div><label class="switch"><input type="checkbox" data-path="walls.enabled"><span></span></label></div>
-                    <div class="row"><div class="label">Tur başına en fazla duvar</div><input type="number" min="1" max="50" data-path="walls.max_per_round"></div>
-                    <div class="row"><div class="label">Kaç saldırıda bir duvar<small>Saldırı açıkken: duvar, sonra bu kadar saldırı, sonra yine duvar</small></div><input type="number" min="1" max="20" data-path="walls.every_attacks"></div>
-                    <div class="row"><div class="label"><i class="rdot gold"></i>Duvara başla: altın ≥<small>Saldırı açıkken: altın YA DA iksir bu değere ulaşınca duvar kasılır (ikisi de en aza inene kadar), ulaşmazsa doğrudan saldırı. İkisi de 0 = "kaç saldırıda bir" geçerli</small></div><input type="text" inputmode="numeric" data-path="walls.start_gold" data-big></div>
-                    <div class="row"><div class="label"><i class="rdot elixir"></i>Duvara başla: iksir ≥</div><input type="text" inputmode="numeric" data-path="walls.start_elixir" data-big></div>
-                    <div class="row"><div class="label"><i class="rdot gold"></i>Kalacak en az altın</div><input type="text" inputmode="numeric" data-path="walls.min_gold" data-big></div>
-                    <div class="row"><div class="label"><i class="rdot elixir"></i>Kalacak en az iksir</div><input type="text" inputmode="numeric" data-path="walls.min_elixir" data-big></div>
-                    <div class="row stack"><div class="label">Hangi seviyeler<small>Seçili seviyedeki duvarlar bir üst seviyeye çıkarılır. Hiçbiri seçili değilse her seviye.</small></div><div class="lvl-pick" id="wall_levels"></div></div>
-                    <div class="info">Seçili seviyelerdeki duvarlardan en ucuzu seçilir. Önce iksirle ödenir; iksirden maliyet düşünce en az iksirin altına iniyorsa altınla; ikisinde de iniyorsa duvar yapılmaz.</div>
-                </div>
-
-                <div class="card">
-                    <h2>Hangi geliştirme seçilsin?</h2>
-                    <p class="hint">Menüde birden çok geliştirmeye para yetiyorsa hangisinin seçileceği. Sıra: indirimli (yeşil etiket) → öncelik sırası (Binalar / Laboratuvar / Evcil hayvanlar altında) → buradaki seçim → en son Belediye binası.</p>
-                    <div class="row"><div class="label">Öncelik sırasında uygun yoksa<small>Sıradakilere para yetmiyorsa ya da sıra kapalıyken</small></div><select data-path="home.fallback"><option value="cheapest">En ucuz</option><option value="random">Rastgele</option></select></div>
-                    <div class="row"><div class="label">Kaynak tercihi<small>Önce bu kaynakla ödenenler arasından seçilir</small></div><select data-path="home.prefer_resource"><option value="any">Fark etmez</option><option value="gold">Altınla olanlar önce</option><option value="elixir">İksirle olanlar önce</option></select></div>
-
-                    <h2 class="split">Geliştirmeden sonra kalacak en az</h2>
-                    <p class="hint">Maliyet düşülünce bu kadar kalmayacaksa o geliştirme başlatılmaz. 0 = sınır yok.</p>
-                    <div class="row"><div class="label"><i class="rdot gold"></i>Altın</div><input type="text" inputmode="numeric" data-path="home.keep_gold" data-big></div>
-                    <div class="row"><div class="label"><i class="rdot elixir"></i>İksir</div><input type="text" inputmode="numeric" data-path="home.keep_elixir" data-big></div>
-                    <div class="row"><div class="label"><i class="rdot dark"></i>Kara iksir</div><input type="text" inputmode="numeric" data-path="home.keep_dark" data-big></div>
-                    <div class="info">"En ucuz" = maliyet ÷ depodaki miktar en düşük olan. Böylece kara iksirle ödenenler de altın ve iksirle aynı ölçüyle karşılaştırılır.</div>
-                </div>
-
             </div>
 
-            <h3 class="section-title">Usta üssü</h3>
-            <div class="grid">
-                <div class="card">
-                    <h2>Usta üssünde neler geliştirilsin?</h2>
-                    <p class="hint">İkisi de kapalıysa bot usta üssünde hiçbir şey geliştirmez.</p>
-                    <div class="row"><div class="label">Binalar <span class="tag spend">kaynak harcar</span><small>Boş usta varsa usta üssü binası geliştirir</small></div><label class="switch"><input type="checkbox" data-task="builder_base"><span></span></label></div>
-                    <div class="row"><div class="label">Laboratuvar <span class="tag spend">kaynak harcar</span><small>Yıldız laboratuvarı boşsa araştırma başlatır</small></div><label class="switch"><input type="checkbox" data-task="builder_lab"><span></span></label></div>
-                    <div class="row"><div class="label">Boşta bırakılacak usta</div><input type="number" min="0" max="6" data-path="builder.open_builders"></div>
+            <div class="subpage" data-sub="buildings">
+                <div class="card wide">
+                    <h2>Binalar <span class="tag spend">kaynak harcar</span></h2>
+                    <div class="cols">
+                        <div class="row"><div class="label">Binaları geliştir<small>Boş usta varsa bina ya da tuzak geliştirmesi başlatır (altın / iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_base"><span></span></label></div>
+                        <div class="row"><div class="label">Belediye binası dahil<small>Kapalıysa Town Hall hiç seçilmez; açıksa yalnız başka uygun geliştirme yokken</small></div><label class="switch"><input type="checkbox" data-path="home.town_hall"><span></span></label></div>
+                        <div class="row"><div class="label">Usta çırağı ata <span class="tag free">ücretsiz</span><small>Süren bir bina geliştirmesine çırağı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="builder_apprentice"><span></span></label></div>
+                    </div>
+                    <div class="picker" data-picker="home"></div>
                 </div>
-                <div class="card wide" data-prio="builder.priority" data-prio-task="builder_base_priority" data-vocab="buildings/builder-base,traps/builder-base">
-                    <h2>Öncelik listesi — binalar</h2>
+            </div>
+
+            <div class="subpage" data-sub="lab">
+                <div class="card wide">
+                    <h2>Laboratuvar <span class="tag spend">kaynak harcar</span></h2>
+                    <div class="cols">
+                        <div class="row"><div class="label">Araştırma başlat<small>Laboratuvar boşsa asker ya da büyü araştırması başlatır (iksir / kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_lab"><span></span></label></div>
+                        <div class="row"><div class="label">Lab asistanı ata <span class="tag free">ücretsiz</span><small>Süren araştırmaya asistanı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="lab_assistant"><span></span></label></div>
+                    </div>
+                    <div class="picker" data-picker="lab"></div>
                 </div>
-                <div class="card wide" data-prio="builder.lab_priority" data-prio-task="builder_lab_priority" data-vocab="troops">
-                    <h2>Öncelik listesi — laboratuvar</h2>
+            </div>
+
+            <div class="subpage" data-sub="pets">
+                <div class="card wide">
+                    <h2>Evcil hayvanlar <span class="tag spend">kaynak harcar</span></h2>
+                    <div class="cols">
+                        <div class="row"><div class="label">Evcil hayvan geliştir<small>Pet House boşsa evcil hayvan geliştirir (kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="pet_house"><span></span></label></div>
+                    </div>
+                    <div class="picker" data-picker="pet"></div>
+                </div>
+            </div>
+
+            <div class="subpage" data-sub="walls">
+                <div class="grid">
+                    <div class="card">
+                        <h2>Duvar <span class="tag spend">kaynak harcar</span></h2>
+                        <p class="hint">Duvar usta beklemez, ustalar doluyken de yapılır. Önce altınla, en aza inince iksirle ödenir.</p>
+                        <div class="row"><div class="label">Duvar geliştir</div><label class="switch"><input type="checkbox" data-path="walls.enabled"><span></span></label></div>
+                        <div class="row"><div class="label">Tur başına en fazla duvar</div><input type="number" min="1" max="50" data-path="walls.max_per_round"></div>
+                        <div class="row"><div class="label">Kaç saldırıda bir duvar<small>Saldırı açıkken: duvar, sonra bu kadar saldırı, sonra yine duvar. Aşağıdaki "Duvara başla" değerlerinden biri 0 değilse onlar geçerli.</small></div><input type="number" min="1" max="20" data-path="walls.every_attacks"></div>
+                        <div class="row"><div class="label"><i class="rdot gold"></i>Duvara başla: altın ≥<small>Saldırı açıkken: altın YA DA iksir bu değere ulaşınca duvar kasılır (ikisi de en aza inene kadar), ulaşmazsa doğrudan saldırı. İkisi de 0 = "kaç saldırıda bir" geçerli</small></div><input type="text" inputmode="numeric" data-path="walls.start_gold" data-big></div>
+                        <div class="row"><div class="label"><i class="rdot elixir"></i>Duvara başla: iksir ≥</div><input type="text" inputmode="numeric" data-path="walls.start_elixir" data-big></div>
+                        <div class="row"><div class="label"><i class="rdot gold"></i>Kalacak en az altın</div><input type="text" inputmode="numeric" data-path="walls.min_gold" data-big></div>
+                        <div class="row"><div class="label"><i class="rdot elixir"></i>Kalacak en az iksir</div><input type="text" inputmode="numeric" data-path="walls.min_elixir" data-big></div>
+                    </div>
+                    <div class="card">
+                        <h2>Hangi seviyeler</h2>
+                        <p class="hint">Seçili seviyedeki duvarlar bir üst seviyeye çıkarılır; aralarından en ucuzu seçilir. Hiçbiri seçili değilse her seviye.</p>
+                        <div class="lvl-pick" id="wall_levels"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subpage" data-sub="rules">
+                <div class="grid three">
+                    <div class="card">
+                        <h2>Sınırlar</h2>
+                        <div class="row"><div class="label">Tur başına en fazla geliştirme<small>Ana köy ve usta üssü için ayrı ayrı sayılır</small></div><input type="number" min="1" max="50" data-path="home.max_upgrades"></div>
+                        <div class="row"><div class="label">Boşta bırakılacak usta<small>Bu kadar usta hiç kullanılmaz (0 = hepsi kullanılır). Kahramanlara ayrılan usta bunun üstüne sayılır.</small></div><input type="number" min="0" max="6" data-path="home.open_builders"></div>
+                    </div>
+                    <div class="card">
+                        <h2>Hangi geliştirme seçilsin?</h2>
+                        <p class="hint">Sıra: (önce kahramanlar açıksa kahraman) → indirimli → öncelik sırası → buradaki seçim → en son Belediye binası.</p>
+                        <div class="row"><div class="label">Sırada uygun yoksa<small>Sıradakilere para yetmiyorsa ya da sıra kapalıyken</small></div><select data-path="home.fallback"><option value="cheapest">En ucuz</option><option value="random">Rastgele</option></select></div>
+                        <div class="row"><div class="label">Kaynak tercihi<small>Önce bu kaynakla ödenenler arasından seçilir</small></div><select data-path="home.prefer_resource"><option value="any">Fark etmez</option><option value="gold">Altınla olanlar önce</option><option value="elixir">İksirle olanlar önce</option></select></div>
+                    </div>
+                    <div class="card">
+                        <h2>Geliştirmeden sonra kalacak en az</h2>
+                        <p class="hint">Maliyet düşülünce bu kadar kalmayacaksa o geliştirme başlatılmaz. 0 = sınır yok.</p>
+                        <div class="row"><div class="label"><i class="rdot gold"></i>Altın</div><input type="text" inputmode="numeric" data-path="home.keep_gold" data-big></div>
+                        <div class="row"><div class="label"><i class="rdot elixir"></i>İksir</div><input type="text" inputmode="numeric" data-path="home.keep_elixir" data-big></div>
+                        <div class="row"><div class="label"><i class="rdot dark"></i>Kara iksir</div><input type="text" inputmode="numeric" data-path="home.keep_dark" data-big></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subpage" data-sub="builder">
+                <div class="grid">
+                    <div class="card">
+                        <h2>Usta üssünde neler geliştirilsin?</h2>
+                        <p class="hint">İkisi de kapalıysa bot usta üssünde hiçbir şey geliştirmez.</p>
+                        <div class="row"><div class="label">Binalar <span class="tag spend">kaynak harcar</span><small>Boş usta varsa usta üssü binası geliştirir</small></div><label class="switch"><input type="checkbox" data-task="builder_base"><span></span></label></div>
+                        <div class="row"><div class="label">Laboratuvar <span class="tag spend">kaynak harcar</span><small>Yıldız laboratuvarı boşsa araştırma başlatır</small></div><label class="switch"><input type="checkbox" data-task="builder_lab"><span></span></label></div>
+                        <div class="row"><div class="label">Boşta bırakılacak usta</div><input type="number" min="0" max="6" data-path="builder.open_builders"></div>
+                    </div>
+                    <div class="card wide" data-prio="builder.priority" data-prio-task="builder_base_priority" data-vocab="buildings/builder-base,traps/builder-base">
+                        <h2>Öncelik listesi — binalar</h2>
+                    </div>
+                    <div class="card wide" data-prio="builder.lab_priority" data-prio-task="builder_lab_priority" data-vocab="troops">
+                        <h2>Öncelik listesi — laboratuvar</h2>
+                    </div>
                 </div>
             </div>
         </section>
@@ -145,49 +193,93 @@
             <div class="grid">
                 <div class="card">
                     <h2>Tur zamanlaması</h2>
-                    <p class="hint">Ayar değişiklikleri bir sonraki turun başında geçerli olur.</p>
+                    <p class="hint">Ayar değişiklikleri bir sonraki turun başında geçerli olur. Mola, günlük sınır ve çalışma saatleri Saldırı → İnsan gibi altında.</p>
                     <div class="row"><div class="label">Kontrol aralığı<small>İki tur arası, dakika. 0 = beklemeden yeni tur (ordu hep hazırsa: saldır → duvar → saldır)</small></div><input type="number" min="0" max="240" data-path="general.check_interval"></div>
                     <div class="row"><div class="label">Rastgele bekleme payı<small>Aralık her tur ± bu kadar % değişir</small></div><input type="number" min="0" max="90" data-path="general.jitter_pct"></div>
                     <div class="row"><div class="label">Tur sonunda oyunu kapat<small>Kapalıysa oyun turlar arasında açık kalır</small></div><label class="switch"><input type="checkbox" data-path="general.close_game"><span></span></label></div>
                 </div>
                 <div class="card">
-                    <h2>İnsan gibi oyna</h2>
-                    <p class="hint">Saldırı açıkken: birkaç saldırıdan sonra mola, günde en fazla belli sayıda saldırı. Aralıklar her seferinde rastgele seçilir. Molada oyun kapanır; sayaçlar bot kapanıp açılınca sıfırlanmaz.</p>
-                    <div class="row"><div class="label">Mola ve günlük sınır<small>Kapalıysa bot ara vermeden saldırır</small></div><label class="switch"><input type="checkbox" data-path="general.rest_enabled"><span></span></label></div>
-                    <div class="row"><div class="label">Mola şu kadar saldırıdan sonra<span class="q" tabindex="0" data-tip="Önerim 15–25. Bir insan oturup 15–25 saldırı yapar, sonra kalkar. Saldırı başına ~2 dk ile bu 30–50 dakikalık bir oturum.">?</span></div><div class="pair"><input type="number" min="1" max="200" data-path="general.rest_after_min"> – <input type="number" min="1" max="200" data-path="general.rest_after_max"></div></div>
-                    <div class="row"><div class="label">Mola süresi, dakika<span class="q" tabindex="0" data-tip="Önerim 20–40 dk (ör. 20 saldırıdan sonra 30 dk). 10 dk'nın altı mola gibi görünmez.">?</span></div><div class="pair"><input type="number" min="1" max="600" data-path="general.rest_min"> – <input type="number" min="1" max="600" data-path="general.rest_max"></div></div>
-                    <div class="row"><div class="label">Günde en fazla saldırı<span class="q" tabindex="0" data-tip="Önerim 30–45 (saldırı başına ~1,1 M ile günde ~35–50 M altın ve iksir). En temkinlisi 25–35 (ClashFarmer'ın varsayılanı). 60'ın üstünü önermem. 0 – 0 = sınır yok. Sınır dolunca bot ertesi güne kadar bekler.">?</span></div><div class="pair"><input type="number" min="0" max="500" data-path="general.daily_min"> – <input type="number" min="0" max="500" data-path="general.daily_max"></div></div>
-                </div>
-                <div class="card">
-                    <h2>Çalışma saatleri</h2>
-                    <p class="hint">Yeşil saatlerde tur başlar, gri saatlerde bot bekler ve oyunu kapatır. Saate tıklayınca açılır / kapanır.</p>
-                    <div class="row"><div class="label">Saat ızgarasını kullan<span class="q" tabindex="0" data-tip="Önerim her gün 7–8 saat kapalı (uyku), ör. 02:00–09:00. 24 saat aralıksız oynayan hesap bot olduğunu en kolay belli eden iz.">?</span></div><label class="switch"><input type="checkbox" data-path="general.grid_enabled"><span></span></label></div>
-                    <div class="hour-grid" id="hour_grid"></div>
+                    <h2>Telegram bildirimi</h2>
+                    <p class="hint">Her saldırının sonuç ekranı (sessiz), günlük özet, hatalar, BlueStacks kapanması, mola ve günlük sınır telefona gelir. Anahtar <code>src/configs.py</code> dosyasında, panelde gösterilmez.</p>
                 </div>
             </div>
         </section>
 
-        <!-- Saldırı -->
+        <!-- Saldırı: alt sekmeler (02.11, 3A) -->
         <section class="page" id="page_attack">
-            <div class="grid">
-                <div class="card">
-                    <h2>Saldırı</h2>
-                    <p class="hint">Açıksa bot her turda geliştirmelerden sonra rakip arar ve saldırır. Kapalıyken hiç saldırmaz; alttaki "Yalnız ara" düğmesi yine çalışır (arar, bulunca köye döner).</p>
-                    <div class="row"><div class="label">Ana köyde saldır<small>Süper barbar betiği: yıldırım, 4 köşe, kuşatma, kahramanlar. Ordu dolu olmalı.</small></div><label class="switch"><input type="checkbox" data-task="home_attacks"><span></span></label></div>
-                </div>
-                <div class="card">
-                    <h2>Hangi köye saldırılsın?</h2>
-                    <p class="hint">Rakip köyde sol üstteki "Available Loot" okunur; şartlar tutmazsa Next. 0 yazılan şart sayılmaz, diğerlerinin hepsi tutmalı.</p>
-                    <div class="row"><div class="label"><i class="rdot gold"></i>En az altın</div><input type="text" inputmode="numeric" data-path="attack.min_gold" data-big></div>
-                    <div class="row"><div class="label"><i class="rdot elixir"></i>En az iksir</div><input type="text" inputmode="numeric" data-path="attack.min_elixir" data-big></div>
-                    <div class="row"><div class="label"><i class="rdot dark"></i>En az kara iksir</div><input type="text" inputmode="numeric" data-path="attack.min_dark" data-big></div>
-                    <div class="subgroup">
-                        <div class="subgroup-title">Arama sınırı ve şart düşürme</div>
+            <nav class="subtabs" data-page="attack">
+                <button data-sub="search" data-flag="tasks.home_attacks">Arama</button>
+                <button data-sub="deploy">Dağıtım</button>
+                <button data-sub="end">Savaş sonu</button>
+                <button data-sub="human" data-flag="general.rest_enabled">İnsan gibi</button>
+            </nav>
+
+            <div class="subpage" data-sub="search">
+                <div class="grid three">
+                    <div class="card">
+                        <h2>Saldırı</h2>
+                        <div class="row"><div class="label">Ana köyde saldır<small>Açıksa bot her turda rakip arar ve yayma stiliyle saldırır. Kapalıyken "Yalnız ara" düğmesi yine çalışır (arar, bulunca köye döner).</small></div><label class="switch"><input type="checkbox" data-task="home_attacks"><span></span></label></div>
+                    </div>
+                    <div class="card">
+                        <h2>Hangi köye saldırılsın?</h2>
+                        <p class="hint">Rakip köyde sol üstteki "Available Loot" okunur; şartlar tutmazsa Next. 0 yazılan şart sayılmaz, diğerlerinin hepsi tutmalı.</p>
+                        <div class="row"><div class="label"><i class="rdot gold"></i>En az altın</div><input type="text" inputmode="numeric" data-path="attack.min_gold" data-big></div>
+                        <div class="row"><div class="label"><i class="rdot elixir"></i>En az iksir</div><input type="text" inputmode="numeric" data-path="attack.min_elixir" data-big></div>
+                        <div class="row"><div class="label"><i class="rdot dark"></i>En az kara iksir</div><input type="text" inputmode="numeric" data-path="attack.min_dark" data-big></div>
+                    </div>
+                    <div class="card">
+                        <h2>Arama sınırı ve şart düşürme</h2>
                         <div class="row"><div class="label">En fazla arama<small>Bulamazsa vazgeçer, sonraki turda yeniden</small></div><input type="number" min="1" max="200" data-path="attack.max_searches"></div>
                         <div class="row"><div class="label">Şartları düşür: her<small>Bu kadar aramada bir</small></div><input type="number" min="0" max="200" data-path="attack.lower_every"></div>
-                        <div class="row"><div class="label">Ne kadar düşsün, %<small>"En az" değerlerinin yüzdesi; 0 = düşmez</small></div><input type="number" min="0" max="100" data-path="attack.lower_pct"></div>
-                        <div class="row"><div class="label">Saldırıyı bitir, saniye<small>İlk asker atıldıktan bu kadar sonra Surrender; ganimetin çoğu ilk dakikada gelir. 0 = sonuna kadar</small></div><input type="number" min="0" max="180" data-path="attack.end_after"></div>
-                        <div class="info">Örnek: 400 000 altın, her 15 aramada %10 → 1–15. arama 400 000, 16–30. arama 360 000, 31–45. arama 320 000. Her Next oyunda 1 400 altın civarı tutar.</div>
+                        <div class="row"><div class="label">Ne kadar düşsün, %<small>"En az" değerlerinin yüzdesi; 0 = düşmez. Örnek: 400 000, her 15 aramada %10 → 16–30. arama 360 000. Her Next ~1 400 altın.</small></div><input type="number" min="0" max="100" data-path="attack.lower_pct"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subpage" data-sub="deploy">
+                <div class="grid">
+                    <div class="card">
+                        <h2>Askerler</h2>
+                        <p class="hint">Yayma stili: barbarlar dört kenara basılı sürükleyerek, Champion + yetenek, tomruk ve kahramanlar bir noktaya, sonra yarasalar.</p>
+                        <div class="row"><div class="label">Ordudaki süper barbar<small>Sürüklemeler bu sayıya göre bölünür; ordu değişince burayı da değiştir</small></div><input type="number" min="1" max="400" data-path="attack_style.count"></div>
+                        <div class="row"><div class="label">Kenar başına barbar<span class="q" tabindex="0" data-tip="Dört kenarın her birine bu aralıkta barbar sürüklenir, son kenar kalanı alır. Önerim 13–15 (senin 22:53 isteğin).">?</span></div><div class="pair"><input type="number" min="1" max="100" data-path="attack_style.per_side_min"> – <input type="number" min="1" max="100" data-path="attack_style.per_side_max"></div></div>
+                        <div class="row"><div class="label">Kırmızı alanı okut<span class="q" tabindex="0" data-tip="Önce tek barbarla savaş başlar, köyün ortasına dokunulur, oyunun gösterdiği kırmızı alana göre bırakılır. Kapalıysa kayıtlı yollar kullanılır (daha sık ıskalıyordu). Önerim açık.">?</span></div><label class="switch"><input type="checkbox" data-path="attack_style.red_line"><span></span></label></div>
+                    </div>
+                    <div class="card">
+                        <h2>Kahramanlar ve büyü</h2>
+                        <div class="row"><div class="label">Champion barbarlardan önce, %<span class="q" tabindex="0" data-tip="Saldırıların yüzde kaçında Champion barbarlardan önce iner. 0 = hep sonra (senin 20:55 sıran: barbarlar → Champion → tomruk → kahramanlar → yarasa).">?</span></div><input type="number" min="0" max="100" data-path="attack_style.lead_first"></div>
+                        <div class="row"><div class="label">Yarasa büyüsü<small>Kahramanların indiği noktaya bu kadar dokunuş</small></div><input type="number" min="0" max="20" data-path="attack_style.bats"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subpage" data-sub="end">
+                <div class="grid">
+                    <div class="card">
+                        <h2>Savaşı ne zaman bitirsin?</h2>
+                        <p class="hint">Hangisi önce gelirse. Bitirme = Surrender → Okay; ganimet o ana kadar alınmış olur.</p>
+                        <div class="row"><div class="label">Ganimet şunun altına inince çık<span class="q" tabindex="0" data-tip="Köyde kalan altın da iksir de bu aralıktaki bir değerin altına inince hemen teslim (senin 23:04 kuralın, önerim 50–70 bin). 0 – 0 = kapalı.">?</span></div><div class="pair"><input type="text" inputmode="numeric" data-path="attack_style.loot_left_min" data-big> – <input type="text" inputmode="numeric" data-path="attack_style.loot_left_max" data-big></div></div>
+                        <div class="row"><div class="label">Saldırıyı bitir, saniye<small>İlk asker atıldıktan bu kadar sonra (her seferinde ×0,6–1,05). 0 = sonuna kadar</small></div><input type="number" min="0" max="180" data-path="attack.end_after"></div>
+                        <div class="row"><div class="label">Ganimet değişmezse, saniye<small>Bu kadar süre hiç ganimet gelmezse bitir</small></div><input type="number" min="5" max="120" data-path="attack_style.idle_seconds"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subpage" data-sub="human">
+                <div class="grid">
+                    <div class="card">
+                        <h2>Mola ve günlük sınır</h2>
+                        <p class="hint">Aralıklar her seferinde rastgele seçilir. Molada oyun kapanır; sayaçlar bot kapanıp açılınca sıfırlanmaz.</p>
+                        <div class="row"><div class="label">Mola ve günlük sınır<small>Kapalıysa bot ara vermeden saldırır</small></div><label class="switch"><input type="checkbox" data-path="general.rest_enabled"><span></span></label></div>
+                        <div class="row"><div class="label">Mola şu kadar saldırıdan sonra<span class="q" tabindex="0" data-tip="Önerim 15–25. Bir insan oturup 15–25 saldırı yapar, sonra kalkar. Saldırı başına ~2 dk ile bu 30–50 dakikalık bir oturum.">?</span></div><div class="pair"><input type="number" min="1" max="200" data-path="general.rest_after_min"> – <input type="number" min="1" max="200" data-path="general.rest_after_max"></div></div>
+                        <div class="row"><div class="label">Mola süresi, dakika<span class="q" tabindex="0" data-tip="Önerim 20–40 dk (ör. 20 saldırıdan sonra 30 dk). 10 dk'nın altı mola gibi görünmez.">?</span></div><div class="pair"><input type="number" min="1" max="600" data-path="general.rest_min"> – <input type="number" min="1" max="600" data-path="general.rest_max"></div></div>
+                        <div class="row"><div class="label">Günde en fazla saldırı<span class="q" tabindex="0" data-tip="Önerim 30–45 (saldırı başına ~1,1 M ile günde ~35–50 M altın ve iksir). En temkinlisi 25–35 (ClashFarmer'ın varsayılanı). 60'ın üstünü önermem. 0 – 0 = sınır yok. Sınır dolunca bot ertesi güne kadar bekler.">?</span></div><div class="pair"><input type="number" min="0" max="500" data-path="general.daily_min"> – <input type="number" min="0" max="500" data-path="general.daily_max"></div></div>
+                    </div>
+                    <div class="card">
+                        <h2>Çalışma saatleri</h2>
+                        <p class="hint">Yeşil saatlerde tur başlar, gri saatlerde bot bekler ve oyunu kapatır. Saate tıklayınca açılır / kapanır.</p>
+                        <div class="row"><div class="label">Saat ızgarasını kullan<span class="q" tabindex="0" data-tip="Önerim her gün 7–8 saat kapalı (uyku), ör. 02:00–09:00. 24 saat aralıksız oynayan hesap bot olduğunu en kolay belli eden iz.">?</span></div><label class="switch"><input type="checkbox" data-path="general.grid_enabled"><span></span></label></div>
+                        <div class="hour-grid" id="hour_grid"></div>
                     </div>
                 </div>
             </div>
@@ -256,10 +348,46 @@
             try { localStorage.setItem("tab", tab.dataset.page); } catch (e) {}
             if (tab.dataset.page === "stats") refreshStats();
         }));
+        // Sub tabs inside a page (Geliştirme, Saldırı): the last one opened is remembered per page
+        function showSub(page, sub) {
+            const nav = $(`.subtabs[data-page="${page}"]`);
+            if (!nav) return;
+            if (!$(`button[data-sub="${sub}"]`, nav)) sub = $("button", nav).dataset.sub;
+            $$("button", nav).forEach(b => b.classList.toggle("on", b.dataset.sub === sub));
+            $$(`#page_${page} .subpage`).forEach(p => p.classList.toggle("active", p.dataset.sub === sub));
+            try { localStorage.setItem(`sub_${page}`, sub); } catch (e) {}
+        }
+        $$(".subtabs").forEach(nav => {
+            $$("button", nav).forEach(b => b.onclick = () => showSub(nav.dataset.page, b.dataset.sub));
+            let saved = null;
+            try { saved = localStorage.getItem(`sub_${nav.dataset.page}`); } catch (e) {}
+            showSub(nav.dataset.page, saved);
+        });
+
         try {
-            const saved = location.hash.slice(1) || localStorage.getItem("tab");
-            if (saved && $(`.tab[data-page="${saved}"]`)) $(`.tab[data-page="${saved}"]`).click();
+            // #village/heroes opens a page and one of its sub tabs
+            const [page, sub] = (location.hash.slice(1) || localStorage.getItem("tab") || "").split("/");
+            if (page && $(`.tab[data-page="${page}"]`)) $(`.tab[data-page="${page}"]`).click();
+            if (sub) showSub(page, sub);
         } catch (e) {}
+
+        // A green dot on a sub tab whose job is on (data-flag = a settings path)
+        function renderSubFlags() {
+            $$(".subtabs button[data-flag]").forEach(b => b.classList.toggle("lit", !!getPath(b.dataset.flag)));
+        }
+
+        // Descriptions under labels go into a "?" next to them (4A): the rows stay one line, the text is a tap away
+        function hintsToTips() {
+            $$("#page_village .row .label small, #page_attack .row .label small, #page_general .row .label small").forEach(small => {
+                const q = document.createElement("span");
+                q.className = "q";
+                q.tabIndex = 0;
+                q.dataset.tip = small.textContent.trim();
+                q.textContent = "?";
+                small.replaceWith(q);
+            });
+        }
+        hintsToTips();
 
         // ---------- Saving ----------
         let saveTimer = null;
@@ -371,13 +499,17 @@
         const flattened = {}; // key -> true once old multi-name rows were turned into one name per row
 
         const PICKERS = {
+            // Heroes have their own order (Kahramanlar sub tab, 02.11 2A); no on/off for the order itself
+            hero: {
+                task: "heroes", path: "home.hero_priority",
+                title: "Kahraman sırası",
+                help: "Tıkladığınız sırayla numaralanır; boş usta çıkınca bot önce 1'i dener, ona kara iksir yetmiyorsa 2'yi… Sırada olmayan kahraman da \"en ucuz\" seçiminde yer alır.",
+                names: () => HOME_HEROES,
+            },
             home: {
                 task: "home_base", prioTask: "home_base_priority", path: "home.priority", exclude: true,
                 title: "Önce hangi binalar geliştirilsin?",
-                names: () => [
-                    ...vocabFor(["buildings/home-village", "traps/home-village"]).filter(n => n.toLowerCase() !== "wall"),
-                    ...(settings.tasks.heroes ? HOME_HEROES : []),
-                ],
+                names: () => vocabFor(["buildings/home-village", "traps/home-village"]).filter(n => n.toLowerCase() !== "wall"),
             },
             lab: {
                 task: "home_lab", prioTask: "home_lab_priority", path: "home.lab_priority",
@@ -420,7 +552,7 @@
             const all = cfg.names(st.showAll);
             const known = new Set(all.map(n => n.toLowerCase()));
             const isKnown = n => !all.length || known.has(n.toLowerCase());
-            const prioOn = !!settings.tasks[cfg.prioTask];
+            const prioOn = !cfg.prioTask || !!settings.tasks[cfg.prioTask]; // a picker without prioTask is always used
 
             const commit = (nextOrder, nextExcluded) => {
                 const update = nested(cfg.path, nextOrder.map(n => [n]));
@@ -433,7 +565,7 @@
             const exMode = cfg.exclude && st.mode === "exclude";
             const help = exMode
                 ? "Hariç kipi: tıkladığınız bina kırmızıyla işaretlenir ve hiç geliştirilmez. Tekrar tıklayınca çıkar."
-                : "Tıkladığınız sırayla numaralanır; bot önce 1'i dener, ona para yetmiyorsa 2'yi… Sıradakilerin hiçbiri olmazsa \"Hangi geliştirme seçilsin?\" ayarına göre seçer.";
+                : cfg.help || "Tıkladığınız sırayla numaralanır; bot önce 1'i dener, ona para yetmiyorsa 2'yi… Sıradakilerin hiçbiri olmazsa \"Hangi geliştirme seçilsin?\" ayarına göre seçer.";
 
             const strip = order.length
                 ? order.map((n, i) => `<span class="pchip ${isKnown(n) ? "" : "unknown"}" ${isKnown(n) ? "" : `title="Bu ad listede yok (kapalı bir grupta ya da yazımı farklı)"`}>
@@ -451,7 +583,7 @@
             box.innerHTML = `
                 <div class="picker-head">
                     <div class="picker-title"><b>${esc(cfg.title)}</b><small>${esc(help)}</small></div>
-                    <label class="switch" title="Öncelik sırasını kullan"><input type="checkbox" ${prioOn ? "checked" : ""}><span></span></label>
+                    ${cfg.prioTask ? `<label class="switch" title="Öncelik sırasını kullan"><input type="checkbox" ${prioOn ? "checked" : ""}><span></span></label>` : ""}
                 </div>
                 ${cfg.exclude ? `<div class="seg"><button data-mode="order" class="${exMode ? "" : "on"}">Sırala</button><button data-mode="exclude" class="${exMode ? "on" : ""}">Hariç tut${excluded.length ? ` <span class="cnt">${excluded.length}</span>` : ""}</button></div>` : ""}
                 ${prioOn ? "" : `<div class="picker-off">Öncelik sırası kapalı: bot bu sırayı kullanmaz${cfg.exclude ? " (hariç tutulanlar yine geliştirilmez)" : ""}. Açmak için sağdaki anahtar.</div>`}
@@ -461,7 +593,7 @@
                 <div class="tile-grid ${exMode ? "ex-mode" : ""}">${tiles}</div>
                 ${cfg.hideNote ? `<label class="picker-all"><input type="checkbox" ${st.showAll ? "checked" : ""}> Hepsini göster (${esc(cfg.hideNote)} dahil)</label>` : ""}`;
 
-            $(".picker-head input", box).onchange = e => save({tasks: {[cfg.prioTask]: e.target.checked}});
+            if (cfg.prioTask) $(".picker-head input", box).onchange = e => save({tasks: {[cfg.prioTask]: e.target.checked}});
             $$(".seg button", box).forEach(b => b.onclick = () => { st.mode = b.dataset.mode; renderPicker(box); });
             const search = $(".picker-search", box);
             search.oninput = () => {
@@ -513,6 +645,7 @@
             $$("[data-picker]").forEach(renderPicker);
             renderWallLevels();
             renderHourGrid();
+            renderSubFlags();
         }
 
         // ---------- 24 hour grid (2A): on = rounds may start in that hour ----------
@@ -622,8 +755,13 @@
             const t = settings.tasks, home = settings.home, walls = settings.walls, g = settings.general;
             const big = v => fmtNum(v || 0);
             const items = []; // {on, spend, name, text}
+            const heroOrder = (home.hero_priority || []).map(r => r[0]).filter(Boolean);
+            items.push({on: t.heroes, spend: true, name: "Kahramanlar",
+                text: `boş usta çıkınca${home.heroes_first ? " önce" : ""} kahraman geliştirir` +
+                    (heroOrder.length ? `; sıra: ${heroOrder.join(" → ")}` : "") +
+                    (home.hero_builders ? `; son ${home.hero_builders} boş usta yalnız kahramana` : "")});
             items.push({on: t.home_base, spend: true, name: "Ana köy binaları",
-                text: `boş usta varsa geliştirme başlatır; kahramanlar ${t.heroes ? "dahil" : "hariç"}, Belediye ${home.town_hall ? "dahil" : "hariç"}` +
+                text: `boş usta varsa geliştirme başlatır; Belediye ${home.town_hall ? "dahil" : "hariç"}` +
                     (t.home_base_priority && (home.priority || []).length ? `; önce sıradaki ${home.priority.length} bina` : "") +
                     ((home.excluded || []).length ? `; ${home.excluded.length} bina hariç` : "")});
             items.push({on: t.home_lab, spend: true, name: "Laboratuvar", text: "boşsa araştırma başlatır" +

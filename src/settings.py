@@ -74,6 +74,9 @@ def default_settings():
             "keep_elixir": 0,
             "keep_dark": 0,
             "discount_first": True, # green tag rows before everything else
+            "hero_priority": [], # panel Geliştirme -> Kahramanlar: [[name], ...] in order
+            "heroes_first": False, # heroes before everything, discounts too
+            "hero_builders": 0, # the last this many free builders go to heroes only
             "priority": copy.deepcopy(getattr(configs, "HOME_BASE_UPGRADE_PRIORITY", [])),
             "lab_priority": copy.deepcopy(getattr(configs, "HOME_LAB_UPGRADE_PRIORITY", [])),
             "pet_priority": copy.deepcopy(getattr(configs, "PET_HOUSE_UPGRADE_PRIORITY", [])),
@@ -101,6 +104,16 @@ def default_settings():
             "lower_every": 15, # every this many searches the minimums drop...
             "lower_pct": 10, # ...by this % of the values above
             "end_after": 60, # end the battle this many seconds after everything is deployed (most loot comes early); 0 = play it out
+        },
+        # Panel Saldırı -> Dağıtım / Savaş sonu: these replace the same values in attacks/yayma.yaml
+        "attack_style": {
+            "count": 60, # super barbarians in the army
+            "per_side_min": 13, "per_side_max": 15, # troops swept onto each of the four sides
+            "red_line": True, # show the red area with one troop first, then drop by it
+            "lead_first": 0, # % of attacks where the champion goes before the troops
+            "bats": 11, # bat spells
+            "loot_left_min": 50_000, "loot_left_max": 70_000, # leave once gold and elixir left are both under this; 0 = off
+            "idle_seconds": 20, # end the battle when the loot has not moved for this long
         },
         "resources": {},
         "stats": dict(copy.deepcopy(EMPTY_STATS), since=time.time()),

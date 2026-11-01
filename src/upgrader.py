@@ -602,14 +602,24 @@ class Upgrader:
             for hero in (Cache_Manager.get("vocab") or get_vocab())["heroes"]: blocked[hero.lower()] = hero
         return blocked
 
-    def _choose_row(self, rows, priority, blocked):
-        """Discounted first, then the priority list, then cheapest (or random); Town Hall only when nothing else fits."""
+    def _hero_names(self):
+        return {hero.lower() for hero in (Cache_Manager.get("vocab") or get_vocab())["heroes"]}
+
+    def _choose_row(self, rows, priority, blocked, first=(), only=None):
+        """Discounted first, then the priority list, then cheapest (or random); Town Hall only when nothing else fits.
+        first: levels tried before everything, even discounts (the heroes, when the panel puts them first).
+        only: lowercase names, nothing else may be chosen (the builders kept for heroes)."""
         import random
         eligible = [
             r for r in rows
             if r["affordable"] and not r["new"] and r["cost"] is not None
             and not (r["names"] & blocked) and self._keeps_minimum(r)
+            and (only is None or r["names"] & only)
         ]
+        for level in first:
+            level = {name.lower() for name in level}
+            candidates = [r for r in eligible if r["names"] & level]
+            if candidates: return min(candidates, key=self._cost_key), "heroes first"
         town_hall = [r for r in eligible if "town hall" in r["names"]]
         others = [r for r in eligible if "town hall" not in r["names"]]
         if Settings_Handler.get("home", "discount_first", True):
@@ -626,7 +636,7 @@ class Upgrader:
         return None, None
 
     @require_exit(x=0.99, y=0.01)
-    def _menu_upgrade(self, kind, priority):
+    def _menu_upgrade(self, kind, priority, first=(), only=None):
         """Start one upgrade from the home builders (kind "home"), laboratory ("lab") or pet house ("pet") menu."""
         import time
 
@@ -635,13 +645,13 @@ class Upgrader:
             if kind == "home":
                 blocked = self._home_blocked_names()
                 if not Settings_Handler.get("home", "town_hall", True): blocked["town hall"] = "Town Hall"
-            names = sorted({name for level in priority for name in level} | set(blocked.values()) | ({"Town Hall"} if kind == "home" else set()))
+            names = sorted({name for level in list(first) + list(priority) for name in level} | set(blocked.values()) | ({"Town Hall"} if kind == "home" else set()))
 
             start = time.time()
             bounds = self._open_menu(kind)
             if bounds is None: return None
             rows, page = self._scan_menu(kind, bounds, names)
-            row, reason = self._choose_row(rows, priority, set(blocked))
+            row, reason = self._choose_row(rows, priority, set(blocked), first=first, only=only)
             affordable = [r for r in rows if r["affordable"]]
             unread = sum(1 for r in affordable if r["cost"] is None)
             logger.info(f"Menu {kind}: {len(rows)} rows, {len(affordable)} affordable, {unread} unread, {int(time.time() - start)}s")
@@ -672,9 +682,15 @@ class Upgrader:
             return None
 
     @require_exit(x=0.99, y=0.01)
-    def home_upgrade(self):
+    def home_upgrade(self, heroes_only=False):
+        """heroes_only: the free builders left are kept for heroes, or Buildings is off and only Heroes is on.
+        The heroes' own order (panel Geliştirme → Kahramanlar) goes before everything when "heroes first" is on,
+        otherwise after the buildings' order (and they still take part in "cheapest")."""
         priority = [] if Task_Handler.excluded("home_base_priority") else configs.HOME_BASE_UPGRADE_PRIORITY
-        return self._menu_upgrade("home", priority)
+        heroes = [] if Task_Handler.excluded("heroes") else [level for level in Settings_Handler.get("home", "hero_priority", []) if level]
+        first = heroes if heroes_only or Settings_Handler.get("home", "heroes_first", False) else []
+        later = ([] if heroes_only else priority) + ([] if first else heroes)
+        return self._menu_upgrade("home", later, first=first, only=self._hero_names() if heroes_only else None)
 
     # ============================================================
     # 🧱 Walls (no builder needed, upgrade instantly)
@@ -1355,14 +1371,18 @@ class Upgrader:
         
         # Building upgrades
         upgrades_started = []
-        if not exclude_base:
+        heroes_on = not Task_Handler.excluded("heroes")
+        if not exclude_base or heroes_on:
+            # The last hero_builders free builders go to heroes only (MyBot "reserved builders for heroes")
+            reserve = int(Settings_Handler.get("home", "hero_builders", 0) or 0) if heroes_on else 0
             counter = 0
             while counter < configs.MAX_UPGRADES_PER_CHECK:
                 counter += 1
                 try:
                     initial_builders = self.get_home_builders(1)
                     if initial_builders <= max(0, configs.OPEN_HOME_BUILDERS): break
-                    upgraded = self.home_upgrade()
+                    heroes_only = exclude_base or initial_builders <= max(0, configs.OPEN_HOME_BUILDERS) + reserve
+                    upgraded = self.home_upgrade(heroes_only=heroes_only)
                     time.sleep(0.5)
                     final_builders = self.get_home_builders(1)
                     if upgraded is None or final_builders >= initial_builders: break
