@@ -363,8 +363,11 @@ class Attacker:
                 break
             loot, _ = self._read_loot()
             if None not in loot.values() and loot != last_loot: last_loot, last_change = loot, time.time()
-            if time.time() - last_change >= end.get("idle_seconds", 20) and not abilities:
-                logger.info(f"Loot unchanged for {end.get('idle_seconds', 20)}s, ending the battle")
+            end_after = Settings_Handler.get("attack", "end_after", 60) or 0
+            timed_out = end_after > 0 and time.time() - start >= end_after
+            if (time.time() - last_change >= end.get("idle_seconds", 20) or timed_out) and not abilities:
+                if timed_out: logger.info(f"{end_after}s after the deploy, ending the battle")
+                else: logger.info(f"Loot unchanged for {end.get('idle_seconds', 20)}s, ending the battle")
                 if self._click_button("surrender", timeout=2) or self._click_button("end_battle", timeout=2):
                     time.sleep(1)
                     shot("end_dialog")

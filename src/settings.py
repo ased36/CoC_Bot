@@ -90,6 +90,7 @@ def default_settings():
             "max_searches": 30, # then give up until the next round
             "lower_every": 15, # every this many searches the minimums drop...
             "lower_pct": 10, # ...by this % of the values above
+            "end_after": 60, # end the battle this many seconds after everything is deployed (most loot comes early); 0 = play it out
         },
         "resources": {},
         "stats": dict(copy.deepcopy(EMPTY_STATS), since=time.time()),
