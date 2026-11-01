@@ -109,6 +109,7 @@ class Attacker:
                 ex, ey = (cx + edge * np.cos(np.radians(a))) / w, (cy + edge * np.sin(np.radians(a))) / h
                 # Where the hull ends at a HUD box or the screen edge the real line is hidden further out: no safe point there
                 if self._in_hud(ex, ey) or any(self._in_hud(ex + dx, ey + dy) for dx, dy in ((0.015, 0), (-0.015, 0), (0, 0.045), (0, -0.03))): continue
+                if ey < 0.045 or not 0.02 <= ex <= 0.98: continue # cut by the screen edge (after the view moved)
                 r = edge + margin * w + np.random.uniform(0, 0.01) * w
                 x, y = (cx + r * np.cos(np.radians(a))) / w, (cy + r * np.sin(np.radians(a))) / h
                 if 0.02 <= x <= 0.98 and 0.03 <= y and not self._in_hud(x, y): points.append((x, y))
@@ -174,6 +175,16 @@ class Attacker:
             time.sleep(0.3)
         return False
 
+    def _show_bottom(self):
+        """Drag the view up so the bottom corner comes out from under the troop bar; returns the deploy line seen then.
+        Nothing is selected while dragging, so the drag only moves the view."""
+        import time
+        self._deselect()
+        time.sleep(0.2)
+        Input_Handler.swipe(0.5, 0.62, 0.5, 0.36, duration=400, hold_end_time=300, inter_points=8)
+        time.sleep(0.8)
+        return self._deploy_ring(Frame_Handler.get_frame(grayscale=False))
+
     @staticmethod
     def _deselect():
         # Tap the empty left end of the troop bar: a stray tap on the field later then drops nothing
@@ -232,21 +243,36 @@ class Attacker:
 
         # Troops: per_corner on each corner, one tap each, a few pixels off every time.
         # No extra taps for leftovers: once a card runs out the game selects the next card (siege, clan spell) by itself
+        # The bottom corner hides under the troop bar, so it goes last, after the view is dragged up (as a player does).
         # Points are planned first: what a corner cannot take safely (hidden edge) moves to the other corners
         per_corner = troops.get("per_corner", 15)
-        plan = {c: self._deploy_points(ring, c, per_corner) for c in corners}
-        short = sum(per_corner - len(p) for p in plan.values())
-        for c in [c for c in corners if len(plan[c]) == per_corner]:
-            if short <= 0: break
-            extra = self._deploy_points(ring, c, min(short, per_corner))
-            plan[c] += extra
-            short -= len(extra)
+        gap = troops.get("tap_gap", [0.06, 0.18])
+        def plan_points(ring, chosen, carry=0):
+            plan = {c: self._deploy_points(ring, c, per_corner + (carry if i == 0 else 0)) for i, c in enumerate(chosen)}
+            short = sum(per_corner - len(p) for p in plan.values()) + carry
+            for c in [c for c in self.CORNER_ANGLES if c in plan or c in ("left", "right")]:
+                if short <= 0: break
+                extra = self._deploy_points(ring, c, min(short, per_corner))
+                plan.setdefault(c, []).extend(extra)
+                short -= len(extra)
+            return plan
+        upper = [c for c in corners if c != "bottom"]
+        plan = plan_points(ring, upper)
         tap_card(troops["card"])
-        for corner in corners:
-            for x, y in plan[corner]:
+        for corner in upper:
+            for x, y in plan.get(corner, []):
                 self._tap(x, y)
-                self._pause(troops.get("tap_gap", [0.06, 0.18]))
+                self._pause(gap)
             self._pause(troops.get("corner_pause", [0.3, 0.9]))
+        if "bottom" in corners:
+            ring = self._show_bottom() or ring
+            plan = plan_points(ring, ["bottom"])
+            logger.info(f"Bottom corner: view moved up, {len(plan.get('bottom', []))} points")
+            tap_card(troops["card"])
+            for corner, points in plan.items():
+                for x, y in points:
+                    self._tap(x, y)
+                    self._pause(gap)
         self._deselect()
 
         siege = style.get("siege")
