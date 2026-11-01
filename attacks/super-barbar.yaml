@@ -1,0 +1,29 @@
+# Stil 1 — süper barbar (docs/SALDIRI-STILI.md). Emre'nin kararları 01.11:
+# 4 köşe × 15 süper barbar, bütün ordu 10–15 sn; yıldırım köyde rastgele yerlere (1B);
+# kuşatma makinesi her maç bir köşeden; kahramanlar bir köşeden, barbarların arkasından.
+# Süreler saniye; [a, b] = her seferinde a ile b arasında rastgele.
+
+spells:
+  card: lightning
+  target: random          # köyün içinde rastgele noktalar
+  gap: [0.15, 0.45]       # iki yıldırım arası
+
+troops:
+  card: super_barbarian
+  corners: 4              # sağ / sol / üst / alt, sırası her saldırıda rastgele
+  per_corner: 15
+  tap_gap: [0.06, 0.18]   # iki dokunuş arası
+  corner_pause: [0.3, 0.9] # köşeler arası
+
+siege:
+  card: siege
+  count: 1                # rastgele bir köşeden
+
+heroes:
+  cards: [hero_1, hero_2, hero_3, hero_4]
+  gap: [0.25, 0.7]        # iki kahraman arası
+  ability_after: [8, 12]  # girdikten bu kadar sonra yetenek
+
+end:
+  idle_seconds: 20        # ganimet bu kadar değişmezse savaşı bitir
+  max_seconds: 180        # en fazla bekleme, sonra Return Home ya da oyunu yeniden aç

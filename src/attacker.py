@@ -56,6 +56,212 @@ class Attacker:
         return False
 
     # ============================================================
+    # 🗺️ Deploy zone (zoomed out enemy village)
+    # ============================================================
+
+    # Screen parts that are not the village (x1, y1, x2, y2): loot box, timer, resources, buttons, boosts, troop bar
+    HUD_BOXES = [
+        (0.00, 0.00, 0.17, 0.29), (0.42, 0.00, 0.57, 0.10), (0.77, 0.00, 1.00, 0.23),
+        (0.00, 0.69, 0.14, 0.80), (0.13, 0.69, 0.47, 0.80), (0.82, 0.63, 1.00, 0.80), (0.00, 0.80, 1.00, 1.00),
+    ]
+    CORNER_ANGLES = {"right": 0, "bottom": 90, "left": 180, "top": 270} # screen angles, y pointing down
+
+    @classmethod
+    def _in_hud(cls, x, y):
+        return any(x1 <= x <= x2 and y1 <= y <= y2 for x1, y1, x2, y2 in cls.HUD_BOXES)
+
+    def _deploy_ring(self, frame):
+        """Outline of the red no-deploy line, as {angle: (center, radius)} in pixels, seen from the village center.
+        Troops can only be dropped outside every red line, so the farthest red pixel in each direction is the edge."""
+        import numpy as np
+        h, w = frame.shape[:2]
+        f = frame.astype(int)
+        red = (f[..., 0] > 170) & (f[..., 0] - f[..., 1] > 90) & (f[..., 2] < 90)
+        for x1, y1, x2, y2 in self.HUD_BOXES: red[int(y1 * h):int(y2 * h), int(x1 * w):int(x2 * w)] = False
+        import cv2
+        ys, xs = np.nonzero(red)
+        if len(xs) < 500: return None
+        cx, cy = np.median(xs), np.median(ys)
+        # Parts of the line hide behind buildings and the HUD; outside the convex hull of everything red is always free
+        hull = cv2.convexHull(np.stack([xs, ys], axis=1).astype(np.int32))
+        radius = np.zeros(180)
+        for i in range(180): # 2 degree steps: walk out from the center until leaving the hull
+            t = np.radians(i * 2)
+            lo, hi = 0.0, float(w)
+            while hi - lo > 1:
+                mid = (lo + hi) / 2
+                inside = cv2.pointPolygonTest(hull, (float(cx + mid * np.cos(t)), float(cy + mid * np.sin(t))), False) >= 0
+                lo, hi = (mid, hi) if inside else (lo, mid)
+            radius[i] = lo
+        return (cx, cy), radius
+
+    def _deploy_points(self, ring, corner, n, spread=35, margin=0.02):
+        """n screen points just outside the red line around a corner, spread over both of its edges."""
+        import numpy as np
+        (cx, cy), radius = ring
+        h, w = 1080, 1920 # ring is measured on 1920x1080 frames
+        points = []
+        # The bottom corner sits under the troop bar: widen the spread onto its two visible edges until n points fit
+        for width in (spread, spread + 20, spread + 35):
+            for _ in range(n * 10):
+                a = self.CORNER_ANGLES[corner] + np.random.uniform(-width, width)
+                r = radius[int(round(a / 2)) % 180] + margin * w + np.random.uniform(0, 0.01) * w
+                x, y = (cx + r * np.cos(np.radians(a))) / w, (cy + r * np.sin(np.radians(a))) / h
+                if 0.02 <= x <= 0.98 and 0.03 <= y and not self._in_hud(x, y): points.append((x, y))
+                if len(points) == n: return points
+        return points
+
+    def _inside_points(self, ring, n):
+        """n random screen points inside the village (for spells)."""
+        import numpy as np
+        (cx, cy), radius = ring
+        points = []
+        while len(points) < n:
+            a = np.random.uniform(0, 360)
+            r = radius[int(round(a / 2)) % 180] * np.random.uniform(0.15, 0.75)
+            x, y = (cx + r * np.cos(np.radians(a))) / 1920, (cy + r * np.sin(np.radians(a))) / 1080
+            if not self._in_hud(x, y): points.append((x, y))
+        return points
+
+    # ============================================================
+    # 🃏 Scripted attack (attacks/<style>.yaml, docs/SALDIRI-STILI.md)
+    # ============================================================
+
+    CARD_Y = 0.905 # middle of the troop bar cards at 1920x1080
+
+    def _card_templates(self):
+        import os, cv2
+        if not hasattr(self, "_cards"):
+            path = Asset_Manager.resource_path("assets/attacker/cards")
+            self._cards = {f[:-4]: cv2.cvtColor(cv2.imread(str(path / f)), cv2.COLOR_BGR2RGB) for f in os.listdir(path) if f.endswith(".png")}
+        return self._cards
+
+    def _find_cards(self, frame):
+        """{card name: x of its center} for the cards in the troop bar; clan castle cards come after ours, so the leftmost match wins."""
+        import cv2, numpy as np
+        bar = frame[int(frame.shape[0] * 0.80):]
+        found = {}
+        for name, tpl in self._card_templates().items():
+            res = cv2.matchTemplate(bar, tpl, cv2.TM_CCOEFF_NORMED)
+            xs = np.nonzero(res.max(axis=0) >= 0.9)[0]
+            if len(xs): found[name] = (xs.min() + tpl.shape[1] / 2) / frame.shape[1]
+        return found
+
+    @staticmethod
+    def _card_empty(x):
+        # A used up card turns gray
+        section = Frame_Handler.get_frame_section(x - 0.01, 0.89, x + 0.01, 0.91, grayscale=False).astype(int)
+        return (abs(section[..., 0] - section[..., 1]).max() < 8) and (abs(section[..., 1] - section[..., 2]).max() < 8)
+
+    @staticmethod
+    def _pause(span):
+        import time, random
+        time.sleep(random.uniform(*span))
+
+    @staticmethod
+    def load_style(name):
+        import yaml
+        with open(Asset_Manager.resource_path(f"attacks/{name}.yaml"), encoding="utf-8") as f:
+            return yaml.safe_load(f)
+
+    def scripted_attack(self, style_name="super-barbar", restart=True):
+        """Play an attack style on the village on screen (search screen, nothing deployed yet). Returns True when back home."""
+        import time, random, cv2, datetime
+        style = self.load_style(style_name)
+        shots = DEBUG_DIR / "attacks" / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        shots.mkdir(parents=True, exist_ok=True)
+        def shot(name):
+            cv2.imwrite(str(shots / f"{name}.png"), cv2.cvtColor(Frame_Handler.get_frame(grayscale=False), cv2.COLOR_RGB2BGR))
+
+        for _ in range(3):
+            Input_Handler.zoom(dir="out")
+            time.sleep(0.4)
+        time.sleep(0.6)
+        frame = Frame_Handler.get_frame(grayscale=False)
+        cv2.imwrite(str(shots / "start.png"), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        ring = self._deploy_ring(frame)
+        cards = self._find_cards(frame)
+        logger.info(f"Attack {style_name}: cards {', '.join(sorted(cards)) or 'none'}")
+        troops = style.get("troops", {})
+        if ring is None or troops.get("card") not in cards:
+            logger.error("Attack aborted: deploy line or troop card not found")
+            self._leave_search() # nothing deployed yet, so this costs nothing
+            return False
+
+        def tap_card(name):
+            self._tap(cards[name], self.CARD_Y, spread=0.006)
+            time.sleep(random.uniform(0.08, 0.2))
+
+        corners = random.sample(list(self.CORNER_ANGLES), troops.get("corners", 4))
+
+        # Spells first, on random spots inside the village
+        spells = style.get("spells")
+        if spells and spells.get("card") in cards:
+            tap_card(spells["card"])
+            for x, y in self._inside_points(ring, 11):
+                if self._card_empty(cards[spells["card"]]): break
+                self._tap(x, y, spread=0.01)
+                self._pause(spells.get("gap", [0.15, 0.45]))
+
+        # Troops: per_corner on each corner, one tap each, a few pixels off every time
+        tap_card(troops["card"])
+        for corner in corners:
+            for x, y in self._deploy_points(ring, corner, troops.get("per_corner", 15)):
+                self._tap(x, y)
+                self._pause(troops.get("tap_gap", [0.06, 0.18]))
+            self._pause(troops.get("corner_pause", [0.3, 0.9]))
+        # Whatever is left (a tap that missed the field) goes in on a random corner
+        for x, y in self._deploy_points(ring, random.choice(corners), 20):
+            if self._card_empty(cards[troops["card"]]): break
+            self._tap(x, y)
+            self._pause(troops.get("tap_gap", [0.06, 0.18]))
+
+        siege = style.get("siege")
+        if siege and siege.get("card") in cards:
+            tap_card(siege["card"])
+            for x, y in self._deploy_points(ring, random.choice(corners), siege.get("count", 1)): self._tap(x, y)
+
+        # Heroes from one corner, behind the troops; abilities later, each on its own random delay
+        heroes = style.get("heroes", {})
+        hero_corner = random.choice(corners)
+        abilities = []
+        for name in random.sample([h for h in heroes.get("cards", []) if h in cards], len([h for h in heroes.get("cards", []) if h in cards])):
+            tap_card(name)
+            x, y = self._deploy_points(ring, hero_corner, 1)[0]
+            self._tap(x, y)
+            abilities.append((time.time() + random.uniform(*heroes.get("ability_after", [8, 12])), name))
+            self._pause(heroes.get("gap", [0.25, 0.7]))
+        shot("deployed")
+
+        # Battle: abilities on time, end when the loot stops moving, then Return Home
+        end = style.get("end", {})
+        start, last_change, last_loot, n = time.time(), time.time(), None, 0
+        while time.time() - start < end.get("max_seconds", 180):
+            for due, name in sorted(abilities):
+                if time.time() >= due:
+                    self._tap(cards[name], self.CARD_Y, spread=0.006)
+                    abilities.remove((due, name))
+            if self._click_return_home(timeout=0.5):
+                break
+            loot, _ = self._read_loot()
+            if None not in loot.values() and loot != last_loot: last_loot, last_change = loot, time.time()
+            if time.time() - last_change >= end.get("idle_seconds", 20) and not abilities:
+                logger.info(f"Loot unchanged for {end.get('idle_seconds', 20)}s, ending the battle")
+                self._click_end_battle(timeout=3) or self._click_surrender(timeout=3)
+                time.sleep(1)
+                self._click_okay(timeout=3)
+                break
+            n += 1
+            if n % 3 == 0: shot(f"battle_{n:03d}")
+            time.sleep(1.5)
+        shot("end")
+        if self._wait_battle_end("home_base", timeout=30):
+            return True
+        if restart: start_coc()
+        else: stop_coc()
+        return False
+
+    # ============================================================
     # 🔍 Search
     # ============================================================
 
@@ -491,7 +697,7 @@ class Attacker:
             
             # Find a village worth attacking, then attack it
             if self.search(Settings_Handler.get_section("attack")) is not None:
-                self.complete_normal_attack(restart=restart, exclude_clan_troops=EXCLUDE_CLAN_TROOPS)
+                self.scripted_attack("super-barbar", restart=restart)
             elif not in_home_base():
                 start_coc() # reset in case stuck on find a match screen
         

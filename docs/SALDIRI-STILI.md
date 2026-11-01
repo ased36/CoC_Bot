@@ -9,7 +9,7 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 
 ---
 
-## Stil 1 — Süper barbar + yıldırım (taslak, 01.11)
+## Stil 1 — Süper barbar + yıldırım (01.11, betik: `attacks/super-barbar.yaml`)
 
 `(öneri)` yazan satırlar Claude'un önerisi; değiştirmek istediğini üstüne yaz.
 
@@ -36,10 +36,10 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 
 | Satır | Değer |
 |---|---|
-| Yön | sağ / sol / alt / üst; rastgele, art arda aynı yön gelmez |
-| Şekil | seçilen köşenin iki kenarına yayarak `(öneri)` |
-| Dalga sayısı | 4–5 `(öneri)` |
-| Dalgalar arası bekleme | 1–3 sn rastgele `(öneri)` |
+| Yön | **dört köşe birden** (sağ / sol / üst / alt), sırası her saldırıda rastgele (Emre 2A, 01.11) |
+| Şekil | köşe başına **15 süper barbar**, köşenin iki kenarına yayarak; alt köşe asker çubuğunun altında → görünen alt kenara |
+| Süre | bütün ordu **10–15 sn** (Emre); dokunuş arası 0,06–0,18 sn, köşeler arası 0,3–0,9 sn. Basılı tutarak bırakma sonra (hız ölçülünce) |
+| Kuşatma makinesi | her maç **1 tane, rastgele bir köşeden** (Emre) |
 | Dokunuş sapması | her dokunuşta birkaç piksel `(öneri)` |
 | Bazen bir taraf geç | saldırıların ~%30'unda ordunun bir kısmı karşı kenardan 5–15 sn sonra `(öneri)` |
 
@@ -47,9 +47,9 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 
 | Satır | Değer |
 |---|---|
-| Yıldırım hedefi | kara iksir sondaları |
-| Dağılım | 4 sonda: 3 + 3 + 3 + 2 = 11 |
-| Az sonda bulunursa | bulunanlara bölünür; hiç bulunamazsa yıldırım atılmaz |
+| Yıldırım hedefi | **köyün içinde rastgele yerler** (Emre 1B: sonda şart değil, saldırı insan gibi görünsün) |
+| Dağılım | 11 yıldırım, her biri ayrı rastgele nokta, aralarında 0,15–0,45 sn |
+| Klan büyüleri | kullanılmaz (klan kartları sağda, dokunulmaz) |
 | Ne zaman | ordudan önce (4A) |
 | Bazen saptır | yıldırımın düştüğü yer sondanın merkezinden biraz kayar `(öneri)` |
 
@@ -57,7 +57,7 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 
 | Satır | Değer |
 |---|---|
-| Giriş | ordunun arkasından, aynı yönden |
+| Giriş | rastgele bir köşeden, barbarların arkasından (Claude, Emre değiştirebilir) |
 | Yetenek | girişten 8–12 sn sonra, rastgele |
 
 ### Savaş sonu

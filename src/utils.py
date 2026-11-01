@@ -1304,11 +1304,16 @@ class OCR_Handler:
             except:
                 logger.warning("ocrmac not available, falling back to easyocr")
 
+        cls.load()
+        result = cls.reader.readtext(frame, detail=0)
+        return [text for text in result if text.strip()]
+
+    @classmethod
+    def load(cls):
+        # Load before ADB, touch and scheduler threads start: loading easyocr (torch, scipy) mid-run hung twice on 01.11
         if not hasattr(cls, 'reader'):
             import easyocr
             cls.reader = easyocr.Reader(['en'], gpu=True)
-        result = cls.reader.readtext(frame, detail=0)
-        return [text for text in result if text.strip()]
 
     @classmethod
     def read_digits(cls, section):
@@ -1319,9 +1324,7 @@ class OCR_Handler:
     def read_mask(cls, text_mask):
         """Read digits from a boolean mask of text pixels (True = text)."""
         import cv2, numpy as np
-        if not hasattr(cls, 'reader'):
-            import easyocr
-            cls.reader = easyocr.Reader(['en'], gpu=True)
+        cls.load()
         # Dark text on white, bordered and upscaled; easyocr drops narrow "1"s on the raw image
         mask = 255 - text_mask.astype(np.uint8) * 255
         mask = cv2.copyMakeBorder(mask, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
