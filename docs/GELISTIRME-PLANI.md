@@ -160,6 +160,20 @@ Emre'nin hedefi: 4 usta hep geliştirmede, 1'i savaş + duvar için. **Bulgu:** 
 - **Canlı deneme (01.11 05:40–05:52, deneme kipi, hiçbir şey onaylanmadı, kaynaklar aynı kaldı):** binalar → öncelik 1. seviyeden Grand Warden 5 040 000 iksir; "kalacak en az iksir 3 000 000" ile Warden elendi, en ucuz Bomb 800 altın; lab → Freeze Spell 2 400 000 iksir; pet → kaynak yetmiyor, seçim yok; duvar → en ucuz 1 200 000, iksirle (en az iksir 7 M yapılınca altınla) onay penceresi doğru açıldı.
 - **Bekleyen:** indirimli (yeşil etiket) satır hiç görülmedi; Hammer Jam (01–15.11, 09:00'da başlıyor) menüyü nasıl gösteriyor (üstü çizili fiyat? etiket?) bakılacak, gerekirse ölçülüp panele düğme konacak. Gerçek (onaylı) geliştirme ilk boş ustada görülecek.
 
+## 4. oturum kararları (01.11, Emre) — saldırı
+
+Önce bu, 3. oturumun (duvar) çoğu 2. oturumda yapıldı. Saldırı **betikli** olacak: her stil `docs/SALDIRI-STILI.md`'de Türkçe anlatılır, Claude `attacks/<ad>.yaml` betiğine çevirir; ilk stil süper barbar + yıldırım (taslak belgede, boş satırları Emre dolduracak).
+
+- **Ganimet şartı (1A):** altın / iksir / kara iksir alt sınırlarının **hepsi** tutmalı; **0 yazılan şart sayılmaz** (Emre: altın 400 000, iksir 0).
+- **Kara iksir (2B):** panelde ayrı alt sınır.
+- **Arama (3A):** en fazla 30 "Next", bulamazsa vazgeç, sonraki turda yeniden.
+- **Yıldırım (4A):** 4 sondaya 3 + 3 + 3 + 2 = 11; az bulunursa bulunanlara bölünür, hiç bulunamazsa atılmaz. Sonda şablonu yok → arama denemesinde rakip köylerden toplanacak.
+- **Yön (5B):** sağ / sol / alt / üst rastgele, art arda aynı gelmez.
+- **Kahraman (6A):** ordunun arkasından aynı yönden, yetenek 8–12 sn sonra; klan askeri yok.
+- **Ordu (7A):** Quick Train kayıtlı ordu (panelden 1/2/3 seçilir). MyBot gibi asker asker ordu yazma sonra.
+- **İnsan gibi (Emre):** her saldırı farklı: dalgalı bırakma, rastgele beklemeler, dokunuş sapması, bazen bir taraf geç, bazen yıldırım biraz sapsın.
+- **Deneme sırası:** önce "yalnız ara" (saldırmaz, ganimet okur, Next'e basar), sonra Emre'nin onayıyla tek gerçek saldırı. Bilinen kırıklar: `confirm_attack` ve `return_home` resimleri tutmuyor → canlıda ölçülecek.
+
 ## Ek: ClashFarmer + MyBot'ta olup bizde olmayanlar (01.11 araştırması)
 
 Kaynak: clashfarmer.com ekran görüntüleri (status/army/search/attack/clan/village/remote/other.png, resimler tek tek incelendi) + MyBot `develop` dalı GUI `.au3` dosyaları ve `functions/Village/UpgradeWall.au3`. Görüntüdeki değerler varsayılan olmayabilir.
