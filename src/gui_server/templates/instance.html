@@ -12,8 +12,9 @@
             CoC Bot <span class="instance">{{ id }}</span>
         </div>
         <nav class="tabs">
-            <button class="tab active" data-page="log">Kayıt</button>
-            <button class="tab" data-page="village">Köy</button>
+            <button class="tab active" data-page="status">Durum</button>
+            <button class="tab" data-page="village">Geliştirme</button>
+            <button class="tab" data-page="attack">Saldırı</button>
             <button class="tab" data-page="general">Genel</button>
             <button class="tab" data-page="stats">İstatistik</button>
         </nav>
@@ -21,8 +22,23 @@
     </header>
 
     <main>
-        <!-- Kayıt -->
-        <section class="page active" id="page_log">
+        <!-- Durum -->
+        <section class="page active" id="page_status">
+            <div class="grid">
+                <div class="card">
+                    <h2>Başlat'a basınca bot şunları yapar</h2>
+                    <p class="hint">Ayarlardan çıkarılır, ayar değişince kendiliğinden güncellenir. Bot dururken hiçbir şey yapmaz. "Köyü oku" ve "Yalnız ara" hiçbir şey geliştirmez; yalnız aramanın kendi bedeli (Next başına ~1 400 altın) gider.</p>
+                    <div class="safe-note" id="summary_note"></div>
+                    <ul class="plan" id="summary"></ul>
+                </div>
+                <div class="card">
+                    <h2>Son olaylar</h2>
+                    <p class="hint">Geliştirme, arama, hata gibi önemli olaylar. Tamamı İstatistik sekmesinde.</p>
+                    <ul class="events" id="events_recent"></ul>
+                </div>
+            </div>
+
+            <h3 class="section-title">Kayıt — botun satır satır yaptıkları</h3>
             <div class="log-tools">
                 <label><input type="checkbox" id="log_important"> Yalnız uyarı ve hatalar</label>
                 <label><input type="checkbox" id="log_details"> Hata ayrıntılarını göster</label>
@@ -31,48 +47,49 @@
             <div class="log" id="log"></div>
         </section>
 
-        <!-- Köy -->
+        <!-- Geliştirme -->
         <section class="page" id="page_village">
             <h3 class="section-title">Ana köy</h3>
             <div class="grid">
                 <div class="card">
-                    <h2>Görevler</h2>
-                    <p class="hint">Kapalı olan görev turda atlanır.</p>
-                    <div class="row"><div class="label">Binalar</div><label class="switch"><input type="checkbox" data-task="home_base"><span></span></label></div>
-                    <div class="row"><div class="label">Kahramanlar</div><label class="switch"><input type="checkbox" data-task="heroes"><span></span></label></div>
-                    <div class="row"><div class="label">Belediye binası<small>Kapalıysa Town Hall hiç geliştirilmez</small></div><label class="switch"><input type="checkbox" data-path="home.town_hall"><span></span></label></div>
-                    <div class="row"><div class="label">Laboratuvar</div><label class="switch"><input type="checkbox" data-task="home_lab"><span></span></label></div>
-                    <div class="row"><div class="label">Evcil hayvanlar</div><label class="switch"><input type="checkbox" data-task="pet_house"><span></span></label></div>
-                    <div class="row"><div class="label">Usta çırağı ata</div><label class="switch"><input type="checkbox" data-task="builder_apprentice"><span></span></label></div>
-                    <div class="row"><div class="label">Lab asistanı ata</div><label class="switch"><input type="checkbox" data-task="lab_assistant"><span></span></label></div>
+                    <h2>Bot neleri geliştirsin?</h2>
+                    <p class="hint">Açık olanları bot, Başlat'a basıldıktan sonra her turda yapar; kapalı olanlara hiç dokunmaz. <span class="tag spend">kaynak harcar</span> yazanlar oyunda gerçek geliştirme başlatır.</p>
+                    <div class="row"><div class="label">Binalar <span class="tag spend">kaynak harcar</span><small>Boş usta varsa bina ya da tuzak geliştirmesi başlatır (altın / iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_base"><span></span></label></div>
+                    <div class="row sub"><div class="label">Kahramanlar dahil<small>Kapalıysa kahramanlar seçilmez. "Binalar" kapalıyken hiç geliştirilmez</small></div><label class="switch"><input type="checkbox" data-task="heroes"><span></span></label></div>
+                    <div class="row sub"><div class="label">Belediye binası dahil<small>Kapalıysa Town Hall hiç seçilmez; açıksa yalnız başka uygun geliştirme yokken</small></div><label class="switch"><input type="checkbox" data-path="home.town_hall"><span></span></label></div>
+                    <div class="row"><div class="label">Laboratuvar <span class="tag spend">kaynak harcar</span><small>Laboratuvar boşsa asker ya da büyü araştırması başlatır (iksir / kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_lab"><span></span></label></div>
+                    <div class="row"><div class="label">Evcil hayvanlar <span class="tag spend">kaynak harcar</span><small>Pet House boşsa evcil hayvan geliştirir (kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="pet_house"><span></span></label></div>
+                    <div class="row"><div class="label">Usta çırağı ata <span class="tag free">ücretsiz</span><small>Süren bir bina geliştirmesine çırağı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="builder_apprentice"><span></span></label></div>
+                    <div class="row"><div class="label">Lab asistanı ata <span class="tag free">ücretsiz</span><small>Süren laboratuvar araştırmasına asistanı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="lab_assistant"><span></span></label></div>
+                    <div class="info">Duvar ayrı yönetilir (yandaki "Duvar" bölümü). Saldırı ayarları "Saldırı" sekmesinde.</div>
                 </div>
 
                 <div class="card">
                     <h2>Sınırlar</h2>
-                    <p class="hint">Bir turda ne kadar iş yapılacağı.</p>
-                    <div class="row"><div class="label">Tur başına en fazla geliştirme<small>Ana köy ve usta üssü için ayrı ayrı</small></div><input type="number" min="1" max="50" data-path="home.max_upgrades"></div>
-                    <div class="row"><div class="label">Boşta bırakılacak usta<small>Bu kadar usta hep boş kalır</small></div><input type="number" min="0" max="6" data-path="home.open_builders"></div>
+                    <p class="hint">Bir turda en çok ne kadar iş yapılacağı.</p>
+                    <div class="row"><div class="label">Tur başına en fazla geliştirme<small>Ana köy ve usta üssü için ayrı ayrı sayılır</small></div><input type="number" min="1" max="50" data-path="home.max_upgrades"></div>
+                    <div class="row"><div class="label">Boşta bırakılacak usta<small>Bu kadar usta hiç kullanılmaz (0 = hepsi kullanılır)</small></div><input type="number" min="0" max="6" data-path="home.open_builders"></div>
 
-                    <h2 style="margin-top:18px">Duvar</h2>
+                    <h2 style="margin-top:18px">Duvar <span class="tag spend">kaynak harcar</span></h2>
                     <p class="hint">Kapalıyken bot hiç duvar yapmaz. Açıkken turun sonunda, binalardan artan kaynakla yapar. Duvar usta beklemez, ustalar doluyken de yapılır.</p>
                     <div class="row"><div class="label">Duvar geliştir</div><label class="switch"><input type="checkbox" data-path="walls.enabled"><span></span></label></div>
                     <div class="row"><div class="label">Tur başına en fazla duvar</div><input type="number" min="1" max="50" data-path="walls.max_per_round"></div>
-                    <div class="row"><div class="label">Kalacak en az altın</div><input type="text" inputmode="numeric" data-path="walls.min_gold" data-big></div>
-                    <div class="row"><div class="label">Kalacak en az iksir</div><input type="text" inputmode="numeric" data-path="walls.min_elixir" data-big></div>
+                    <div class="row"><div class="label"><i class="rdot gold"></i>Kalacak en az altın</div><input type="text" inputmode="numeric" data-path="walls.min_gold" data-big></div>
+                    <div class="row"><div class="label"><i class="rdot elixir"></i>Kalacak en az iksir</div><input type="text" inputmode="numeric" data-path="walls.min_elixir" data-big></div>
                     <div class="info">En ucuz duvar seçilir. Önce iksirle ödenir; iksirden maliyet düşünce en az iksirin altına iniyorsa altınla; ikisinde de iniyorsa duvar yapılmaz.</div>
                 </div>
 
                 <div class="card">
-                    <h2>Seçim</h2>
-                    <p class="hint">Bina, laboratuvar ve evcil hayvan menüsünde hangi geliştirmenin seçileceği. Sıra: indirimli (yeşil etiket) → öncelik listesi → aşağıdaki seçim → en son Belediye binası.</p>
-                    <div class="row"><div class="label">Listede uygun yoksa<small>Öncelik listesindekiler bitince ya da liste kapalıyken</small></div><select data-path="home.fallback"><option value="cheapest">En ucuz</option><option value="random">Rastgele</option></select></div>
+                    <h2>Hangi geliştirme seçilsin?</h2>
+                    <p class="hint">Menüde birden çok geliştirmeye para yetiyorsa hangisinin seçileceği. Sıra: indirimli (yeşil etiket) → öncelik listesi (aşağıda) → buradaki seçim → en son Belediye binası.</p>
+                    <div class="row"><div class="label">Öncelik listesinde uygun yoksa<small>Listedekiler bitince ya da liste kapalıyken</small></div><select data-path="home.fallback"><option value="cheapest">En ucuz</option><option value="random">Rastgele</option></select></div>
                     <div class="row"><div class="label">Kaynak tercihi<small>Önce bu kaynakla ödenenler arasından seçilir</small></div><select data-path="home.prefer_resource"><option value="any">Fark etmez</option><option value="gold">Altınla olanlar önce</option><option value="elixir">İksirle olanlar önce</option></select></div>
 
                     <h2 style="margin-top:18px">Geliştirmeden sonra kalacak en az</h2>
                     <p class="hint">Maliyet düşülünce bu kadar kalmayacaksa o geliştirme başlatılmaz. 0 = sınır yok.</p>
-                    <div class="row"><div class="label">Altın</div><input type="text" inputmode="numeric" data-path="home.keep_gold" data-big></div>
-                    <div class="row"><div class="label">İksir</div><input type="text" inputmode="numeric" data-path="home.keep_elixir" data-big></div>
-                    <div class="row"><div class="label">Kara iksir</div><input type="text" inputmode="numeric" data-path="home.keep_dark" data-big></div>
+                    <div class="row"><div class="label"><i class="rdot gold"></i>Altın</div><input type="text" inputmode="numeric" data-path="home.keep_gold" data-big></div>
+                    <div class="row"><div class="label"><i class="rdot elixir"></i>İksir</div><input type="text" inputmode="numeric" data-path="home.keep_elixir" data-big></div>
+                    <div class="row"><div class="label"><i class="rdot dark"></i>Kara iksir</div><input type="text" inputmode="numeric" data-path="home.keep_dark" data-big></div>
                     <div class="info">"En ucuz" = maliyet ÷ depodaki miktar en düşük olan. Böylece kara iksirle ödenenler de altın ve iksirle aynı ölçüyle karşılaştırılır.</div>
                 </div>
 
@@ -96,9 +113,10 @@
             <h3 class="section-title">Usta üssü</h3>
             <div class="grid">
                 <div class="card">
-                    <h2>Görevler</h2>
-                    <div class="row"><div class="label">Binalar</div><label class="switch"><input type="checkbox" data-task="builder_base"><span></span></label></div>
-                    <div class="row"><div class="label">Laboratuvar</div><label class="switch"><input type="checkbox" data-task="builder_lab"><span></span></label></div>
+                    <h2>Usta üssünde neler geliştirilsin?</h2>
+                    <p class="hint">İkisi de kapalıysa bot usta üssünde hiçbir şey geliştirmez.</p>
+                    <div class="row"><div class="label">Binalar <span class="tag spend">kaynak harcar</span><small>Boş usta varsa usta üssü binası geliştirir</small></div><label class="switch"><input type="checkbox" data-task="builder_base"><span></span></label></div>
+                    <div class="row"><div class="label">Laboratuvar <span class="tag spend">kaynak harcar</span><small>Yıldız laboratuvarı boşsa araştırma başlatır</small></div><label class="switch"><input type="checkbox" data-task="builder_lab"><span></span></label></div>
                     <div class="row"><div class="label">Boşta bırakılacak usta</div><input type="number" min="0" max="6" data-path="builder.open_builders"></div>
                 </div>
                 <div class="card wide" data-prio="builder.priority" data-prio-task="builder_base_priority" data-vocab="buildings/builder-base,traps/builder-base">
@@ -126,17 +144,30 @@
                     <div class="row"><div class="label">Çalışma saatlerini kullan</div><label class="switch"><input type="checkbox" data-path="general.hours_enabled"><span></span></label></div>
                     <div class="row"><div class="label">Saat aralığı</div><div class="pair"><input type="time" data-path="general.hours_start"> – <input type="time" data-path="general.hours_end"></div></div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Saldırı -->
+        <section class="page" id="page_attack">
+            <div class="grid">
                 <div class="card">
-                    <h2>Saldırı — arama</h2>
-                    <p class="hint">Rakip köyde ganimet okunur; şartlar tutmazsa Next. 0 yazılan şart sayılmaz, diğerlerinin hepsi tutmalı.</p>
-                    <div class="row"><div class="label">Ana köyde saldır<small>Kapalıyken bot saldırmaz; "Yalnız ara" yine çalışır</small></div><label class="switch"><input type="checkbox" data-task="home_attacks"><span></span></label></div>
-                    <div class="row"><div class="label">En az altın</div><input type="text" inputmode="numeric" data-path="attack.min_gold" data-big></div>
-                    <div class="row"><div class="label">En az iksir</div><input type="text" inputmode="numeric" data-path="attack.min_elixir" data-big></div>
-                    <div class="row"><div class="label">En az kara iksir</div><input type="text" inputmode="numeric" data-path="attack.min_dark" data-big></div>
-                    <div class="row"><div class="label">En fazla arama<small>Bulamazsa vazgeçer, sonraki turda yeniden</small></div><input type="number" min="1" max="200" data-path="attack.max_searches"></div>
-                    <div class="row"><div class="label">Şartları düşür: her<small>Bu kadar aramada bir</small></div><input type="number" min="0" max="200" data-path="attack.lower_every"></div>
-                    <div class="row"><div class="label">Ne kadar düşsün, %<small>Yukarıdaki değerlerin yüzdesi; 0 = düşmez</small></div><input type="number" min="0" max="100" data-path="attack.lower_pct"></div>
-                    <div class="info">Örnek: 400 000 altın, her 15 aramada %10 → 1–15. arama 400 000, 16–30. arama 360 000, 31–45. arama 320 000. Her Next oyunda 1 400 altın civarı tutar.</div>
+                    <h2>Saldırı</h2>
+                    <p class="hint">Açıksa bot her turda geliştirmelerden sonra rakip arar ve saldırır. Kapalıyken hiç saldırmaz; alttaki "Yalnız ara" düğmesi yine çalışır (arar, bulunca köye döner).</p>
+                    <div class="row"><div class="label">Ana köyde saldır<small>Saldırı betiği henüz hazır değil; şimdilik kapalı kalmalı</small></div><label class="switch"><input type="checkbox" data-task="home_attacks"><span></span></label></div>
+                </div>
+                <div class="card">
+                    <h2>Hangi köye saldırılsın?</h2>
+                    <p class="hint">Rakip köyde sol üstteki "Available Loot" okunur; şartlar tutmazsa Next. 0 yazılan şart sayılmaz, diğerlerinin hepsi tutmalı.</p>
+                    <div class="row"><div class="label"><i class="rdot gold"></i>En az altın</div><input type="text" inputmode="numeric" data-path="attack.min_gold" data-big></div>
+                    <div class="row"><div class="label"><i class="rdot elixir"></i>En az iksir</div><input type="text" inputmode="numeric" data-path="attack.min_elixir" data-big></div>
+                    <div class="row"><div class="label"><i class="rdot dark"></i>En az kara iksir</div><input type="text" inputmode="numeric" data-path="attack.min_dark" data-big></div>
+                    <div class="subgroup">
+                        <div class="subgroup-title">Arama sınırı ve şart düşürme</div>
+                        <div class="row"><div class="label">En fazla arama<small>Bulamazsa vazgeçer, sonraki turda yeniden</small></div><input type="number" min="1" max="200" data-path="attack.max_searches"></div>
+                        <div class="row"><div class="label">Şartları düşür: her<small>Bu kadar aramada bir</small></div><input type="number" min="0" max="200" data-path="attack.lower_every"></div>
+                        <div class="row"><div class="label">Ne kadar düşsün, %<small>"En az" değerlerinin yüzdesi; 0 = düşmez</small></div><input type="number" min="0" max="100" data-path="attack.lower_pct"></div>
+                        <div class="info">Örnek: 400 000 altın, her 15 aramada %10 → 1–15. arama 400 000, 16–30. arama 360 000, 31–45. arama 320 000. Her Next oyunda 1 400 altın civarı tutar.</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -242,6 +273,7 @@
             try {
                 settings = await api("/settings", update);
                 showSave("ok", "Kaydedildi ✓");
+                renderSummary();
             } catch (e) {
                 showSave("err", "Kaydedilemedi");
             }
@@ -389,6 +421,50 @@
             bindFields();
             renderExcluded();
             $$("[data-prio]").forEach(renderPriority);
+            renderSummary();
+        }
+
+        // ---------- What Start will do ----------
+        function startPlan() {
+            const t = settings.tasks, home = settings.home, walls = settings.walls, g = settings.general;
+            const homeStep = t.home_base || t.home_lab || t.pet_house; // walls and helpers run inside this step
+            const needStep = "çalışmaz: Binalar, Laboratuvar ya da Evcil hayvanlardan biri açık olmalı";
+            const items = []; // {on, spend, name, text}
+            items.push({on: t.home_base, spend: true, name: "Ana köy binaları",
+                text: `boş usta varsa geliştirme başlatır; kahramanlar ${t.heroes ? "dahil" : "hariç"}, Belediye ${home.town_hall ? "dahil" : "hariç"}`});
+            items.push({on: t.home_lab, spend: true, name: "Laboratuvar", text: "boşsa araştırma başlatır"});
+            items.push({on: t.pet_house, spend: true, name: "Evcil hayvanlar", text: "Pet House boşsa geliştirir"});
+            items.push({on: walls.enabled && homeStep, spend: true, name: "Duvar",
+                text: `turun sonunda en fazla ${walls.max_per_round} duvar`, off: walls.enabled && !homeStep ? needStep : ""});
+            items.push({on: t.builder_apprentice && homeStep, spend: false, name: "Usta çırağı", text: "süren geliştirmeye atanır",
+                off: t.builder_apprentice && !homeStep ? needStep : ""});
+            items.push({on: t.lab_assistant && homeStep, spend: false, name: "Lab asistanı", text: "süren araştırmaya atanır",
+                off: t.lab_assistant && !homeStep ? needStep : ""});
+            items.push({on: t.home_attacks, spend: true, name: "Saldırı", text: "rakip arar ve saldırır"});
+            items.push({on: t.builder_base, spend: true, name: "Usta üssü binaları", text: "boş usta varsa geliştirir"});
+            items.push({on: t.builder_lab, spend: true, name: "Usta üssü laboratuvarı", text: "boşsa araştırma başlatır"});
+            const timing = `Turlar arası ${g.check_interval} dk (± %${g.jitter_pct})` +
+                (g.hours_enabled ? `, yalnız ${g.hours_start}–${g.hours_end} arası` : ", günün her saati") +
+                (g.close_game ? "; tur bitince oyun kapanır" : "; oyun turlar arasında açık kalır");
+            return {items, timing, spending: items.filter(i => i.on && i.spend)};
+        }
+
+        function renderSummary() {
+            if (!settings) return;
+            const {items, timing, spending} = startPlan();
+            const on = items.filter(i => i.on), off = items.filter(i => !i.on);
+            const note = $("#summary_note");
+            note.className = "safe-note " + (spending.length ? "warn" : "ok");
+            note.textContent = spending.length
+                ? `Başlat'a basınca kaynak harcanabilir: ${spending.map(i => i.name).join(", ")}.`
+                : "Kaynak harcayan görev kapalı: Başlat'a basılsa da hiçbir şey geliştirilmez, saldırılmaz.";
+            let html = `<li class="time">${esc(timing)}</li>`;
+            html += on.map(i => `<li class="on"><b>${esc(i.name)}</b> — ${esc(i.text)} ${i.spend ? `<span class="tag spend">kaynak harcar</span>` : `<span class="tag free">ücretsiz</span>`}</li>`).join("");
+            if (!on.length) html += `<li class="off">Hiçbir görev açık değil; bot tur atar, köyü okur, başka bir şey yapmaz.</li>`;
+            html += off.filter(i => i.off).map(i => `<li class="off"><b>${esc(i.name)}</b> açık ama ${esc(i.off)}</li>`).join("");
+            const plainOff = off.filter(i => !i.off).map(i => i.name);
+            if (plainOff.length) html += `<li class="off">Yapmaz: ${esc(plainOff.join(", "))}</li>`;
+            $("#summary").innerHTML = html;
         }
 
         // ---------- Log ----------
@@ -445,10 +521,21 @@
             $("#stats_since").textContent = st.since ? `${fmtDayClock(st.since)} tarihinden beri` : "";
             $("#stats_tiles").innerHTML = TILES.map(([k, label]) =>
                 `<div class="tile ${k === "errors" && st[k] ? "err" : ""}"><div class="v">${fmtNum(st[k] || 0)}</div><div class="k">${label}</div></div>`).join("");
-            const events = (st.events || []).slice().reverse();
-            $("#events").innerHTML = events.length
+            renderEvents($("#events"), st.events);
+        }
+
+        function renderEvents(box, list, limit) {
+            let events = (list || []).slice().reverse();
+            if (limit) events = events.slice(0, limit);
+            box.innerHTML = events.length
                 ? events.map(e => `<li><span class="t">${fmtDayClock(e.t)}</span><span>${esc(e.text)}${e.count > 1 ? ` <span class="n">×${e.count}</span>` : ""}</span></li>`).join("")
                 : `<li><span class="t"></span><span class="n">Henüz olay yok</span></li>`;
+        }
+
+        async function refreshRecent() {
+            let s;
+            try { s = await api("/settings"); } catch (e) { return; }
+            renderEvents($("#events_recent"), s.stats.events, 8);
         }
 
         $("#stats_reset").onclick = async () => {
@@ -507,6 +594,14 @@
         $("#btn_toggle").onclick = async () => {
             if (!state) return;
             const action = state.active ? "stop" : "start";
+            if (action === "start" && settings) {
+                const {items, spending} = startPlan();
+                const on = items.filter(i => i.on);
+                const msg = spending.length
+                    ? "Bot gerçek geliştirme başlatabilir / kaynak harcayabilir:\n\n" + spending.map(i => `• ${i.name} — ${i.text}`).join("\n")
+                    : "Kaynak harcayan görev kapalı." + (on.length ? "\n\n" + on.map(i => `• ${i.name} — ${i.text}`).join("\n") : "\nBot tur atar, köyü okur, başka bir şey yapmaz.");
+                if (!confirm(msg + "\n\nBaşlatılsın mı?")) return;
+            }
             await fetch("/instance_action", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action, id: ID})});
             refreshState();
         };
@@ -549,6 +644,8 @@
         setInterval(refreshState, 2000);
         setInterval(renderState, 1000);
         setInterval(() => { if ($("#page_stats").classList.contains("active")) refreshStats(); }, 3000);
+        refreshRecent();
+        setInterval(() => { if ($("#page_status").classList.contains("active")) refreshRecent(); }, 3000);
     </script>
 </body>
 </html>

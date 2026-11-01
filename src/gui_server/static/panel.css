@@ -15,6 +15,7 @@
     --dark: #8f86a6;
     --gem: #5fd38a;
     --radius: 8px;
+    color-scheme: dark; /* native dropdown lists, scrollbars, time pickers follow the dark theme */
 }
 
 * { box-sizing: border-box; }
@@ -43,6 +44,8 @@ button, input, select {
     align-items: center;
     gap: 16px;
     padding: 10px 20px 0;
+    flex-wrap: wrap;
+    row-gap: 0;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
@@ -71,6 +74,8 @@ button, input, select {
     display: flex;
     gap: 2px;
     align-self: flex-end;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .tab {
@@ -80,6 +85,7 @@ button, input, select {
     padding: 8px 16px 10px;
     color: var(--muted);
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .tab:hover { color: var(--text); }
@@ -109,7 +115,7 @@ main {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
     gap: 16px;
     align-items: start;
 }
@@ -175,6 +181,62 @@ main {
 .row input[type=time] { width: 100px; text-align: center; }
 .row input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 .row .pair { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+
+.row select {
+    min-width: 170px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    cursor: pointer;
+}
+.row select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+select option { background: var(--surface-2); color: var(--text); }
+
+/* A setting that only matters when the row above is on */
+.row.sub { padding-left: 18px; }
+.row.sub .label::before { content: "↳ "; color: var(--muted); }
+
+/* Resource colour dot in front of a label */
+.rdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+.rdot.gold { background: var(--gold); }
+.rdot.elixir { background: var(--elixir); }
+.rdot.dark { background: var(--dark); }
+
+/* Small labels: spends resources / free */
+.tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: 999px;
+    vertical-align: 1px;
+    white-space: nowrap;
+}
+.tag.spend { color: var(--warn); background: rgba(240, 167, 66, .14); }
+.tag.free { color: var(--ok); background: rgba(76, 195, 138, .14); }
+.card h2 .tag { font-weight: 600; }
+
+/* Rows that belong together, boxed */
+.subgroup {
+    margin-top: 8px;
+    padding: 4px 12px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+}
+.subgroup-title {
+    padding: 8px 0 2px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.subgroup .subgroup-title + .row { border-top: none; }
+.subgroup .row input[type=number] { background: var(--surface); }
+.subgroup .info { background: var(--surface); }
 
 /* Switch */
 .switch {
@@ -308,7 +370,7 @@ main {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     height: calc(100vh - 205px);
-    min-height: 240px;
+    min-height: 320px;
     overflow: auto;
     font-size: 13px;
 }
@@ -370,6 +432,20 @@ main {
 .events li:first-child { border-top: none; }
 .events .t { color: var(--muted); width: 90px; flex: none; font-variant-numeric: tabular-nums; }
 .events .n { color: var(--muted); font-size: 12px; }
+
+/* Start summary */
+.safe-note { border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-bottom: 10px; }
+.safe-note.ok { color: var(--ok); background: rgba(76, 195, 138, .12); }
+.safe-note.warn { color: var(--warn); background: rgba(240, 167, 66, .12); }
+.plan { list-style: none; margin: 0; padding: 0; }
+.plan li { padding: 6px 0 6px 20px; border-top: 1px solid var(--border); position: relative; }
+.plan li:first-child { border-top: none; }
+.plan li::before { position: absolute; left: 0; color: var(--muted); }
+.plan li.time { color: var(--muted); }
+.plan li.time::before { content: "⏱"; }
+.plan li.on::before { content: "✓"; color: var(--ok); }
+.plan li.off { color: var(--muted); }
+.plan li.off::before { content: "–"; }
 
 .info {
     background: var(--surface-2);

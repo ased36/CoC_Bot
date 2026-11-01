@@ -185,6 +185,15 @@ Emre'nin hedefi: 4 usta hep geliştirmede, 1'i savaş + duvar için. **Bulgu:** 
 - **Sonda:** henüz bulunamadı. Gözle bakılan adaylar sonda değil: mor kristal yığını = Wizard Tower, şişeli siyah kule = TH15 Spell Tower, pembe tanklı pompa = iksir toplayıcı. 15 köy `debug/villages/`de → sonraki oturumda kara iksir sondası buradan bulunacak (sondayı dokunup adını görmek rakip köyde mümkün değil; gerekirse Emre kendi köyünde gösterir).
 - **Sıradaki:** (1) 2A: panel ayarıyla (400 000 / 30 / 15 / %10) yalnız ara — bulunca durur, saldırmaz. (2) Sonda şablonu. (3) Saldırı betiği `attacks/super-barbar.yaml` + yıldırım + kahraman + 20 sn ganimet bekçisi + Return Home ölçümü. (4) Emre onayıyla tek gerçek saldırı. Hammer Jam henüz başlamamıştı (06:15, Wizard Tower düz fiyat 1 040 000) → etkinlik başlayınca menü fiyatı.
 
+## 4. oturum devamı (01.11 öğle) — ne yapıldı
+
+- **BlueStacks çökmeleri çözüldü:** `X:\BlueStacks_nxt\Dumps\HD-Player\` altındaki 4 dökümün (04:17, 04:19, 06:28, 12:37) hepsi `nvoglv64.dll+0x94a750` erişim hatası = NVIDIA OpenGL sürücüsü (RTX 3060, 610.88). 04:10'daki Vulkan → OpenGL geçişinden sonra başlamıştı. Emre BlueStacks ayarından **Vulkan**'a döndü (`graphics_renderer="vlcn"`), sonrasında çökme yok. 06:28'deki "BlueStacks kapandı" da buydu, Emre kapatmamıştı.
+- **2A yalnız ara ✅ (12:40):** panel ayarı (400 000 / 30 / her 15'te %10); 1. aramada altın 512 563 / iksir 446 313 / kara 5 027 — ekranla birebir; saldırmadan End Battle ile döndü, 54 sn, tek bedel 1 400 altın.
+- **Yanlışlıkla gerçek geliştirme (12:42):** yalnız aramadan sonra panelde Başlat'a basıldı → tam tur → **Mighty Yak (pet) 18 000 kara iksirle başladı**. Durdur birkaç saniye önce basılmıştı ama Durdur adım bitince işliyor. İptal edilmedi (yarısı yanar). Emre 12:43'te görevleri kapattı. → Başlat'a onay penceresi eklendi (aşağıda).
+- **Bilinen davranış (kod değişmedi):** duvar, usta çırağı ve lab asistanı `run_home_base` içinde; Binalar, Laboratuvar ve Evcil hayvanların üçü kapalıysa bu adım hiç çalışmaz → onlar da çalışmaz. Panel özeti bunu yazıyor.
+- **Panel yenilendi (Emre 1A 2A 3A):** sekmeler Durum · Geliştirme · Saldırı · Genel · İstatistik. Durum = "Başlat'a basınca bot şunları yapar" özeti (ayarlardan canlı; kaynak harcayan görev varsa sarı uyarı) + son 8 olay + kayıt. Başlat'a basınca aynı listeyle onay penceresi. Görevler "Bot neleri geliştirsin?" — her anahtarın altında ne yaptığı, "kaynak harcar" / "ücretsiz" etiketi; Kahraman ve Belediye "Binalar"ın alt satırı. Açılır listeler koyu tema (`color-scheme: dark`), altın/iksir/kara kutularında renk noktası, arama sınırı + düşürme tek kutuda, 500 px'de yana taşma giderildi.
+- **Sıradaki:** sonda şablonu, Hammer Jam menü fiyatı, saldırı betiği, Emre onayıyla tek saldırı.
+
 ## Ek: ClashFarmer + MyBot'ta olup bizde olmayanlar (01.11 araştırması)
 
 Kaynak: clashfarmer.com ekran görüntüleri (status/army/search/attack/clan/village/remote/other.png, resimler tek tek incelendi) + MyBot `develop` dalı GUI `.au3` dosyaları ve `functions/Village/UpgradeWall.au3`. Görüntüdeki değerler varsayılan olmayabilir.
