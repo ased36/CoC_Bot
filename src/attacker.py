@@ -145,6 +145,10 @@ class Attacker:
             res = cv2.matchTemplate(bar, tpl, cv2.TM_CCOEFF_NORMED)
             xs = np.nonzero(res.max(axis=0) >= 0.9)[0]
             if len(xs): found[name] = (xs.min() + tpl.shape[1] / 2) / frame.shape[1]
+        # The siege card changes its picture (machine, "!"), but it always sits between the troops and the first hero
+        troop, hero = found.get("super_barbarian"), found.get("hero_1")
+        if not any(n.startswith("siege") for n in found) and troop and hero and hero - troop > 0.12:
+            found["siege"] = (troop + hero) / 2
         return found
 
     @staticmethod
@@ -387,6 +391,11 @@ class Attacker:
                 return None
             time.sleep(0.5)
             loot, frame = self._read_loot()
+            # OCR sometimes adds a digit (an iksir of 1.037.617 read as 10.376.176): keep values two reads agree on
+            second, _ = self._read_loot()
+            if second != loot:
+                third, _ = self._read_loot()
+                loot = {k: loot[k] if loot[k] in (second[k], third[k]) else second[k] if second[k] == third[k] else None for k in loot}
             if search_only or attack.get("save_villages"): self._save_village(frame, n)
             mins = self.loot_minimums(attack, n)
             logger.info(
