@@ -886,6 +886,7 @@ class _Emulator_Manager:
 
     _pid = None
     _adb_port = None
+    PROCESS_NAMES = () # emulator window process; empty = the pid is not checked
 
     @classproperty
     def adb_port(cls):
@@ -897,8 +898,18 @@ class _Emulator_Manager:
 
     @classproperty
     def pid(cls):
+        import psutil
         if cls._pid is None:
             cls._pid = Cache_Manager.get(f"{INSTANCE_ID}_emulator_pid", None)
+        if cls.PROCESS_NAMES:
+            # A pid remembered from an emulator that has since closed can belong to another program now (Windows reuses pids)
+            if cls._pid is not None:
+                try:
+                    if psutil.Process(cls._pid).name() not in cls.PROCESS_NAMES: cls._pid = None
+                except (psutil.NoSuchProcess, psutil.AccessDenied): cls._pid = None
+            if cls._pid is None:
+                cls._pid = next((p.pid for p in psutil.process_iter(["name"]) if p.info["name"] in cls.PROCESS_NAMES), None)
+                if cls._pid is not None: Cache_Manager[f"{INSTANCE_ID}_emulator_pid"] = cls._pid
         return cls._pid
 
     @classmethod
@@ -949,7 +960,7 @@ class _Emulator_Manager:
 
         try:
             psutil.Process(cls.pid).suspend()
-        except psutil.NoSuchProcess:
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
     @classmethod
@@ -962,10 +973,11 @@ class _Emulator_Manager:
 
         try:
             psutil.Process(cls.pid).resume()
-        except psutil.NoSuchProcess:
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
 class BlueStacks_Manager(_Emulator_Manager):
+    PROCESS_NAMES = ("HD-Player.exe", "HD-Player")
     """
     BlueStacks internal instance name is NOT the same as the bot instance ID or the user-facing instance name.
     Generally should be of the form 'Pie64_X' 'Nougat64_X' 'Tiramisu64_X'
