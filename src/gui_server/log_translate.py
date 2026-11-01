@@ -15,7 +15,7 @@ TRANSLATIONS = [
     (r"CoC stopped", "Oyun kapandı"),
     (r"No update available", "Oyun güncel"),
     (r"Connected to ADB\.", "Emülatöre bağlanıldı"),
-    (r"Failed to connect to ADB\. Retrying\.\.\.", "Emülatöre bağlanılamadı, yeniden deneniyor…"),
+    (r"Failed to connect to ADB\. Retrying\.\.\.", "Emülatör bekleniyor…"),
     (r"Upgrading home base", "Ana köy geliştiriliyor"),
     (r"Upgrading builder base", "Usta üssü geliştiriliyor"),
     (r"Attacking home base", "Ana köyde saldırı"),

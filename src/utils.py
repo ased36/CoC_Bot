@@ -1588,6 +1588,7 @@ class ADB_Manager:
     def connect(cls, timeout=60):
         import time
         start = time.time()
+        restarted = False
         while time.time() - start < timeout:
             try:
                 cls.connect_once()
@@ -1595,7 +1596,16 @@ class ADB_Manager:
                 return True
             except (KeyboardInterrupt, SystemExit): raise
             except Exception:
-                logger.error("Failed to connect to ADB. Retrying...")
+                # BlueStacks crashed (NVIDIA driver): start it again right here instead of retrying a dead emulator for minutes
+                if not restarted and configs.AUTO_START_EMULATOR and Emulator_Manager.PROCESS_NAMES and not Emulator_Manager.check():
+                    restarted = True
+                    logger.warning("Emulator is not running, starting it again")
+                    try: Emulator_Manager.start()
+                    except (KeyboardInterrupt, SystemExit): raise
+                    except Exception: logger.exception("ensure_emulator:")
+                    start, timeout = time.time(), max(timeout, 120) # Android boots in ~30 s
+                # Waiting for the emulator to come up is normal, not an error; only giving up is
+                logger.info("Failed to connect to ADB. Retrying...")
             time.sleep(0.5)
         logger.error("Failed to connect to ADB.")
         return False
