@@ -56,6 +56,39 @@ class Upgrader:
             timeout=timeout
         )
 
+    @staticmethod
+    def _find_green_button(frame, region, word):
+        """Center of the biggest green button in region whose text starts with word (OCR), or (None, None)."""
+        import cv2, numpy as np
+        x1, y1, x2, y2 = region
+        h, w = frame.shape[:2]
+        sec = Frame_Handler.crop(frame, x1, y1, x2, y2).astype(int)
+        green = (sec[..., 1] > 170) & (sec[..., 1] - sec[..., 2] > 60) & (sec[..., 0] < 210)
+        n, _, stats, _ = cv2.connectedComponentsWithStats(green.astype(np.uint8))
+        if n < 2: return None, None
+        i = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+        bx, by, bw, bh, area = stats[i]
+        if area < 5000: return None, None
+        left, top = x1 + bx / w, y1 + by / h
+        texts = OCR_Handler.get_text(Frame_Handler.crop(frame, left, top, left + bw / w, top + bh / h))
+        if not any(t.lower().replace(" ", "").startswith(word) for t in texts): return None, None
+        return left + bw / w / 2, top + bh / h / 2
+
+    def _click_walls_confirm(self, timeout=5):
+        """Several walls at once ask "Upgrade Walls … Cancel / Okay" instead of the Confirm dialog of one wall."""
+        import time
+        start = time.time()
+        while time.time() - start < timeout:
+            frame = Frame_Handler.get_frame(grayscale=False)
+            x, y = self._find_green_button(frame, (0.50, 0.52, 0.75, 0.76), "ok")
+            # The "Confirm Exit" (quit the game) dialog has the same Okay in the same place: check the title
+            title = " ".join(OCR_Handler.get_text(Frame_Handler.crop(frame, 0.30, 0.24, 0.70, 0.37))).lower() if x is not None else ""
+            if x is not None and "upgrade" in title and "confirm" not in title: # OCR: "Upgrade Walis", "Confirm Exxit"
+                Input_Handler.click(x, y)
+                return True
+            time.sleep(0.4)
+        return False
+
     def _click_builder_confirm(self, timeout=5):
         return click_with_timeout(
             lambda: self._find_builder_confirm(),
@@ -808,7 +841,7 @@ class Upgrader:
                 cost = f"{row['cost']:,}".replace(",", ".")
                 logger.info(f"Dry run, not confirming: {count} wall(s) with {resource}, {cost} each")
                 return None
-            if not self._click_home_confirm():
+            if not (self._click_walls_confirm() if count > 1 else self._click_home_confirm()):
                 self._wall_debug("Walls: confirm button not found")
                 return None
             time.sleep(0.5)
