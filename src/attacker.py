@@ -301,7 +301,8 @@ class Attacker:
         slowly in and out like a hand. The recorded sweeps even cut through the village in places: troops only land
         outside the line, so a drift inside only costs a moment. The finger never starts on a HUD button. The outer band
         is the map's edge: a press that starts past it (forest, water) is ignored and the whole sweep drops nothing
-        (21:10, card stayed x60), so the sweep keeps a little inside it."""
+        (21:10, card stayed x60). Emre likes the sweep just past the band (21:17), so it starts inside it (lead_in < 0)
+        and widens over the first part."""
         import numpy as np, random
         for _ in range(12):
             if not self._in_hud(*self._ring_point(ring, start, lead_in)): break
@@ -371,7 +372,7 @@ class Attacker:
         # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
         spots = []
         for side in random.sample(list(self.CORNER_ANGLES), 4):
-            p = self._deploy_points(ring, side, 1, spread=20, margin=0.035)
+            p = self._deploy_points(ring_out, side, 1, spread=20, margin=0.01)
             if p: spots.append((side, p[0]))
         if not spots:
             logger.error("Attack: no visible edge to deploy on")
@@ -383,7 +384,7 @@ class Attacker:
             # After the view moved a side can be hidden (the bottom under the troop bar after the pan back, 20:52: siege
             # and three heroes tapped on the old spot, now inside the village): then the next visible side
             for s in [side] + [s for s in ("left", "right", "top", "bottom") if s != side]:
-                p = self._deploy_points(ring, s, 1, spread=20, margin=0.035)
+                p = self._deploy_points(ring_out, s, 1, spread=20, margin=0.01)
                 if p:
                     if s != side: logger.info(f"{side} is out of sight now, using {s}")
                     return s, p[0]
@@ -467,7 +468,7 @@ class Attacker:
                 if empty.is_set(): break
                 if pans[i]: pan(pans[i])
                 fresh_ring(f"before sweep {i + 1}")
-                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep, margins=(-0.025, 0.0)), seconds, stop=empty.is_set,
+                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep, lead_in=-0.03, margins=(0.0, 0.03)), seconds, stop=empty.is_set,
                                         hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
                 self._pause(troops.get("sweep_pause", [0.25, 0.6]))
         finally:
