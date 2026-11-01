@@ -296,11 +296,12 @@ class Attacker:
         radius = np.interp(angles, np.r_[bins - 360, bins, bins + 360], np.r_[profile, profile, profile]) * 1080
         return (self.EMRE_CENTER[0] * 1920 + shift[0], self.EMRE_CENTER[1] * 1080 + shift[1]), radius
 
-    def _sweep_path(self, ring, start, sweep, lead_in=0.03, margins=(-0.01, 0.01)):
+    def _sweep_path(self, ring, start, sweep, lead_in=0.0, margins=(-0.01, 0.01)):
         """Points of one finger sweep from angle start over sweep degrees along the ring (Emre's outer band), drifting
         slowly in and out like a hand. The recorded sweeps even cut through the village in places: troops only land
-        outside the line, so a drift inside only costs a moment. The finger never starts on a HUD button and starts a
-        little further out (Emre starts at the screen edge)."""
+        outside the line, so a drift inside only costs a moment. The finger never starts on a HUD button. The outer band
+        is the map's edge: a press that starts past it (forest, water) is ignored and the whole sweep drops nothing
+        (21:10, card stayed x60), so the sweep keeps a little inside it."""
         import numpy as np, random
         for _ in range(12):
             if not self._in_hud(*self._ring_point(ring, start, lead_in)): break
@@ -370,7 +371,7 @@ class Attacker:
         # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
         spots = []
         for side in random.sample(list(self.CORNER_ANGLES), 4):
-            p = self._deploy_points(ring_out, side, 1, spread=20, margin=0.01)
+            p = self._deploy_points(ring, side, 1, spread=20, margin=0.035)
             if p: spots.append((side, p[0]))
         if not spots:
             logger.error("Attack: no visible edge to deploy on")
@@ -382,7 +383,7 @@ class Attacker:
             # After the view moved a side can be hidden (the bottom under the troop bar after the pan back, 20:52: siege
             # and three heroes tapped on the old spot, now inside the village): then the next visible side
             for s in [side] + [s for s in ("left", "right", "top", "bottom") if s != side]:
-                p = self._deploy_points(ring_out, s, 1, spread=20, margin=0.01)
+                p = self._deploy_points(ring, s, 1, spread=20, margin=0.035)
                 if p:
                     if s != side: logger.info(f"{side} is out of sight now, using {s}")
                     return s, p[0]
@@ -400,7 +401,7 @@ class Attacker:
 
         def place(name, spot, label):
             """The card is selected: drop it on the spot, a little off every time, further out when the red line refuses it."""
-            for push in (0, 0.03, 0.06):
+            for push in (0, -0.025, 0.03): # in first: past the outer band is off the map (21:10)
                 self._tap(*self._outward(ring, spot, push), spread=0.008)
                 if self._wait_deployed(cards[name], timeout=2.5): return True
                 if self._card_empty(cards[name]): return True # used up (a siege machine already gone)
@@ -466,7 +467,7 @@ class Attacker:
                 if empty.is_set(): break
                 if pans[i]: pan(pans[i])
                 fresh_ring(f"before sweep {i + 1}")
-                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep, margins=(0.0, 0.03)), seconds, stop=empty.is_set,
+                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep, margins=(-0.025, 0.0)), seconds, stop=empty.is_set,
                                         hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
                 self._pause(troops.get("sweep_pause", [0.25, 0.6]))
         finally:
@@ -475,7 +476,7 @@ class Attacker:
         fresh_ring("after the sweeps")
         (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
         if not empty.is_set():
-            self._leftover_troops(ring_out, troop_x, lambda: tap_card(troops["card"]), margins=(0.0, 0.02, 0.04), pause=0.05)
+            self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
 
         if not lead_first: drop_lead()
 
@@ -512,7 +513,7 @@ class Attacker:
             if self._card_deployed(cards[name], frame) or (name.startswith("siege") and self._card_empty(cards[name])): continue
             logger.info(f"{name} did not land on the quick drop, again")
             tap_card(name)
-            if place(name, self._outward(ring_out, spot, 0.02), name) and not name.startswith("siege") and name not in [n for _, n in abilities]:
+            if place(name, spot, name) and not name.startswith("siege") and name not in [n for _, n in abilities]:
                 ability(name)
         self._deselect()
         return battle_start, abilities
