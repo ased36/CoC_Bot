@@ -1733,6 +1733,34 @@ class Input_Handler:
         builder.publish(ADB_Manager.minitouch_device.connection)
 
     @classmethod
+    def drag_path(cls, points, duration, stop=None, pointer=0):
+        """Hold one finger down and move it through points (fractions) at an even speed for duration seconds;
+        lifts early once stop() is true. With a troop card selected a held finger keeps dropping troops (~7 a second)."""
+        import time, numpy as np
+        from pyminitouch import CommandBuilder
+        pts = np.array(points, dtype=float)
+        # Steps of ~60 ms (each publish already sleeps 50 ms); distances in screen proportions (16:9) for an even speed
+        seg = np.r_[0, np.cumsum(np.hypot(np.diff(pts[:, 0]) * 16 / 9, np.diff(pts[:, 1])))]
+        steps = max(int(duration / 0.06), 2)
+        at = np.linspace(0, seg[-1], steps)
+        xs, ys = np.interp(at, seg, pts[:, 0]), np.interp(at, seg, pts[:, 1])
+        conn = ADB_Manager.minitouch_device.connection
+        builder = CommandBuilder()
+        builder.down(pointer, *cls._to_raw(xs[0], ys[0]), 100)
+        builder.publish(conn)
+        start = time.time()
+        try:
+            for i in range(1, steps):
+                if stop is not None and stop(): break
+                builder.move(pointer, *cls._to_raw(xs[i], ys[i]), 100)
+                builder.publish(conn)
+                wait = start + duration * i / (steps - 1) - time.time()
+                if wait > 0: time.sleep(wait)
+        finally:
+            builder.up(pointer)
+            builder.publish(conn)
+
+    @classmethod
     def swipe_up(cls, y1=1.0, y2=0.0, x=1.0, **kwargs):
         cls.swipe(x, y1, x, y2, **kwargs)
 

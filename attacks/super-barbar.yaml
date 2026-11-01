@@ -21,10 +21,10 @@ siege:
   count: 1                # rastgele bir köşeden
 
 heroes:
-  cards: [hero_1, hero_2, hero_3, hero_4]
+  cards: [king, champion, warden, minion_prince, queen]
   gap: [0.25, 0.7]        # iki kahraman arası
   ability_after: [8, 12]  # girdikten bu kadar sonra yetenek
-  ability_now: [hero_2]   # Royal Champion: atılır atılmaz kartına bir daha basılır (yetenek hemen)
+  ability_now: [champion]  # Royal Champion: atılır atılmaz kartına bir daha basılır (yetenek hemen)
 
 end:
   idle_seconds: 20        # ganimet bu kadar değişmezse savaşı bitir

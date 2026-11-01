@@ -1,0 +1,43 @@
+# Stil 2 — yayma (docs/SALDIRI-STILI.md). Emre'nin elle 10 saldırısından çıkarıldı (kayıt X:\CoC\kayit\20261101_185832,
+# 01.11 19:12–19:27). Ordu: 60 süper barbar, kuşatma, King · Queen · Warden · Royal Champion, 11 yarasa büyüsü.
+# Süreler saniye; [a, b] = her seferinde a ile b arasında rastgele; 0,6 gibi tek sayılar = olasılık.
+
+card_to_drop: [0.3, 0.7]   # karta bastıktan sonra sahaya dokunmadan önce (Emre ~0,4–1,1 sn)
+
+troops:
+  card: super_barbarian
+  mode: drag               # parmak basılı, köyün çevresinde sürükleyerek (oyun yalnız kırmızı çizginin dışına bırakır)
+  count: 60
+  per_second: 7.3          # basılı tutunca inen asker (kayıttan ölçüldü: 1,5 sn'de ~11)
+  hold_share: [0.9, 0.96]  # sürükleme kartın bitmesinden biraz önce biter; kalan 2–6 barbar tek tek (Emre de böyle)
+  halves: 0.7              # 10 saldırının 7'sinde iki yarım (üst + alt), 3'ünde tek tur
+  sweep_pause: [0.25, 0.6] # iki yarım arası
+
+siege:
+  card: siege
+  first: 0.8               # kahraman noktasında genelde ilk o
+
+heroes:
+  lead: champion           # tek başına başka bir kenardan, yeteneği hemen
+  lead_first: 0.6          # 10 saldırının 6'sında barbarlardan önce
+  group: [king, queen, warden]   # aynı noktaya, sırası rastgele
+  gap: [0.4, 0.8]
+  ability_now:             # inince hemen yetenek olasılığı
+    champion: 1.0
+    queen: 0.6
+  ability_after:           # yoksa inişten bu kadar sonra (kayıttaki aralıklar)
+    king: [4, 25]
+    queen: [6, 30]
+    warden: [10, 30]
+    champion: [1, 3]
+
+spells:
+  card: bat
+  count: 11
+  on_heroes: 0.85          # kahramanların noktasına (10 saldırının 9'u), yoksa başka bir kenara
+  gap: [0.12, 0.17]        # Emre ~0,15 sn'de bir basıyor
+
+end:
+  after_factor: [0.6, 1.05] # panel "Saldırıyı bitir" × bu (60 → 36–63 sn; Emre 29–65 sn'de teslim oldu)
+  idle_seconds: 20          # ganimet bu kadar değişmezse savaşı bitir
+  max_seconds: 180

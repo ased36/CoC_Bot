@@ -132,7 +132,14 @@ class Attacker:
     # 🃏 Scripted attack (attacks/<style>.yaml, docs/SALDIRI-STILI.md)
     # ============================================================
 
-    CARD_Y = 0.905 # middle of the troop bar cards at 1920x1080
+    # The troop bar cards change size: with empty slots shown (19:15, 8 cards + 3 slots) they are ~0.8 of the
+    # pictures in assets/attacker/cards. Card middle and health bar move with the size (measured at 1.0 and 0.8)
+    CARD_SCALES = (0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05)
+    card_scale = 1.0
+
+    @property
+    def CARD_Y(self): # middle of the troop bar cards at 1920x1080
+        return 0.905 + (1 - self.card_scale) * 0.075
 
     def _card_templates(self):
         import os, cv2
@@ -142,32 +149,40 @@ class Attacker:
         return self._cards
 
     def _find_cards(self, frame):
-        """{card name: x of its center} for the cards in the troop bar; clan castle cards come after ours, so the leftmost match wins."""
+        """{card name: x of its center} for the cards in the troop bar; clan castle cards come after ours, so the leftmost match wins.
+        The card size is the one where the three best matching cards match best (a selected card is raised and a
+        used up one is gray, so no single card decides), then every card is looked for at that size."""
         import cv2, numpy as np
         bar = frame[int(frame.shape[0] * 0.80):]
+        tpls = self._card_templates()
+        def scaled(tpl, s): return cv2.resize(tpl, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
+        def fit(s): return sum(sorted(cv2.matchTemplate(bar, scaled(t, s), cv2.TM_CCOEFF_NORMED).max() for t in tpls.values())[-3:])
+        self.card_scale = max(self.CARD_SCALES, key=fit)
         found = {}
-        for name, tpl in self._card_templates().items():
-            res = cv2.matchTemplate(bar, tpl, cv2.TM_CCOEFF_NORMED)
-            xs = np.nonzero(res.max(axis=0) >= 0.9)[0]
-            if len(xs): found[name] = (xs.min() + tpl.shape[1] / 2) / frame.shape[1]
+        for name, tpl in tpls.items():
+            t = scaled(tpl, self.card_scale)
+            res = cv2.matchTemplate(bar, t, cv2.TM_CCOEFF_NORMED)
+            xs = np.nonzero(res.max(axis=0) >= 0.85)[0]
+            if len(xs): found[name] = (xs.min() + t.shape[1] / 2) / frame.shape[1]
         # The siege card changes its picture (machine, "!"), but it always sits between the troops and the first hero
-        troop, hero = found.get("super_barbarian"), found.get("hero_1")
-        if not any(n.startswith("siege") for n in found) and troop and hero and hero - troop > 0.12:
+        troop, hero = found.get("super_barbarian"), found.get("king")
+        if not any(n.startswith("siege") for n in found) and troop and hero and hero - troop > 0.1:
             found["siege"] = (troop + hero) / 2
         return found
 
-    @staticmethod
-    def _card_empty(x):
+    def _card_empty(self, x):
         # A used up card turns gray
-        section = Frame_Handler.get_frame_section(x - 0.01, 0.89, x + 0.01, 0.91, grayscale=False).astype(int)
+        y = self.CARD_Y
+        section = Frame_Handler.get_frame_section(x - 0.01, y - 0.01, x + 0.01, y + 0.01, grayscale=False).astype(int)
         return (abs(section[..., 0] - section[..., 1]).max() < 8) and (abs(section[..., 1] - section[..., 2]).max() < 8)
 
-    @staticmethod
-    def _card_deployed(x, frame=None):
-        # A siege machine or hero on the field shows a health bar above its card (~850 green pixels at full health, 0 before)
+    def _card_deployed(self, x, frame=None):
+        # A siege machine or hero on the field shows a health bar above its card (~850 green pixels at full health and
+        # size 1.0, 0 before). The bar is at 0.795-0.815 for size 1.0 and 0.837-0.845 for 0.8
         if frame is None: frame = Frame_Handler.get_frame(grayscale=False)
-        s = Frame_Handler.crop(frame, x - 0.02, 0.795, x + 0.02, 0.815).astype(int)
-        return int(((s[..., 1] > 150) & (s[..., 1] - s[..., 0] > 50) & (s[..., 1] - s[..., 2] > 50)).sum()) > 400
+        y = 0.805 + (1 - self.card_scale) * 0.18
+        s = Frame_Handler.crop(frame, x - 0.02, y - 0.01, x + 0.02, y + 0.01).astype(int)
+        return int(((s[..., 1] > 150) & (s[..., 1] - s[..., 0] > 50) & (s[..., 1] - s[..., 2] > 50)).sum()) > 400 * self.card_scale
 
     def _wait_deployed(self, x, timeout=2.0):
         # The bar shows up a moment after the drop (the hero or machine walks in)
@@ -217,34 +232,234 @@ class Attacker:
         with open(Asset_Manager.resource_path(f"attacks/{name}.yaml"), encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-    def scripted_attack(self, style_name="super-barbar", restart=True):
-        """Play an attack style on the village on screen (search screen, nothing deployed yet). Returns True when back home."""
-        import time, random, cv2, datetime
-        style = self.load_style(style_name)
-        shots = DEBUG_DIR / "attacks" / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        shots.mkdir(parents=True, exist_ok=True)
-        def shot(name):
-            cv2.imwrite(str(shots / f"{name}.png"), cv2.cvtColor(Frame_Handler.get_frame(grayscale=False), cv2.COLOR_RGB2BGR))
+    def _leftover_troops(self, ring, troop_x, select_card):
+        """Troops a tap or a drag could not drop (red area): select the card again and drop them one by one further out.
+        Whole visible edges, not only corners, further out each round, until the card is empty (at most 60 taps).
+        The bottom corner can stay hidden even after the view moved (18:47: 0 points, 30 troops left)"""
+        import time, random
+        time.sleep(0.4)
+        if self._card_empty(troop_x): return
+        visible = [c for c in self.CORNER_ANGLES if c != "bottom"]
+        select_card()
+        n = 0
+        for margin in (0.06, 0.09, 0.12):
+            extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=60, margin=margin)]
+            random.shuffle(extra)
+            for x, y in extra:
+                time.sleep(0.25)
+                if self._card_empty(troop_x) or n >= 60: break
+                self._tap(x, y)
+                n += 1
+            if self._card_empty(troop_x) or n >= 60: break
+        logger.info(f"Leftover troops: {n} more taps, card {'empty' if self._card_empty(troop_x) else 'still not empty'}")
 
-        for _ in range(3):
-            Input_Handler.zoom(dir="out")
-            time.sleep(0.4)
-        time.sleep(0.6)
-        frame = Frame_Handler.get_frame(grayscale=False)
-        cv2.imwrite(str(shots / "start.png"), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-        ring = self._deploy_ring(frame)
-        cards = self._find_cards(frame)
-        logger.info(f"Attack {style_name}: cards {', '.join(sorted(cards)) or 'none'}")
-        troops = style.get("troops", {})
-        if ring is None or troops.get("card") not in cards:
-            logger.error("Attack aborted: deploy line or troop card not found")
-            self._leave_search() # nothing deployed yet, so this costs nothing
-            return False
+    # Where a held finger may go: inside the screen, above the troop bar
+    SAFE_BOX = (0.03, 0.06, 0.97, 0.78)
 
+    def _ring_point(self, ring, angle, margin):
+        """Screen point at angle (0 right, 90 bottom, 180 left, 270 top) margin (part of the screen width) outside the red line."""
+        import numpy as np
+        (cx, cy), radius = ring
+        r = radius[int(round(angle / 2)) % 180] + margin * 1920
+        x, y = (cx + r * np.cos(np.radians(angle))) / 1920, (cy + r * np.sin(np.radians(angle))) / 1080
+        x1, y1, x2, y2 = self.SAFE_BOX
+        return min(max(x, x1), x2), min(max(y, y1), y2)
+
+    def _outward(self, ring, point, push):
+        """point moved push (part of the screen width) further away from the village center."""
+        import numpy as np
+        (cx, cy), _ = ring
+        x, y = point[0] * 1920, point[1] * 1080
+        d = max(np.hypot(x - cx, y - cy), 1)
+        x, y = (x + (x - cx) / d * push * 1920) / 1920, (y + (y - cy) / d * push * 1920) / 1080
+        x1, y1, x2, y2 = self.SAFE_BOX
+        return min(max(x, x1), x2), min(max(y, y1), y2)
+
+    def _sweep_path(self, ring, start, sweep, lead_in=0.05):
+        """Points of one finger sweep around the village from angle start over sweep degrees, just outside the red line,
+        drifting slowly in and out like a hand. The recorded sweeps even cut through the village in places: troops only
+        land outside the line, so a drift inside only costs a moment. The finger never starts on a HUD button.
+        It starts well away from the village and comes in over the first part (Emre starts at the screen edge): a press
+        on the red area or a building moved the view instead of dropping troops (20:04, 11 of 60 dropped)."""
+        import numpy as np, random
+        for _ in range(12):
+            if not self._in_hud(*self._ring_point(ring, start, 0.04 + lead_in)): break
+            start += 8 if sweep > 0 else -8
+        phase, waves, base = random.uniform(0, 2 * np.pi), random.uniform(1.5, 3), random.uniform(0.03, 0.045)
+        n = max(int(abs(sweep) / 5), 8)
+        def margin(i): return base + 0.012 * np.sin(phase + waves * 2 * np.pi * i / n) + lead_in * max(0.0, 1 - i / (0.15 * n))
+        return [self._ring_point(ring, start + sweep * i / n, margin(i)) for i in range(n + 1)]
+
+    def _watch_empty(self, x, shots=None):
+        """Watch a card from a second thread while a finger is held (a frame takes too long to look between finger steps).
+        Returns (empty, done) events: empty is set once the card is gray, set done to stop watching.
+        With shots, the frames it looks at are kept too (what the field did during the hold)."""
+        import threading, time, cv2
+        empty, done = threading.Event(), threading.Event()
+        t0 = time.time()
+        def run():
+            n = 0
+            while not done.is_set() and not empty.is_set():
+                try:
+                    if self._card_empty(x): empty.set()
+                    if shots is not None and n < 40:
+                        cv2.imwrite(str(shots / f"hold_{int((time.time() - t0) * 1000):05d}.png"), cv2.cvtColor(Frame_Handler.cached_frame, cv2.COLOR_RGB2BGR))
+                        n += 1
+                except Exception:
+                    return
+                time.sleep(0.05)
+        threading.Thread(target=run, daemon=True).start()
+        return empty, done
+
+    @staticmethod
+    def _view_shift(a, b):
+        """How far the view moved between two frames (dx, dy in pixels), from the field above the troop bar."""
+        import cv2, numpy as np
+        def prep(f): return cv2.resize(cv2.cvtColor(f[:int(f.shape[0] * 0.78)], cv2.COLOR_RGB2GRAY), None, fx=0.25, fy=0.25).astype(np.float32)
+        (dx, dy), _ = cv2.phaseCorrelate(prep(a), prep(b))
+        return dx * 4, dy * 4
+
+    def _deploy_spread(self, style, ring, cards, shots):
+        """Emre's attack (recorded 01.11 19:12-19:27, docs/SALDIRI-STILI.md Stil 2, attacks/yayma.yaml): the Royal Champion
+        alone on one side with her ability at once, the troops spread by holding the finger and sweeping around the
+        village, then the siege machine and the other heroes on one spot, the bat spells on the same spot.
+        Returns (first drop time, abilities)."""
+        import time, random
+        troops, heroes, spells, siege = (style.get(k) or {} for k in ("troops", "heroes", "spells", "siege"))
         def tap_card(name):
             self._tap(cards[name], self.CARD_Y, spread=0.006)
-            time.sleep(random.uniform(0.08, 0.2))
+            self._pause(style.get("card_to_drop", [0.3, 0.7]))
 
+        # The view can move during the attack: the line and the spots are looked at again from a fresh frame
+        last = {"frame": Frame_Handler.get_frame(grayscale=False)}
+        def fresh_ring(label):
+            nonlocal ring
+            frame = Frame_Handler.get_frame(grayscale=False)
+            dx, dy = self._view_shift(last["frame"], frame)
+            if abs(dx) > 15 or abs(dy) > 15: logger.warning(f"View moved {dx:+.0f}, {dy:+.0f} px ({label})")
+            last["frame"] = frame
+            ring = self._deploy_ring(frame) or ring
+
+        # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
+        spots = []
+        for side in random.sample(list(self.CORNER_ANGLES), 4):
+            p = self._deploy_points(ring, side, 1, spread=20)
+            if p: spots.append((side, p[0]))
+        if not spots:
+            logger.error("Attack: no visible edge to deploy on")
+            return time.time(), []
+        hero_side, hero_spot = spots[0]
+        lead_side, lead_spot = spots[1] if len(spots) > 1 else spots[0]
+        logger.info(f"Heroes {hero_side}, champion {lead_side}")
+        def spot_again(side, old):
+            p = self._deploy_points(ring, side, 1, spread=20)
+            return p[0] if p else old
+
+        abilities = []
+        def ability(name):
+            # Right after the drop (champion always, queen often) or later on its own random delay
+            if random.random() < heroes.get("ability_now", {}).get(name, 0):
+                self._pause([0.3, 0.8])
+                self._tap(cards[name], self.CARD_Y, spread=0.006)
+                logger.info(f"{name}: ability used right after the drop")
+            else:
+                abilities.append((time.time() + random.uniform(*heroes.get("ability_after", {}).get(name, [8, 12])), name))
+
+        def place(name, spot, label):
+            """The card is selected: drop it on the spot, a little off every time, further out when the red line refuses it."""
+            for push in (0, 0.03, 0.06):
+                self._tap(*self._outward(ring, spot, push), spread=0.008)
+                if self._wait_deployed(cards[name], timeout=2.5): return True
+                if self._card_empty(cards[name]): return True # used up (a siege machine already gone)
+                logger.info(f"{label} did not land, trying further out")
+            logger.warning(f"{label} could not be deployed")
+            return False
+
+        lead = heroes.get("lead")
+        battle_start = None
+        def drop_lead():
+            nonlocal battle_start
+            if lead in cards and not self._card_deployed(cards[lead]):
+                tap_card(lead)
+                battle_start = battle_start or time.time()
+                if place(lead, lead_spot, lead): ability(lead)
+                self._pause(heroes.get("gap", [0.4, 0.8]))
+        lead_first = random.random() < heroes.get("lead_first", 0.6)
+        if lead_first: drop_lead()
+
+        # Troops: hold and sweep (~7 troops a second while held). Two halves (top then bottom, or the other way, from the
+        # left or the right) or one whole round. The hold ends a little before the card would run out; a second thread
+        # lifts the finger earlier if the army is smaller (the next card would be selected); the rest go one by one
+        troop_x = cards[troops["card"]]
+        tap_card(troops["card"])
+        hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
+        jitter = lambda: random.uniform(-12, 12)
+        if random.random() < troops.get("halves", 0.7):
+            s1 = random.choice((0, 180))
+            top_first = random.random() < 0.5
+            # top half from the left: 180 -> 360 over 270; from the right: 0 -> -180. Bottom half the other way round
+            def half(s, top): return s + jitter(), (180 if (s == 180) == top else -180) + jitter()
+            first = half(s1, top_first)
+            sweeps = [first, half(180 - s1, not top_first)]
+            share = random.uniform(0.45, 0.55)
+            times = [hold * share, hold * (1 - share)]
+        else:
+            sweeps = [(random.choice((0, 180, 270)) + jitter(), random.choice((360, -360)))]
+            times = [hold]
+        empty, done = self._watch_empty(troop_x, shots)
+        battle_start = battle_start or time.time()
+        try:
+            for i, ((start, sweep), seconds) in enumerate(zip(sweeps, times)):
+                if empty.is_set(): break
+                fresh_ring(f"before sweep {i + 1}")
+                Input_Handler.drag_path(self._sweep_path(ring, start, sweep), seconds, stop=empty.is_set)
+                self._pause(troops.get("sweep_pause", [0.25, 0.6]))
+        finally:
+            done.set()
+        logger.info(f"Troops: {len(sweeps)} sweep(s), {hold:.1f}s held{', card ran out' if empty.is_set() else ''}")
+        fresh_ring("after the sweeps")
+        hero_spot, lead_spot = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
+        self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]))
+
+        if not lead_first: drop_lead()
+
+        # Siege machine (usually first) and the other heroes on the heroes' spot. The siege card is tapped once only:
+        # a second tap unloads it early
+        group = [h for h in heroes.get("group", []) if h in cards]
+        random.shuffle(group)
+        siege_card = next((c for c in sorted(cards) if siege and c.startswith(siege.get("card", "-"))), None)
+        if siege_card:
+            group.insert(0 if random.random() < siege.get("first", 0.8) else random.randint(1, len(group)), siege_card)
+        fresh_ring("before the heroes")
+        hero_spot = spot_again(hero_side, hero_spot)
+        for name in group:
+            if self._card_deployed(cards[name]):
+                logger.info(f"{name} already on the field, its card is not touched")
+                continue
+            tap_card(name)
+            if place(name, hero_spot, name) and not name.startswith("siege"): ability(name)
+            self._pause(heroes.get("gap", [0.4, 0.8]))
+
+        # Bat spells: quick taps on the heroes' spot (sometimes another side), drifting a little along the edge.
+        # Only the last few taps look at the card: once it runs out the game selects the clan castle spell
+        if spells.get("card") in cards:
+            side, spot = (hero_side, hero_spot) if random.random() < spells.get("on_heroes", 0.85) or len(spots) < 2 else random.choice(spots[1:])
+            count, x_spell = spells.get("count", 11), cards[spells["card"]]
+            dx, dy = random.uniform(-0.03, 0.03), random.uniform(-0.03, 0.03)
+            tap_card(spells["card"])
+            for i in range(count + 3):
+                if i >= count - 2 and self._card_empty(x_spell): break
+                t = i / max(count - 1, 1)
+                self._tap(spot[0] + dx * t, spot[1] + dy * t, spread=0.005)
+                self._pause(spells.get("gap", [0.12, 0.17]))
+            logger.info(f"Spells: {spells['card']} on {side}")
+        self._deselect()
+        return battle_start, abilities
+
+    def _deploy_corners(self, style, ring, cards, tap_card):
+        """Corner style (attacks/super-barbar.yaml): per_corner taps on each corner, then siege and heroes. Returns (first drop time, abilities)."""
+        import time, random
+        troops = style.get("troops", {})
         corners = random.sample(list(self.CORNER_ANGLES), troops.get("corners", 4))
         battle_start = time.time() # the end timer counts from the first drop (deploying takes ~25 s)
 
@@ -297,24 +512,7 @@ class Attacker:
             tap_card(troops["card"])
             for corner, points in plan.items():
                 if not drop(points): break
-        # Troops a tap could not drop (red area): select the card again and drop them one by one further out
-        time.sleep(0.4)
-        if not self._card_empty(troop_x):
-            # Whole visible edges, not only corners, further out each round, until the card is empty (at most 60 taps).
-            # The bottom corner can stay hidden even after the view moved (18:47: 0 points, 30 troops left)
-            visible = [c for c in self.CORNER_ANGLES if c != "bottom"]
-            tap_card(troops["card"])
-            n = 0
-            for margin in (0.06, 0.09, 0.12):
-                extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=60, margin=margin)]
-                random.shuffle(extra)
-                for x, y in extra:
-                    time.sleep(0.25)
-                    if self._card_empty(troop_x) or n >= 60: break
-                    self._tap(x, y)
-                    n += 1
-                if self._card_empty(troop_x) or n >= 60: break
-            logger.info(f"Leftover troops: {n} more taps, card {'empty' if self._card_empty(troop_x) else 'still not empty'}")
+        self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]))
         self._deselect()
 
         def place(x_card, corner, label):
@@ -359,10 +557,45 @@ class Attacker:
                 abilities.append((time.time() + random.uniform(*heroes.get("ability_after", [8, 12])), name))
             self._pause(heroes.get("gap", [0.25, 0.7]))
         self._deselect()
+        return battle_start, abilities
+
+    def scripted_attack(self, style_name="yayma", restart=True):
+        """Play an attack style on the village on screen (search screen, nothing deployed yet). Returns True when back home."""
+        import time, random, cv2, datetime
+        style = self.load_style(style_name)
+        shots = DEBUG_DIR / "attacks" / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        shots.mkdir(parents=True, exist_ok=True)
+        def shot(name):
+            cv2.imwrite(str(shots / f"{name}.png"), cv2.cvtColor(Frame_Handler.get_frame(grayscale=False), cv2.COLOR_RGB2BGR))
+
+        for _ in range(3):
+            Input_Handler.zoom(dir="out")
+            time.sleep(0.4)
+        time.sleep(0.6)
+        frame = Frame_Handler.get_frame(grayscale=False)
+        cv2.imwrite(str(shots / "start.png"), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        ring = self._deploy_ring(frame)
+        cards = self._find_cards(frame)
+        logger.info(f"Attack {style_name}: cards {', '.join(sorted(cards)) or 'none'}")
+        troops = style.get("troops", {})
+        if ring is None or troops.get("card") not in cards:
+            logger.error("Attack aborted: deploy line or troop card not found")
+            self._leave_search() # nothing deployed yet, so this costs nothing
+            return False
+
+        def tap_card(name):
+            self._tap(cards[name], self.CARD_Y, spread=0.006)
+            time.sleep(random.uniform(0.08, 0.2))
+
+        if troops.get("mode") == "drag": # Emre's spread attack (attacks/yayma.yaml)
+            battle_start, abilities = self._deploy_spread(style, ring, cards, shots)
+        else:
+            battle_start, abilities = self._deploy_corners(style, ring, cards, tap_card)
         shot("deployed")
 
         # Battle: abilities on time, end when the loot stops moving, then Return Home
         end = style.get("end", {})
+        end_factor = random.uniform(*end.get("after_factor", [1, 1])) # not the same second every battle
         start, last_change, last_loot, n = time.time(), time.time(), None, 0
         while time.time() - start < end.get("max_seconds", 180):
             for due, name in sorted(abilities):
@@ -371,7 +604,7 @@ class Attacker:
                     abilities.remove((due, name))
             if self._click_button("return_home", timeout=0.3):
                 break
-            end_after = Settings_Handler.get("attack", "end_after", 60) or 0
+            end_after = round((Settings_Handler.get("attack", "end_after", 60) or 0) * end_factor)
             timed_out = end_after > 0 and time.time() - battle_start >= end_after
             if not timed_out: # reading the loot takes ~3 s, not needed once the time is up
                 loot, _ = self._read_loot()
@@ -847,7 +1080,7 @@ class Attacker:
             
             # Find a village worth attacking, then attack it
             if self.search(Settings_Handler.get_section("attack")) is not None:
-                self.scripted_attack("super-barbar", restart=restart)
+                self.scripted_attack("yayma", restart=restart)
             elif not in_home_base():
                 start_coc() # reset in case stuck on find a match screen
         

@@ -69,7 +69,58 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 
 ---
 
-## Stil 2 — (ad)
+## Stil 2 — Yayma (01.11, betik: `attacks/yayma.yaml`, botun şu anki stili)
+
+Emre'nin elle 10 saldırısından çıkarıldı (kayıt `X:\CoC\kayit\20261101_185832`, 19:12–19:27; notlarda 9 yazıyor,
+19:19'daki notta yok). Rakamlar kayıttan ölçüldü.
+
+### Ordu
+
+60 süper barbar, kuşatma, King · Queen · Warden · Royal Champion (Minion Prince çıktı, Queen girdi), **11 yarasa büyüsü**
+(yıldırım çıktı), klan büyüsü (x2) — dokunulmaz.
+
+### Arama
+
+Altın ≥ 700 000 **ve** iksir ≥ 600 000 (Emre 3A). Saldırılan 10 köyün en zayıfı 755 k / 624 k; geçilen 5 köyün en iyisi
+681 k / 104 k (diğerleri 444 k / 259 k, 344 k / 337 k, 73 k / 140 k, 47 k / 66 k). Ölü köy aranmıyor, ganimete bakılıyor.
+
+### Giriş
+
+| Satır | Kayıtta | Bot |
+|---|---|---|
+| Royal Champion | tek başına bir kenara, yeteneği hemen; 10'un 6'sında barbarlardan önce; kahraman grubundan farklı kenar (9/10) | aynı |
+| Barbarlar | **parmak basılı sürükleyerek** köyün çevresine; 7 saldırıda iki yarım (üst + alt, 3,4–5,3 sn), 3'ünde tek tur (6,3–8,5 sn); sürükleme ekranın kenarından başlıyor, yer yer köyün içinden geçiyor | aynı; süre = 60 ÷ 7,3 × %90–96 |
+| Basılı tutma hızı | 1,5 sn'de ~11 barbar (~7,3/sn), sabit | — |
+| Kalan barbar | 4 saldırıda sürükleme sonrası kenarda tek tek dokunuş | kalan adımı |
+| Kuşatma + King, Queen, Warden | hepsi **aynı noktaya**, 0,5–0,8 sn arayla; kuşatma çoğunlukla ilk | aynı |
+| Görüntü | bazen asker atmadan önce görüntüyü hafifçe kaydırıyor | yok |
+
+### Büyüler
+
+11 yarasa **kahramanların noktasına** (10'un 9'u), 0,13–0,16 sn arayla hızlı dokunuş, nokta kenar boyunca biraz kayıyor.
+
+### Kahramanlar
+
+| Yetenek | Kayıtta (inişten sonra) | Bot |
+|---|---|---|
+| Royal Champion | hemen | hemen |
+| Queen | 10'un 6'sında hemen, diğerlerinde 6–48 sn | %60 hemen, yoksa 6–30 sn |
+| King | 4–33 sn | 4–25 sn |
+| Warden | 10–36 sn | 10–30 sn |
+
+### Savaş sonu
+
+Emre ilk askerden 29–65 sn sonra teslim oluyor (Surrender → Okay → Return Home). Bot: paneldeki "Saldırıyı bitir" (60)
+× 0,6–1,05 = 36–63 sn.
+
+### Kart çubuğu
+
+Bu orduda çubuk boş yuvalar gösteriyor, kartlar eski resimlerin ~0,8'i kadar → kartlar çok ölçekli aranıyor; can çubuğu
+ve gri kart kontrolü ölçeğe göre. Yarasa ve Queen kart resimleri kayıttaki 10 arama ekranının ortalamasından.
+
+---
+
+## Stil 3 — (ad)
 
 ### Ordu
 ### Arama
