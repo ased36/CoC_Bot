@@ -96,7 +96,7 @@ class Attacker:
         return (cx, cy), radius
 
     def _deploy_points(self, ring, corner, n, spread=35, margin=0.035):
-        """n screen points just outside the red line around a corner, spread over both of its edges."""
+        """n screen points just outside the red line around a corner (name, or an angle in degrees), spread over both of its edges."""
         import numpy as np
         (cx, cy), radius = ring
         h, w = 1080, 1920 # ring is measured on 1920x1080 frames
@@ -104,7 +104,7 @@ class Attacker:
         # The bottom corner sits under the troop bar: widen the spread onto its two visible edges until n points fit
         for width in (spread, spread + 20, spread + 35):
             for _ in range(n * 10):
-                a = self.CORNER_ANGLES[corner] + np.random.uniform(-width, width)
+                a = (corner if isinstance(corner, (int, float)) else self.CORNER_ANGLES[corner]) + np.random.uniform(-width, width)
                 edge = radius[int(round(a / 2)) % 180]
                 ex, ey = (cx + edge * np.cos(np.radians(a))) / w, (cy + edge * np.sin(np.radians(a))) / h
                 # Where the hull ends at a HUD box or the screen edge the real line is hidden further out: no safe point there
@@ -232,7 +232,7 @@ class Attacker:
         with open(Asset_Manager.resource_path(f"attacks/{name}.yaml"), encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-    def _leftover_troops(self, ring, troop_x, select_card, margins=(0.06, 0.09, 0.12), pause=0.25):
+    def _leftover_troops(self, ring, troop_x, select_card, margins=(0.06, 0.09, 0.12), pause=0.25, around=None, spread=60):
         """Troops a tap or a drag could not drop (red area): select the card again and drop them one by one further out.
         Whole visible edges, not only corners, further out each round, until the card is empty (at most 60 taps).
         The bottom corner can stay hidden even after the view moved (18:47: 0 points, 30 troops left).
@@ -241,11 +241,11 @@ class Attacker:
         import time, random
         time.sleep(0.4)
         if self._card_empty(troop_x): return
-        visible = [c for c in self.CORNER_ANGLES if c != "bottom"]
+        visible = around or [c for c in self.CORNER_ANGLES if c != "bottom"]
         select_card()
         n = 0
         for margin in margins:
-            extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=60, margin=margin)]
+            extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=spread, margin=margin)]
             random.shuffle(extra)
             for x, y in extra:
                 time.sleep(pause)
@@ -468,8 +468,15 @@ class Attacker:
         def spot_again(side, old):
             # After the view moved a side can be hidden (the bottom under the troop bar after the pan back, 20:52: siege
             # and three heroes tapped on the old spot, now inside the village): then the next visible side
+            if red:
+                # Middle of a side, the side nearest the old one first (corners can be off the map, 23:03)
+                first = {"right": 315, "left": 225, "top": random.choice((225, 315)), "bottom": 45}.get(side, 315)
+                for a in [first] + [a for a in (315, 225, 45, 135) if a != first]:
+                    p = self._deploy_points(red, a, 1, spread=15, margin=0.03)
+                    if p: return side, p[0]
+                return side, old
             for s in [side] + [s for s in ("left", "right", "top", "bottom") if s != side]:
-                p = self._deploy_points(red, s, 1, spread=20, margin=0.03) if red else self._deploy_points(ring_out, s, 1, spread=20, margin=0.01)
+                p = self._deploy_points(ring_out, s, 1, spread=20, margin=0.01)
                 if p:
                     if s != side: logger.info(f"{side} is out of sight now, using {s}")
                     return s, p[0]
@@ -546,8 +553,10 @@ class Attacker:
             centers = random.sample([225, 315], 2) + random.sample([45, 135], 2)
             sweeps = []
             for c in centers:
-                d = random.choice((1, -1))
-                sweeps.append((c - d * 45 + random.uniform(-4, 4), d * 90))
+                # The middle of each side, where the band is widest: a big village reaches the map's corners and a
+                # corner to corner sweep dropped little there (23:02: 60 -> 45 in four sweeps)
+                d, width = random.choice((1, -1)), random.uniform(45, 60)
+                sweeps.append((c - d * width / 2 + random.uniform(-4, 4), d * width))
             times = [k / rate for k in counts]
             pans = [None, None, -troops.get("pan_by", 0.3), None]
         elif use_pan or random.random() < troops.get("halves", 0.7):
@@ -587,7 +596,10 @@ class Attacker:
         fresh_ring("after the sweeps")
         (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
         if not empty.is_set():
-            self._leftover_troops(red or ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.03, 0.05, 0.07) if red else (0.035, 0.055, 0.015), pause=0.05)
+            if red:
+                self._leftover_troops(red, troop_x, lambda: tap_card(troops["card"]), margins=(0.03, 0.05, 0.07), pause=0.05, around=[225, 315, 45, 135], spread=25)
+            else:
+                self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
 
         if not lead_first: drop_lead()
 
@@ -769,6 +781,8 @@ class Attacker:
         # Battle: abilities on time, end when the loot stops moving, then Return Home
         end = style.get("end", {})
         end_factor = random.uniform(*end.get("after_factor", [1, 1])) # not the same second every battle
+        # Emre 23:04: once the gold and elixir left in the village are both under ~50-70 k, leave at once
+        loot_floor = random.uniform(*end["loot_left"]) if end.get("loot_left") else 0
         start, last_change, last_loot, n = time.time(), time.time(), None, 0
         while time.time() - start < end.get("max_seconds", 180):
             for due, name in sorted(abilities):
@@ -779,11 +793,14 @@ class Attacker:
                 break
             end_after = round((Settings_Handler.get("attack", "end_after", 60) or 0) * end_factor)
             timed_out = end_after > 0 and time.time() - battle_start >= end_after
+            loot_gone = False
             if not timed_out: # reading the loot takes ~3 s, not needed once the time is up
                 loot, _ = self._read_loot()
                 if None not in loot.values() and loot != last_loot: last_loot, last_change = loot, time.time()
-            if (time.time() - last_change >= end.get("idle_seconds", 20) or timed_out) and not abilities:
-                if timed_out: logger.info(f"{end_after}s after the first drop, ending the battle")
+                loot_gone = loot_floor > 0 and None not in (loot["gold"], loot["elixir"]) and max(loot["gold"], loot["elixir"]) < loot_floor
+            if loot_gone or ((time.time() - last_change >= end.get("idle_seconds", 20) or timed_out) and not abilities):
+                if loot_gone: logger.info(f"Loot left under {int(loot_floor):,}, ending the battle".replace(",", "."))
+                elif timed_out: logger.info(f"{end_after}s after the first drop, ending the battle")
                 else: logger.info(f"Loot unchanged for {end.get('idle_seconds', 20)}s, ending the battle")
                 if self._click_button("surrender", timeout=2) or self._click_button("end_battle", timeout=2):
                     time.sleep(1)

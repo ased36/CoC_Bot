@@ -43,5 +43,6 @@ spells:
 
 end:
   after_factor: [0.6, 1.05] # panel "Saldırıyı bitir" × bu (60 → 36–63 sn; Emre 29–65 sn'de teslim oldu)
+  loot_left: [50000, 70000] # Emre 23:04: köyde kalan altın ve iksirin ikisi de bunun altına inince hemen teslim
   idle_seconds: 20          # ganimet bu kadar değişmezse savaşı bitir
   max_seconds: 180
