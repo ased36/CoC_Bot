@@ -240,3 +240,10 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 - **Duvar seviyeleri:** panelde "Hangi seviyeler" 1–18 (`walls.levels`, boş = her seviye). **Bot tarafı henüz yok** — seçili duvarın seviyesinin ekranda nerede yazdığı ölçülecek (betik scratchpad `duvar_olc.py`, Geliştir'e basmaz).
 - **Duvar / çırak / asistan artık tek başına çalışır:** `coc_bot.py` geliştirme adımını Binalar + Lab + Pet kapalı olsa da duvar açıksa ya da çırak / asistan açıksa çalıştırır; Başlat özetindeki "çalışmaz" uyarısı kalktı.
 - **Bot açılmıyordu (15:10, `psutil.AccessDenied pid=19772`):** önbellekteki BlueStacks pid'i kapanmış bir BlueStacks'ten kalmıştı, Windows numarayı korumalı bir sürece vermişti → `wake()` erişim hatasıyla açılışı düşürdü. Düzeltme: `_Emulator_Manager.pid` numaranın süreç adını doğrular (BlueStacks `HD-Player.exe`), uymazsa yok sayar ve çalışan HD-Player'ı adından bulur; `wake` / `sleep` AccessDenied'ı yutar. Salt okuma denemesi: eski pid yok sayıldı, BlueStacks kapalı görüldü.
+
+## Klan kalesi doldurma — Emre'nin kararları (01.11, 15:15)
+
+- **1A:** her tur başında (saldırıdan önce) klan kalesi boşsa: **Klan Kalesi Pastası etkinse ücretsiz doldur**, değilse **klana istek at**.
+- **2:** saldırı değişmez — klan askerleri kuşatma makinesinin içinde gidiyor, makine patlayınca iniyor (yani kale zaten kullanılıyor, her saldırıdan sonra boşalıyor).
+- **3A:** pastayı Emre kendisi etkinleştirir (1 saat); bot yalnız etkin olduğu sürede ücretsiz doldurur, pastayı kendisi harcamaz.
+- **Sırada:** bot kapalıyken ölçüm — ordu ekranı, klan kalesi bölümü, "Request" düğmesi, pasta etkinken doldurma düğmesi (hiçbirine basılmaz). Aynı ölçümde duvar seviyesi (`duvar_olc.py`). Sonra kod + Emre onayıyla canlı tur.
