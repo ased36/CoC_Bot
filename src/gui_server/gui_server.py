@@ -250,8 +250,9 @@ def handle_report(id):
                 stats[key] += 1
                 instance.add_event(f"Geliştirme başladı: {data.get('name', '?')} ({label})")
         elif kind == "wall":
-            stats["walls"] += 1
-            instance.add_event("Duvar geliştirildi")
+            count = int(data.get("count", 1) or 1)
+            stats["walls"] += count
+            instance.add_event(f"{count} duvar geliştirildi" if count > 1 else "Duvar geliştirildi")
         elif kind == "attack":
             base = data.get("base")
             if base in ("home", "builder"):

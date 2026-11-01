@@ -681,51 +681,33 @@ class Upgrader:
         import re
         frame = Frame_Handler.get_frame(grayscale=False)
         for text in OCR_Handler.get_text(Frame_Handler.crop(frame, 0.15, 0.45, 0.80, 0.72)):
-            m = re.search(r"wall.*level\s*(\d+)", text.lower())
+            text = text.lower().replace("i", "1").replace("|", "1").replace("o", "0")
+            m = re.search(r"wa(?:ll|11).*leve[l1]\s*(\d+)", text)
             if not m: continue
             digits = m.group(1)[:2]
             if int(digits) > 18: digits = digits[:1]
             return int(digits)
         return None
 
-    @staticmethod
-    def _wall_debug(message):
-        # Silent failures used to end the wall pass without a trace: say why and keep the screen
-        logger.warning(message)
-        Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "wall_fail.png")
-
-    @require_exit(x=0.99, y=0.01)
-    def wall_upgrade(self):
-        """Upgrade the cheapest wall that leaves the panel minimums. Returns the resource paid, or None."""
-        import time
-
-        try:
-            bounds = self._open_menu("home")
-            if bounds is None:
-                self._wall_debug("Walls: the upgrade menu did not open")
-                return None
-            rows, page = self._scan_menu("home", bounds, ["Wall"])
-            walls = [r for r in rows if "wall" in r["names"] and r["affordable"] and r["cost"] is not None]
-            if not walls:
-                logger.info(f"No affordable wall in the menu ({len(rows)} rows read)")
-                return None
-            walls = [r for r in walls if self._wall_payment(r["cost"]) is not None]
-            if not walls:
-                last = Resource_Reader.last
-                fmt = lambda v: "-" if v is None else f"{v:,}".replace(",", ".")
-                logger.info(f"Walls skipped: gold {fmt(last.get('gold'))} min {fmt(Settings_Handler.get('walls', 'min_gold', 0))}, elixir {fmt(last.get('elixir'))} min {fmt(Settings_Handler.get('walls', 'min_elixir', 0))}")
-                return None
-            # Panel levels: tap each wall row (cheapest first) and read "Wall (Level N)" over the selected wall; levels by cost are remembered
-            levels = set(Settings_Handler.get("walls", "levels", []) or [])
-            known = getattr(self, "_wall_levels", {})
-            self._wall_levels = known
-            row = None
+    def _select_wall(self, bounds):
+        """Scroll the open menu page by page and tap the first wall row that is affordable, payable and of a chosen level.
+        Rows are tapped on the page where they are seen (no closing and replaying the menu). Returns the row, or None."""
+        import time, numpy as np
+        left, top, right, bottom = bounds
+        levels = set(Settings_Handler.get("walls", "levels", []) or [])
+        known = getattr(self, "_wall_levels", {}) # cost -> level, remembered between walls
+        self._wall_levels = known
+        templates = [render_text("Wall", "SupercellMagic", 17)]
+        frame = Frame_Handler.get_frame(grayscale=False)
+        seen, page = 0, 0
+        while True:
+            y_min = max(top, self._menu_header_y("home", frame) or top) if page == 0 else top
+            walls = [r for r in self._read_rows(frame, "home", bounds, y_min, ["Wall"], templates) if "wall" in r["names"] and r["cost"]]
+            seen += len(walls)
             for r in sorted(walls, key=lambda r: r["cost"]):
+                if not r["affordable"] or self._wall_payment(r["cost"]) is None: continue
                 if levels and known.get(r["cost"]) is not None and known[r["cost"]] not in levels: continue
-                if not self._goto_row("home", bounds, r, page):
-                    self._wall_debug(f"Walls: could not go back to the wall row ({r['cost']:,})".replace(",", "."))
-                    return None
-                page = r["page"]
+                Input_Handler.click((left + right) / 2, r["name_y"])
                 if levels:
                     level = None
                     for _ in range(3): # the view slides to the wall first
@@ -736,25 +718,101 @@ class Upgrader:
                     if level not in levels:
                         logger.info(f"Wall level {level if level is not None else '?'} not chosen ({r['cost']:,})".replace(",", "."))
                         continue
-                row = r
-                break
-            if row is None:
-                logger.info(f"No wall of the chosen levels ({', '.join(map(str, sorted(levels)))})")
+                else: time.sleep(0.7)
+                return r
+            # Wall rows sit together: once they were seen and a page has none, the rest of the list has no walls
+            if seen and not walls: break
+            if page + 1 >= self.MAX_MENU_PAGES: break
+            self._menu_swipe(bounds)
+            new_frame = Frame_Handler.get_frame(grayscale=False)
+            a = Frame_Handler.grayscale(Frame_Handler.crop(frame, left, top, right, bottom)).astype(int)
+            b = Frame_Handler.grayscale(Frame_Handler.crop(new_frame, left, top, right, bottom)).astype(int)
+            if np.abs(a - b).mean() / 255 < 0.01: break # end of the list
+            frame, page = new_frame, page + 1
+        if not seen: logger.info("No wall in the menu")
+        elif levels: logger.info(f"No wall of the chosen levels ({', '.join(map(str, sorted(levels)))})")
+        else:
+            last = Resource_Reader.last
+            fmt = lambda v: "-" if v is None else f"{v:,}".replace(",", ".")
+            logger.info(f"Walls skipped: gold {fmt(last.get('gold'))} min {fmt(Settings_Handler.get('walls', 'min_gold', 0))}, elixir {fmt(last.get('elixir'))} min {fmt(Settings_Handler.get('walls', 'min_elixir', 0))}")
+        return None
+
+    @staticmethod
+    def _selected_wall_count():
+        """N in the "Wall (Level 12) x N" title once Upgrade More is on, or None."""
+        import re
+        frame = Frame_Handler.get_frame(grayscale=False)
+        for text in OCR_Handler.get_text(Frame_Handler.crop(frame, 0.15, 0.45, 0.80, 0.72)):
+            m = re.search(r"x\s*([\dil|otsz]+)\s*$", text.lower()) # OCR reads 1 as I / l / T
+            if "lev" in text.lower() and m: return int(m.group(1).translate(str.maketrans("il|otsz", "1110152")))
+        return None
+
+    def _add_walls(self, n):
+        """Turn on Upgrade More under the selected wall and add walls until n are selected. Returns how many are selected.
+        +1 takes the place of Upgrade More, +10 is one button to its left, -1 two buttons to its left."""
+        import time, cv2
+        if n <= 1: return 1
+        if not hasattr(self, "_more_tpl"):
+            self._more_tpl = cv2.cvtColor(cv2.imread(str(Asset_Manager.resource_path("assets/upgrader/upgrade_more.png"))), cv2.COLOR_BGR2RGB)
+        x, y = Frame_Handler.locate(self._more_tpl, grayscale=False, thresh=0.85)
+        if x is None: return 1
+        Input_Handler.click(x, y)
+        time.sleep(0.6)
+        for _ in range((n - 1) // 10):
+            Input_Handler.click(x - 0.108, y)
+            time.sleep(0.35)
+        for _ in range((n - 1) % 10):
+            Input_Handler.click(x, y)
+            time.sleep(0.3)
+        time.sleep(0.4)
+        count = self._selected_wall_count()
+        for _ in range(12): # never pay for more than was asked
+            if count is None or count <= n: break
+            Input_Handler.click(x - 0.216, y)
+            time.sleep(0.4)
+            count = self._selected_wall_count()
+        return count
+
+    @staticmethod
+    def _wall_debug(message):
+        # Silent failures used to end the wall pass without a trace: say why and keep the screen
+        logger.warning(message)
+        Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "wall_fail.png")
+
+    @require_exit(x=0.99, y=0.01)
+    def wall_upgrade(self, max_walls=1):
+        """Upgrade up to max_walls walls of one level in one go (Upgrade More), keeping the panel minimums.
+        Returns (resource paid, number of walls), or None."""
+        import time
+
+        try:
+            bounds = self._open_menu("home")
+            if bounds is None:
+                self._wall_debug("Walls: the upgrade menu did not open")
                 return None
+            row = self._select_wall(bounds)
+            if row is None: return None
             resource = self._wall_payment(row["cost"])
+            have = Resource_Reader.last.get(resource) or 0
+            keep = Settings_Handler.get("walls", "min_gold" if resource == "gold" else "min_elixir", 0) or 0
+            n = max(1, min(max_walls, (have - keep) // row["cost"]))
+            count = self._add_walls(n)
+            if count is None or count < 1 or count * row["cost"] > have - keep:
+                self._wall_debug(f"Walls: selected wall count unclear ({count}, wanted {n})")
+                return None
             if not self._click_wall_button(resource):
                 logger.warning(f"Wall {resource} button not found")
                 return None
             time.sleep(0.5)
             if self.dry_run:
                 cost = f"{row['cost']:,}".replace(",", ".")
-                logger.info(f"Dry run, not confirming: wall with {resource} {cost}")
+                logger.info(f"Dry run, not confirming: {count} wall(s) with {resource}, {cost} each")
                 return None
             if not self._click_home_confirm():
                 self._wall_debug("Walls: confirm button not found")
                 return None
             time.sleep(0.5)
-            return resource
+            return resource, count
         except (KeyboardInterrupt, SystemExit): raise
         except Exception:
             logger.exception("Upgrader.wall_upgrade:")
@@ -765,18 +823,21 @@ class Upgrader:
         if not Settings_Handler.get("walls", "enabled", False):
             logger.info("Walls skipped: disabled")
             return
-        for _ in range(Settings_Handler.get("walls", "max_per_round", 5)):
+        left = Settings_Handler.get("walls", "max_per_round", 5)
+        while left > 0:
             before = Resource_Reader.last
-            resource = self.wall_upgrade()
-            if resource is None: break
+            result = self.wall_upgrade(left)
+            if result is None: break
+            resource, count = result
             time.sleep(0.5)
             after = Resource_Reader.read() or {}
-            # Walls finish instantly, so a wall counts only if the resource actually went down
+            # Walls finish instantly, so they count only if the resource actually went down
             if (after.get(resource) or 0) >= (before.get(resource) or 0):
                 logger.warning(f"Walls: paid with {resource} but it did not go down ({before.get(resource)} -> {after.get(resource)})")
                 break
-            logger.info("Upgraded wall")
-            report("wall")
+            logger.info(f"Upgraded {count} wall(s)")
+            report("wall", count=count)
+            left -= count
 
     @require_exit(x=0.99, y=0.01)
     def assign_builder_apprentice(self):
