@@ -336,7 +336,7 @@ class Attacker:
     @classmethod
     def _red_area_from(cls, before, after):
         """The red area the game shows right after a troop is refused (measured 22:32, 22:41): the whole no-deploy zone
-        gets a red tint (Lab a* up ~5-10 over the village, sharp stepped edges) that fades out within ~1.5 s.
+        gets a tint (Lab a* down ~5-15 over the village, sharp stepped edges) that fades out within ~1.5 s.
         before: a frame without the tint, after: a frame right after the refused tap. Returns the ring of that zone
         ((center px), radius px per 2 degrees, as _deploy_ring) or None when it is not seen."""
         import cv2, numpy as np
@@ -344,7 +344,8 @@ class Attacker:
         b = cv2.cvtColor(after, cv2.COLOR_RGB2LAB).astype(np.float32)[..., 1]
         d = cv2.GaussianBlur(cv2.medianBlur(b - a, 5), (0, 0), 2)
         h, w = d.shape
-        m = (d > 2.5).astype(np.uint8)
+        # The tint lowers a* (22:32, 22:58: whole zone clearly); either sign is accepted, the larger zone wins
+        m = ((d < -2.5) if (d < -2.5).sum() >= (d > 2.5).sum() else (d > 2.5)).astype(np.uint8)
         hud = np.zeros_like(m)
         for x1, y1, x2, y2 in cls.HUD_BOXES: hud[int(y1 * h):int(y2 * h), int(x1 * w):int(x2 * w)] = 1
         m[hud > 0] = 0
