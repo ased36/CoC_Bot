@@ -333,3 +333,11 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 
 - Yayma stili botun kendi turunda çalışıyor (af91b57). Ayarlar: arama 700 k / 600 k / 400, W/S %40, duvar açık (Emre: 3 M / 3 M eşik, 3 saldırıda bir), saldırı bitirme 60 × 0,6–1,05.
 - Açık: ara sıra ilk yarım sürüklemede görüntü kayması (kalan dokunuşlar telafi ediyor), teslim penceresinde Okay bazen bulunamıyor, "Village did not load" bir kez, NVIDIA çökmeleri (Emre 2A: dokunma; bot BlueStacks'i kendisi açıyor). Bot kodu değişince Emre botu kapatıp `Botu-Baslat.bat` ile yeniden açmalı.
+- **21:47–22:05 af91b57 ile bot turları, Emre: "hâlâ redline'da kaldı, 30 barbar kaldı, şampiyonu atamadın; bu saldırıları yapma, insansı yap, botun atamadığı belli".** 21:57: kuşatma + 3 kahraman inmedi; 22:00 (çok büyük köy, harita kenarına kadar dolu): sürükleme 29 barbar, kalan 60 dokunuş boşa (orta halka bu köyde köyün içinde), Champion üstte inmedi. **Sabit halka (Emre'nin yolu) bazı köylerde harita dışı, bazılarında köyün içi.** Bot 22:05'te panelden durduruldu (doğru komut: POST `/instance_action` `{"action":"stop","id":"main"}`; `id` olmadan etkisiz).
+- **Ölçüm:** harita kenarı (çimen / orman) renkle 5 köyde bulundu ama köyden köye ~%8 (≈ 90 px) kayıyor (arama görüntüsü her köyde aynı yerde açılmıyor), karanlık temalı köyde renk tutmuyor → sabit dörtgen de güvenilir değil.
+
+## DEVİR 01.11 22:10 — bot DURDURULDU, sırada asker bırakma yerini köye göre bulmak
+
+- Asıl sorun: bırakılabilir kuşak (köyün kırmızı çizgisi ile harita kenarı arası) her köyde farklı yerde; sabit yol ~3 saldırıdan 1'inde ıskalıyor.
+- Seçenekler (Emre'ye soruldu): (A) savaş başladıktan sonra (Champion indikten sonra) barbar seçiliyken köyün içine bir dokunuş → "You cannot deploy troops on the red area!" ile kırmızı çizgi yanıyor mu ölç (keşifte yanmıyordu; savaşta 20:30 karesinde uyarı göründü) → gerçek çizgi + biraz dışı; (B) harita kenarını her karede düz çizgilerle bul (dörtgen kenarları sabit eğimde); (C) sürüklemede kart sayısını izleyip inmeyen kısımda yolu dışarı / içeri kaydır.
+- Bot `af91b57` ile durdu; Emre yeniden Başlat'a basarsa aynı kodla saldırır.
