@@ -82,6 +82,8 @@ def default_settings():
             "max_per_round": 5,
             "levels": [], # walls at these levels go one level up; empty = any level
             "every_attacks": 3, # with attacks on: one wall pass, then this many attacks (the menu takes ~30 s)
+            "start_gold": 0, # with attacks on: walls only once gold OR elixir reaches these (0 and 0 = use every_attacks)
+            "start_elixir": 0,
         },
         "attack": {
             "min_gold": 400_000, # every non-zero minimum has to hold, 0 = no condition

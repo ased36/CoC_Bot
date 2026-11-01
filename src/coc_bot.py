@@ -137,10 +137,18 @@ class CoC_Bot:
                     if not skip_home_base_upgrades and not stopped():
                         logger.info("Upgrading home base")
                         # With attacks on, walls run once every N attacks (walls, N attacks, walls, ...), always before an attack
+                        # or, when the panel sets a gold / elixir level, only once either one reaches it (attack until then)
                         walls_now = True
                         if not exclude_home_attacks:
-                            every = max(1, int(Settings_Handler.get("walls", "every_attacks", 3) or 1))
-                            walls_now = self.attacks_since_walls is None or self.attacks_since_walls >= every
+                            start_gold = Settings_Handler.get("walls", "start_gold", 0) or 0
+                            start_elixir = Settings_Handler.get("walls", "start_elixir", 0) or 0
+                            if start_gold or start_elixir:
+                                have = Resource_Reader.last
+                                walls_now = bool(start_gold and (have.get("gold") or 0) >= start_gold) or bool(start_elixir and (have.get("elixir") or 0) >= start_elixir)
+                                if not walls_now: logger.info("Walls wait: gold and elixir below the start levels")
+                            else:
+                                every = max(1, int(Settings_Handler.get("walls", "every_attacks", 3) or 1))
+                                walls_now = self.attacks_since_walls is None or self.attacks_since_walls >= every
                             if walls_now: self.attacks_since_walls = 0
                         self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=walls_now)
                     if not exclude_home_attacks and not stopped():
