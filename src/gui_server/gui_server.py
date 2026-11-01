@@ -244,6 +244,9 @@ def handle_report(id):
         elif kind == "round_end":
             instance.next_check = data.get("next_check", 0)
             instance.add_event(f"Tur bitti ({int(data.get('duration', 0))} sn)")
+        elif kind == "rest": # a break or today's cap (2A): the status shows when the next round starts
+            instance.next_check = data.get("next_check", 0)
+            if data.get("text"): instance.add_event(data["text"])
         elif kind == "upgrade":
             key, label = UPGRADE_KINDS.get(data.get("kind"), (None, ""))
             if key:

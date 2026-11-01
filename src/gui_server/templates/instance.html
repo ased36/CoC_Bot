@@ -151,10 +151,18 @@
                     <div class="row"><div class="label">Tur sonunda oyunu kapat<small>Kapalıysa oyun turlar arasında açık kalır</small></div><label class="switch"><input type="checkbox" data-path="general.close_game"><span></span></label></div>
                 </div>
                 <div class="card">
+                    <h2>İnsan gibi oyna</h2>
+                    <p class="hint">Saldırı açıkken: birkaç saldırıdan sonra mola, günde en fazla belli sayıda saldırı. Aralıklar her seferinde rastgele seçilir. Molada oyun kapanır; sayaçlar bot kapanıp açılınca sıfırlanmaz.</p>
+                    <div class="row"><div class="label">Mola ve günlük sınır<small>Kapalıysa bot ara vermeden saldırır</small></div><label class="switch"><input type="checkbox" data-path="general.rest_enabled"><span></span></label></div>
+                    <div class="row"><div class="label">Mola şu kadar saldırıdan sonra<span class="q" tabindex="0" data-tip="Önerim 15–25. Bir insan oturup 15–25 saldırı yapar, sonra kalkar. Saldırı başına ~2 dk ile bu 30–50 dakikalık bir oturum.">?</span></div><div class="pair"><input type="number" min="1" max="200" data-path="general.rest_after_min"> – <input type="number" min="1" max="200" data-path="general.rest_after_max"></div></div>
+                    <div class="row"><div class="label">Mola süresi, dakika<span class="q" tabindex="0" data-tip="Önerim 20–40 dk (ör. 20 saldırıdan sonra 30 dk). 10 dk'nın altı mola gibi görünmez.">?</span></div><div class="pair"><input type="number" min="1" max="600" data-path="general.rest_min"> – <input type="number" min="1" max="600" data-path="general.rest_max"></div></div>
+                    <div class="row"><div class="label">Günde en fazla saldırı<span class="q" tabindex="0" data-tip="Önerim 30–45 (saldırı başına ~1,1 M ile günde ~35–50 M altın ve iksir). En temkinlisi 25–35 (ClashFarmer'ın varsayılanı). 60'ın üstünü önermem. 0 – 0 = sınır yok. Sınır dolunca bot ertesi güne kadar bekler.">?</span></div><div class="pair"><input type="number" min="0" max="500" data-path="general.daily_min"> – <input type="number" min="0" max="500" data-path="general.daily_max"></div></div>
+                </div>
+                <div class="card">
                     <h2>Çalışma saatleri</h2>
-                    <p class="hint">Açıksa bot yalnızca bu saatler arasında tur atar. Gece yarısını geçen aralık da olur (ör. 22:00–06:00).</p>
-                    <div class="row"><div class="label">Çalışma saatlerini kullan</div><label class="switch"><input type="checkbox" data-path="general.hours_enabled"><span></span></label></div>
-                    <div class="row"><div class="label">Saat aralığı</div><div class="pair"><input type="time" data-path="general.hours_start"> – <input type="time" data-path="general.hours_end"></div></div>
+                    <p class="hint">Yeşil saatlerde tur başlar, gri saatlerde bot bekler ve oyunu kapatır. Saate tıklayınca açılır / kapanır.</p>
+                    <div class="row"><div class="label">Saat ızgarasını kullan<span class="q" tabindex="0" data-tip="Önerim her gün 7–8 saat kapalı (uyku), ör. 02:00–09:00. 24 saat aralıksız oynayan hesap bot olduğunu en kolay belli eden iz.">?</span></div><label class="switch"><input type="checkbox" data-path="general.grid_enabled"><span></span></label></div>
+                    <div class="hour-grid" id="hour_grid"></div>
                 </div>
             </div>
         </section>
@@ -504,6 +512,38 @@
             if (!settings) return;
             $$("[data-picker]").forEach(renderPicker);
             renderWallLevels();
+            renderHourGrid();
+        }
+
+        // ---------- 24 hour grid (2A): on = rounds may start in that hour ----------
+        function hourGrid() {
+            const g = settings.general.hours_grid;
+            return Array.isArray(g) && g.length === 24 ? g.slice() : Array(24).fill(true);
+        }
+
+        function offHours(grid) {
+            // "02:00–09:00, 14:00–15:00" for the hours that are off (a range over midnight stays one range)
+            const out = [];
+            const start = grid.indexOf(true) < 0 ? 0 : grid.indexOf(true);
+            for (let k = 0; k < 24; k++) {
+                const h = (start + k) % 24;
+                if (!grid[h] && (out.length === 0 || out[out.length - 1].end !== h)) out.push({from: h, end: (h + 1) % 24});
+                else if (!grid[h]) out[out.length - 1].end = (h + 1) % 24;
+            }
+            return out.map(r => `${pad(r.from)}:00–${pad(r.end)}:00`).join(", ");
+        }
+
+        function renderHourGrid() {
+            const box = $("#hour_grid");
+            if (!box) return;
+            const grid = hourGrid(), on = !!settings.general.grid_enabled;
+            box.classList.toggle("off", !on);
+            box.innerHTML = grid.map((v, h) => `<button type="button" class="${v ? "on" : ""}" data-hour="${h}" title="${pad(h)}:00–${pad((h + 1) % 24)}:00 ${v ? "çalışır" : "bekler"}">${pad(h)}</button>`).join("");
+            $$("button", box).forEach(b => b.onclick = () => {
+                const next = hourGrid();
+                next[+b.dataset.hour] = !next[+b.dataset.hour];
+                save({general: {hours_grid: next}});
+            });
         }
 
         async function loadIcons() {
@@ -599,7 +639,10 @@
             items.push({on: t.builder_base, spend: true, name: "Usta üssü binaları", text: "boş usta varsa geliştirir"});
             items.push({on: t.builder_lab, spend: true, name: "Usta üssü laboratuvarı", text: "boşsa araştırma başlatır"});
             const timing = `Turlar arası ${g.check_interval} dk (± %${g.jitter_pct})` +
-                (g.hours_enabled ? `, yalnız ${g.hours_start}–${g.hours_end} arası` : ", günün her saati") +
+                (g.grid_enabled ? (offHours(hourGrid()) ? `, ${offHours(hourGrid())} arası bekler` : ", günün her saati")
+                    : g.hours_enabled ? `, yalnız ${g.hours_start}–${g.hours_end} arası` : ", günün her saati") +
+                (t.home_attacks && g.rest_enabled ? `; ${g.rest_after_min}–${g.rest_after_max} saldırıda bir ${g.rest_min}–${g.rest_max} dk mola` +
+                    (g.daily_max ? `, günde en fazla ${g.daily_min}–${g.daily_max} saldırı` : "") : "") +
                 (g.close_game ? "; tur bitince oyun kapanır" : "; oyun turlar arasında açık kalır");
             return {items, timing, spending: items.filter(i => i.on && i.spend)};
         }
@@ -728,6 +771,8 @@
             else if (state.status === "now") { cls = "busy"; msg = "Tur sürüyor"; }
             else if (state.status === "error") { cls = "err"; msg = "Son turda hata"; }
             else if (state.status === "hours") { cls = "pause"; msg = "Çalışma saatleri dışında"; }
+            else if (state.status === "rest") { cls = "pause"; msg = `Mola · sonraki tur ${fmtClock(state.next_check)}`; }
+            else if (state.status === "daily") { cls = "pause"; msg = `Günlük sınır doldu · yarın ${fmtClock(state.next_check)}`; }
             else if (state.next_check > t) { msg = `Bekliyor · sonraki tur ${fmtClock(state.next_check)}`; }
             box.className = `status ${cls}`;
             text.textContent = msg;

@@ -337,6 +337,72 @@ main {
     box-shadow: 0 0 0 3px rgba(242, 182, 50, .18);
 }
 .row .pair { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.row .pair input[type=number] { width: 72px; padding: 0 8px; text-align: center; color: var(--text); }
+
+/* "?" next to a label: the advised value, on hover or tap (tabindex, so a tap on the phone focuses it) */
+.q {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    vertical-align: 1px;
+    cursor: help;
+}
+.q:hover, .q:focus { outline: none; background: var(--accent); color: var(--accent-ink); }
+.q::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 8px);
+    transform: translateX(-30%);
+    width: max-content;
+    max-width: min(300px, 80vw);
+    padding: 10px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    box-shadow: var(--shadow);
+    color: var(--text-2);
+    font-size: 12.5px;
+    font-weight: 400;
+    line-height: 1.5;
+    white-space: normal;
+    z-index: 20;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .12s;
+}
+.q:hover::after, .q:focus::after { opacity: 1; visibility: visible; }
+
+/* 24 hour grid: green = rounds may start, grey = the bot waits */
+.hour-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 4px;
+    padding-top: 12px;
+}
+.hour-grid button {
+    min-width: 0;
+    padding: 0;
+    height: 30px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font: 500 12px var(--font);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+.hour-grid button.on { background: rgba(62, 207, 142, .16); border-color: rgba(62, 207, 142, .5); color: var(--ok); }
+.hour-grid.off { opacity: .45; }
 
 .row select {
     min-width: 180px;

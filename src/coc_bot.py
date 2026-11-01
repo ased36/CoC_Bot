@@ -8,6 +8,8 @@ from attacker import Attacker
 
 def in_working_hours(general):
     from datetime import datetime
+    grid = general.get("hours_grid") or []
+    if general.get("grid_enabled") and len(grid) == 24: return bool(grid[datetime.now().hour]) # 24 hour grid (2A)
     if not general.get("hours_enabled"): return True
     now = datetime.now().strftime("%H:%M")
     start, end = general.get("hours_start", "00:00"), general.get("hours_end", "23:59")
@@ -25,8 +27,17 @@ class CoC_Bot:
         self.upgrader = Upgrader()
         self.attacker = Attacker()
         self.attacks_since_walls = None # None = walls first (a full storage wastes loot)
-        self.day = {"date": None, "attacks": 0, "gold": 0, "elixir": 0, "dark": 0} # today's attacks for Telegram
         self.was_running = False
+
+    # Today's attacks, the session (attacks since the last break) and the rest: in the disk cache, so closing and
+    # opening the bot neither resets the daily cap nor ends a break early
+    @property
+    def day(self):
+        return dict(Cache_Manager.get("play") or {"date": None, "attacks": 0, "gold": 0, "elixir": 0, "dark": 0})
+
+    @day.setter
+    def day(self, value):
+        Cache_Manager["play"] = value
 
     @staticmethod
     def _short(v):
@@ -36,27 +47,77 @@ class CoC_Bot:
         v = abs(v)
         return sign + (f"{v / 1e6:.2f} M".replace(".", ",") if v >= 1e6 else f"{v / 1e3:.0f} k" if v >= 1e3 else str(v))
 
-    def _day_rollover(self):
-        """At the first attack of a new day: yesterday's summary to Telegram, counters back to zero."""
+    def _day_rollover(self, general):
+        """On a new day: yesterday's summary to Telegram, counters back to zero, today's random cap."""
+        import random
         from datetime import date
         today = date.today().isoformat()
         d = self.day
-        if d["date"] and d["date"] != today and d["attacks"]:
+        if d.get("date") == today: return
+        if d.get("date") and d.get("attacks"):
             send_notification(f"📊 {d['date']} özeti: {d['attacks']} saldırı, {self._short(d['gold'])} altın, "
                               f"{self._short(d['elixir'])} iksir, {self._short(d['dark'])} kara iksir")
-        if d["date"] != today:
-            self.day = {"date": today, "attacks": 0, "gold": 0, "elixir": 0, "dark": 0}
+        lo, hi = sorted((int(general.get("daily_min", 0) or 0), int(general.get("daily_max", 0) or 0)))
+        self.day = {"date": today, "attacks": 0, "gold": 0, "elixir": 0, "dark": 0, "cap": random.randint(lo, hi) if hi else 0,
+                    "session": d.get("session", 0), "session_target": d.get("session_target"), "rest_until": d.get("rest_until", 0)}
+
+    def _rest(self, general):
+        """Play like a person (2A): (until, status, text) when no attack should start now, else None.
+        A break after rest_after_min..max attacks (rest_min..max minutes), and today's cap (then the next day)."""
+        import time, random
+        from datetime import datetime, timedelta
+        if not general.get("rest_enabled"): return None
+        self._day_rollover(general)
+        d = self.day
+        if d.get("rest_until", 0) > time.time():
+            return d["rest_until"], d.get("rest_kind", "rest"), None
+        if d.get("cap") and d["attacks"] >= d["cap"]:
+            tomorrow = datetime.combine(datetime.now().date() + timedelta(days=1), datetime.min.time())
+            until = tomorrow.timestamp() + random.uniform(5, 30) * 60
+            d.update(rest_until=until, rest_kind="daily")
+            self.day = d
+            return until, "daily", f"Günlük sınır doldu: bugün {d['attacks']} saldırı. Devam: yarın {datetime.fromtimestamp(until).strftime('%H:%M')}"
+        lo, hi = sorted((int(general.get("rest_after_min", 15) or 1), int(general.get("rest_after_max", 25) or 1)))
+        if not d.get("session_target"):
+            d["session_target"] = random.randint(max(lo, 1), max(hi, 1))
+            self.day = d
+        if d.get("session", 0) >= d["session_target"]:
+            lo_m, hi_m = sorted((int(general.get("rest_min", 20) or 0), int(general.get("rest_max", 40) or 0)))
+            until = time.time() + random.uniform(lo_m, hi_m) * 60
+            text = f"Mola: {d['session']} saldırıdan sonra {int((until - time.time()) / 60)} dk. Devam: {datetime.fromtimestamp(until).strftime('%H:%M')}"
+            d.update(rest_until=until, rest_kind="rest", session=0, session_target=random.randint(max(lo, 1), max(hi, 1)))
+            self.day = d
+            return until, "rest", text
+        return None
+
+    @staticmethod
+    def _close_for_rest():
+        """A person closes the game for a break or the night (left open, the game asks "anyone there?" anyway)."""
+        try:
+            if ADB_Manager.adbutils_device.shell("pidof com.supercell.clashofclans").strip():
+                stop_coc(sleep=configs.SUSPEND_EMULATOR_ON_IDLE)
+        except (KeyboardInterrupt, SystemExit): raise
+        except Exception as e:
+            logger.warning(f"Could not close the game for the rest: {e}")
+
+    def _count_attack(self, gain):
+        d = self.day
+        d["attacks"] = d.get("attacks", 0) + 1
+        d["session"] = d.get("session", 0) + 1
+        for k, v in gain.items():
+            if v is not None and v > 0: d[k] = d.get(k, 0) + v
+        self.day = d
+        return d
 
     def _attack_message(self, before, seconds):
         """After a home attack (back home): loot won (storage before / after) and the results screen as a picture.
         Silent on the phone: one comes every ~2 minutes."""
         after = Resource_Reader.read() or {}
         gain = {k: (after.get(k) - before.get(k)) if None not in (after.get(k), before.get(k)) else None for k in ("gold", "elixir", "dark")}
-        self.day["attacks"] += 1
-        for k, v in gain.items():
-            if v is not None and v > 0: self.day[k] += v
+        d = self._count_attack(gain)
         store = lambda k: self._short(after.get(k)).lstrip("+")
-        text = (f"⚔️ Saldırı (bugün {self.day['attacks']}.): {self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
+        cap = f"/{d['cap']}" if d.get("cap") else ""
+        text = (f"⚔️ Saldırı (bugün {d['attacks']}{cap}.): {self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
                 f" · {self._short(gain['dark'])} kara\nDepo: {store('gold')} / {store('elixir')} / {store('dark')} · tur {int(seconds)} sn")
         send_notification(text, photo=self.attacker.last_result, silent=True)
 
@@ -120,7 +181,8 @@ class CoC_Bot:
                     time.sleep(5)
                     continue
 
-                general = Settings_Handler.load()["general"]
+                all_settings = Settings_Handler.load()
+                general = all_settings["general"]
                 if mode == "scan":
                     waiting_logged = None
                     self.scan(general)
@@ -132,10 +194,27 @@ class CoC_Bot:
 
                 if not in_working_hours(general):
                     if waiting_logged != "hours":
-                        logger.info(f"Outside working hours ({general['hours_start']}-{general['hours_end']}), waiting")
+                        logger.info("Outside working hours, waiting")
                         update_status("hours")
+                        self._close_for_rest()
+                        if self.was_running: send_notification("🌙 Çalışma saatleri dışında, bot bekliyor", silent=True)
                     waiting_logged = "hours"
                     time.sleep(60)
+                    continue
+
+                # Play like a person (2A): a break every few attacks, a daily cap. The loop keeps looking at the panel
+                # every 5 s, so Stop still works during a break
+                rest = self._rest(general) if all_settings.get("tasks", {}).get("home_attacks") else None
+                if rest:
+                    until, kind, text = rest
+                    if waiting_logged != kind:
+                        logger.info(f"Resting until {datetime.fromtimestamp(until).strftime('%d.%m %H:%M')} ({kind})")
+                        update_status(kind)
+                        report("rest", next_check=until, text=text or "")
+                        self._close_for_rest()
+                        if text: send_notification(("☕ " if kind == "rest" else "📊 ") + text, silent=kind == "rest")
+                    waiting_logged = kind
+                    time.sleep(5)
                     continue
                 waiting_logged = None
 
@@ -194,7 +273,7 @@ class CoC_Bot:
                     if not exclude_home_attacks and not stopped():
                         logger.info("Attacking home base")
                         report("attack", base="home")
-                        self._day_rollover()
+                        self._day_rollover(general)
                         before, attack_start = dict(Resource_Reader.read() or Resource_Reader.last), time.time()
                         self.attacker.last_result = None
                         self.attacker.run_home_base(restart=not skip_home_base_upgrades or not skip_builder_base_upgrades)

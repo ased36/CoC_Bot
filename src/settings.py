@@ -54,6 +54,14 @@ def default_settings():
             "hours_start": "08:00",
             "hours_end": "23:59",
             "close_game": True,
+            # Play like a person (Emre 02.11, 2A): a break after a few attacks, a daily cap, a 24 hour grid (sleep).
+            # Defaults are the advised values; every range is picked at random again each time
+            "rest_enabled": True,
+            "rest_after_min": 15, "rest_after_max": 25, # attacks before a break
+            "rest_min": 20, "rest_max": 40, # break, minutes (the game is closed)
+            "daily_min": 30, "daily_max": 45, # attacks a day, 0 = no cap; then wait for the next day
+            "grid_enabled": True,
+            "hours_grid": [not 2 <= h < 9 for h in range(24)], # hour h on = rounds may start in it (02-09 asleep)
         },
         "home": {
             "max_upgrades": getattr(configs, "MAX_UPGRADES_PER_CHECK", 10),
