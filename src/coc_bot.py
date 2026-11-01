@@ -110,7 +110,10 @@ class CoC_Bot:
                     exclude_home_base = Task_Handler.excluded("home_base", use_cached=True)
                     exclude_home_lab = Task_Handler.excluded("home_lab", use_cached=True)
                     exclude_pets = Task_Handler.excluded("pet_house", use_cached=True)
-                    skip_home_base_upgrades = exclude_home_base and exclude_home_lab and exclude_pets
+                    # Walls, apprentice and lab assistant run in the same step, so it runs when any of them is on
+                    skip_home_base_upgrades = exclude_home_base and exclude_home_lab and exclude_pets \
+                        and not Settings_Handler.get("walls", "enabled", False) \
+                        and Task_Handler.excluded("builder_apprentice", use_cached=True) and Task_Handler.excluded("lab_assistant", use_cached=True)
                     exclude_home_attacks = Task_Handler.excluded("home_attacks", use_cached=True)
 
                     exclude_builder_base = Task_Handler.excluded("builder_base", use_cached=True)

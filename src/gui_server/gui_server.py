@@ -13,13 +13,14 @@ import os
 import json
 import time
 import threading
-from flask import Flask, render_template, jsonify, abort, request
+from flask import Flask, render_template, jsonify, abort, request, send_from_directory
 try:
     from configs import *
 except:
     from configs_build import *
 import settings as settings_store
 from log_translate import parse_lines, translate_message
+import icons
 
 app = Flask(__name__)
 bot_pipe = None
@@ -287,6 +288,16 @@ def handle_vocab():
         except Exception: pass
     return {}
 
+@app.route("/icons/index", methods=["GET"])
+def handle_icon_index():
+    index = icons.load_index()
+    if not index.get("complete"): icons.start_background_download() # no-op while a download runs
+    return {"icons": index.get("icons", {}), "complete": bool(index.get("complete"))}
+
+@app.route("/icons/<path:name>", methods=["GET"])
+def handle_icon(name):
+    return send_from_directory(icons.ICON_DIR, name, max_age=7 * 24 * 3600)
+
 def start_server(pipe, port, id=None, debug=False):
     global bot_pipe
     bot_pipe = pipe
@@ -300,6 +311,7 @@ def start_server(pipe, port, id=None, debug=False):
         instances[id].active = False # actions start from the panel's Start button
         instances[id].scan_requested = True # but read the village right away
 
+    icons.start_background_download() # once; the server does not wait for it
     app.run(port=port, debug=debug, threaded=True)
 
 if __name__ == "__main__":

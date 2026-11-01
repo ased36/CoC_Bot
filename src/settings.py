@@ -80,6 +80,7 @@ def default_settings():
             "min_gold": 1_000_000,
             "min_elixir": 1_000_000,
             "max_per_round": 5,
+            "levels": [], # walls at these levels go one level up; empty = any level
         },
         "attack": {
             "min_gold": 400_000, # every non-zero minimum has to hold, 0 = no condition

@@ -71,17 +71,20 @@
         <section class="page" id="page_village">
             <h3 class="section-title">Ana köy</h3>
             <div class="grid">
-                <div class="card">
+                <div class="card wide">
                     <h2>Bot neleri geliştirsin?</h2>
                     <p class="hint">Açık olanları bot, Başlat'a basıldıktan sonra her turda yapar; kapalı olanlara hiç dokunmaz. <span class="tag spend">kaynak harcar</span> yazanlar oyunda gerçek geliştirme başlatır.</p>
                     <div class="row"><div class="label">Binalar <span class="tag spend">kaynak harcar</span><small>Boş usta varsa bina ya da tuzak geliştirmesi başlatır (altın / iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_base"><span></span></label></div>
                     <div class="row sub"><div class="label">Kahramanlar dahil<small>Kapalıysa kahramanlar seçilmez. "Binalar" kapalıyken hiç geliştirilmez</small></div><label class="switch"><input type="checkbox" data-task="heroes"><span></span></label></div>
                     <div class="row sub"><div class="label">Belediye binası dahil<small>Kapalıysa Town Hall hiç seçilmez; açıksa yalnız başka uygun geliştirme yokken</small></div><label class="switch"><input type="checkbox" data-path="home.town_hall"><span></span></label></div>
+                    <div class="picker" data-picker="home"></div>
                     <div class="row"><div class="label">Laboratuvar <span class="tag spend">kaynak harcar</span><small>Laboratuvar boşsa asker ya da büyü araştırması başlatır (iksir / kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="home_lab"><span></span></label></div>
+                    <div class="picker" data-picker="lab"></div>
                     <div class="row"><div class="label">Evcil hayvanlar <span class="tag spend">kaynak harcar</span><small>Pet House boşsa evcil hayvan geliştirir (kara iksir)</small></div><label class="switch"><input type="checkbox" data-task="pet_house"><span></span></label></div>
+                    <div class="picker" data-picker="pet"></div>
                     <div class="row"><div class="label">Usta çırağı ata <span class="tag free">ücretsiz</span><small>Süren bir bina geliştirmesine çırağı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="builder_apprentice"><span></span></label></div>
                     <div class="row"><div class="label">Lab asistanı ata <span class="tag free">ücretsiz</span><small>Süren laboratuvar araştırmasına asistanı atar, süreyi kısaltır</small></div><label class="switch"><input type="checkbox" data-task="lab_assistant"><span></span></label></div>
-                    <div class="info">Duvar ayrı yönetilir (yandaki "Duvar" bölümü). Saldırı ayarları "Saldırı" sekmesinde.</div>
+                    <div class="info">Bir görevi açınca altında öncelik sırası açılır: simgelere tıkladığınız sırayla numaralanır. Duvar ayrı yönetilir ("Sınırlar" kartındaki "Duvar" bölümü). Saldırı ayarları "Saldırı" sekmesinde.</div>
                 </div>
 
                 <div class="card">
@@ -96,13 +99,14 @@
                     <div class="row"><div class="label">Tur başına en fazla duvar</div><input type="number" min="1" max="50" data-path="walls.max_per_round"></div>
                     <div class="row"><div class="label"><i class="rdot gold"></i>Kalacak en az altın</div><input type="text" inputmode="numeric" data-path="walls.min_gold" data-big></div>
                     <div class="row"><div class="label"><i class="rdot elixir"></i>Kalacak en az iksir</div><input type="text" inputmode="numeric" data-path="walls.min_elixir" data-big></div>
-                    <div class="info">En ucuz duvar seçilir. Önce iksirle ödenir; iksirden maliyet düşünce en az iksirin altına iniyorsa altınla; ikisinde de iniyorsa duvar yapılmaz.</div>
+                    <div class="row stack"><div class="label">Hangi seviyeler<small>Seçili seviyedeki duvarlar bir üst seviyeye çıkarılır. Hiçbiri seçili değilse her seviye.</small></div><div class="lvl-pick" id="wall_levels"></div></div>
+                    <div class="info">Seçili seviyelerdeki duvarlardan en ucuzu seçilir. Önce iksirle ödenir; iksirden maliyet düşünce en az iksirin altına iniyorsa altınla; ikisinde de iniyorsa duvar yapılmaz.</div>
                 </div>
 
                 <div class="card">
                     <h2>Hangi geliştirme seçilsin?</h2>
-                    <p class="hint">Menüde birden çok geliştirmeye para yetiyorsa hangisinin seçileceği. Sıra: indirimli (yeşil etiket) → öncelik listesi (aşağıda) → buradaki seçim → en son Belediye binası.</p>
-                    <div class="row"><div class="label">Öncelik listesinde uygun yoksa<small>Listedekiler bitince ya da liste kapalıyken</small></div><select data-path="home.fallback"><option value="cheapest">En ucuz</option><option value="random">Rastgele</option></select></div>
+                    <p class="hint">Menüde birden çok geliştirmeye para yetiyorsa hangisinin seçileceği. Sıra: indirimli (yeşil etiket) → öncelik sırası (Binalar / Laboratuvar / Evcil hayvanlar altında) → buradaki seçim → en son Belediye binası.</p>
+                    <div class="row"><div class="label">Öncelik sırasında uygun yoksa<small>Sıradakilere para yetmiyorsa ya da sıra kapalıyken</small></div><select data-path="home.fallback"><option value="cheapest">En ucuz</option><option value="random">Rastgele</option></select></div>
                     <div class="row"><div class="label">Kaynak tercihi<small>Önce bu kaynakla ödenenler arasından seçilir</small></div><select data-path="home.prefer_resource"><option value="any">Fark etmez</option><option value="gold">Altınla olanlar önce</option><option value="elixir">İksirle olanlar önce</option></select></div>
 
                     <h2 class="split">Geliştirmeden sonra kalacak en az</h2>
@@ -113,21 +117,6 @@
                     <div class="info">"En ucuz" = maliyet ÷ depodaki miktar en düşük olan. Böylece kara iksirle ödenenler de altın ve iksirle aynı ölçüyle karşılaştırılır.</div>
                 </div>
 
-                <div class="card wide">
-                    <h2>Hariç tutulacak binalar</h2>
-                    <p class="hint">Buradaki binalar ne öncelik listesinden ne de rastgele seçimde geliştirilir. Ad oyundaki İngilizce adla aynı yazılmalı.</p>
-                    <div class="chips" id="excluded_chips"></div>
-                </div>
-
-                <div class="card wide" data-prio="home.priority" data-prio-task="home_base_priority" data-vocab="buildings/home-village,traps/home-village,heroes">
-                    <h2>Öncelik listesi — binalar</h2>
-                </div>
-                <div class="card wide" data-prio="home.lab_priority" data-prio-task="home_lab_priority" data-vocab="troops,spells">
-                    <h2>Öncelik listesi — laboratuvar</h2>
-                </div>
-                <div class="card wide" data-prio="home.pet_priority" data-prio-task="pet_house_priority" data-vocab="pets">
-                    <h2>Öncelik listesi — evcil hayvanlar</h2>
-                </div>
             </div>
 
             <h3 class="section-title">Usta üssü</h3>
@@ -289,6 +278,7 @@
                 settings = await api("/settings", update);
                 showSave("ok", "Kaydedildi ✓");
                 renderSummary();
+                renderPickers();
             } catch (e) {
                 showSave("err", "Kaydedilemedi");
             }
@@ -360,21 +350,165 @@
             return el;
         }
 
-        function renderExcluded() {
-            const box = $("#excluded_chips");
-            const list = settings.home.excluded || [];
-            const options = vocabFor(["buildings/home-village", "traps/home-village"]);
-            const known = new Set(options);
-            box.innerHTML = "";
-            list.forEach((name, i) => box.appendChild(chip(name, !options.length || known.has(name), () => {
-                const next = list.filter((_, j) => j !== i);
-                save({home: {excluded: next}}).then(renderExcluded);
-            })));
-            const input = nameInput(options, name => {
-                if (list.includes(name)) return;
-                save({home: {excluded: [...list, name]}}).then(renderExcluded).then(() => $(".chip-input", box).focus());
+        // ---------- Icon pickers (priority order + exclusions under each task) ----------
+        let iconIndex = {}; // lowercase name -> icon file
+        const HOME_HEROES = ["Barbarian King", "Archer Queen", "Grand Warden", "Royal Champion", "Minion Prince", "Dragon Duke"];
+        const BUILDER_TROOPS = new Set(["raged barbarian", "sneaky archer", "boxer giant", "beta minion", "bomber", "cannon cart", "night witch",
+            "drop ship", "power p.e.k.k.a", "hog glider", "electrofire wizard", "battle machine", "battle copter"]);
+        const pickerState = {}; // key -> {mode, query, showAll}; survives re-renders
+        const flattened = {}; // key -> true once old multi-name rows were turned into one name per row
+
+        const PICKERS = {
+            home: {
+                task: "home_base", prioTask: "home_base_priority", path: "home.priority", exclude: true,
+                title: "Önce hangi binalar geliştirilsin?",
+                names: () => [
+                    ...vocabFor(["buildings/home-village", "traps/home-village"]).filter(n => n.toLowerCase() !== "wall"),
+                    ...(settings.tasks.heroes ? HOME_HEROES : []),
+                ],
+            },
+            lab: {
+                task: "home_lab", prioTask: "home_lab_priority", path: "home.lab_priority",
+                title: "Laboratuvarda önce ne araştırılsın?",
+                names: showAll => vocabFor(["troops", "spells"]).filter(n => showAll ||
+                    !(BUILDER_TROOPS.has(n.toLowerCase()) || n.toLowerCase().startsWith("super "))),
+                hideNote: "usta üssü askerleri ve süper askerler",
+            },
+            pet: {
+                task: "pet_house", prioTask: "pet_house_priority", path: "home.pet_priority",
+                title: "Önce hangi evcil hayvan geliştirilsin?",
+                names: () => vocabFor(["pets"]),
+            },
+        };
+
+        function iconHtml(name, cls = "") {
+            const file = iconIndex[name.toLowerCase()];
+            if (file) return `<img class="ico ${cls}" src="/icons/${encodeURIComponent(file)}" alt="" loading="lazy">`;
+            const ini = name.split(/[\s-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+            return `<span class="ico ini ${cls}">${esc(ini)}</span>`;
+        }
+
+        function renderPicker(box) {
+            const key = box.dataset.picker;
+            const cfg = PICKERS[key];
+            const st = pickerState[key] = pickerState[key] || {mode: "order", query: "", showAll: false};
+            box.hidden = !settings.tasks[cfg.task];
+            if (box.hidden) { box.innerHTML = ""; return; }
+
+            // One name per row: the order you click is the order the bot tries
+            const levels = getPath(cfg.path) || [];
+            const order = [];
+            levels.forEach(row => row.forEach(n => { if (!order.includes(n)) order.push(n); }));
+            if (!flattened[key] && levels.some(row => row.length !== 1)) {
+                flattened[key] = true;
+                save(nested(cfg.path, order.map(n => [n])));
+            }
+            flattened[key] = true;
+            const excluded = cfg.exclude ? (settings.home.excluded || []) : [];
+            const all = cfg.names(st.showAll);
+            const known = new Set(all.map(n => n.toLowerCase()));
+            const isKnown = n => !all.length || known.has(n.toLowerCase());
+            const prioOn = !!settings.tasks[cfg.prioTask];
+
+            const commit = (nextOrder, nextExcluded) => {
+                const update = nested(cfg.path, nextOrder.map(n => [n]));
+                if (cfg.exclude && nextExcluded) update.home.excluded = nextExcluded;
+                return save(update);
+            };
+
+            const q = st.query.trim().toLowerCase();
+            const shown = all.filter(n => !q || n.toLowerCase().includes(q));
+            const exMode = cfg.exclude && st.mode === "exclude";
+            const help = exMode
+                ? "Hariç kipi: tıkladığınız bina kırmızıyla işaretlenir ve hiç geliştirilmez. Tekrar tıklayınca çıkar."
+                : "Tıkladığınız sırayla numaralanır; bot önce 1'i dener, ona para yetmiyorsa 2'yi… Sıradakilerin hiçbiri olmazsa \"Hangi geliştirme seçilsin?\" ayarına göre seçer.";
+
+            const strip = order.length
+                ? order.map((n, i) => `<span class="pchip ${isKnown(n) ? "" : "unknown"}" ${isKnown(n) ? "" : `title="Bu ad listede yok (kapalı bir grupta ya da yazımı farklı)"`}>
+                    <span class="n">${i + 1}</span>${iconHtml(n, "sm")}<span class="nm">${esc(n)}</span>
+                    <button data-move="${i}" data-dir="-1" title="Öne al" ${i === 0 ? "disabled" : ""}>←</button><button data-move="${i}" data-dir="1" title="Geri al" ${i === order.length - 1 ? "disabled" : ""}>→</button><button data-drop="${i}" title="Sıradan çıkar">×</button></span>`).join("")
+                : `<span class="empty">Henüz sıra yok — aşağıdan tıklayın.</span>`;
+            const exStrip = excluded.length
+                ? `<div class="strip excl"><span class="lbl">Hariç</span>${excluded.map((n, i) => `<span class="pchip ex">${iconHtml(n, "sm")}<span class="nm">${esc(n)}</span><button data-unex="${i}" title="Hariçten çıkar">×</button></span>`).join("")}</div>`
+                : "";
+            const tiles = shown.map(n => {
+                const i = order.indexOf(n), ex = excluded.includes(n);
+                return `<button class="pick ${i >= 0 ? "ordered" : ""} ${ex ? "excluded" : ""}" data-name="${esc(n)}" title="${esc(n)}">${i >= 0 ? `<span class="badge">${i + 1}</span>` : ""}${ex ? `<span class="badge x">✕</span>` : ""}${iconHtml(n)}<span class="nm">${esc(n)}</span></button>`;
+            }).join("") || `<span class="empty">Eşleşen yok.</span>`;
+
+            box.innerHTML = `
+                <div class="picker-head">
+                    <div class="picker-title"><b>${esc(cfg.title)}</b><small>${esc(help)}</small></div>
+                    <label class="switch" title="Öncelik sırasını kullan"><input type="checkbox" ${prioOn ? "checked" : ""}><span></span></label>
+                </div>
+                ${cfg.exclude ? `<div class="seg"><button data-mode="order" class="${exMode ? "" : "on"}">Sırala</button><button data-mode="exclude" class="${exMode ? "on" : ""}">Hariç tut${excluded.length ? ` <span class="cnt">${excluded.length}</span>` : ""}</button></div>` : ""}
+                ${prioOn ? "" : `<div class="picker-off">Öncelik sırası kapalı: bot bu sırayı kullanmaz${cfg.exclude ? " (hariç tutulanlar yine geliştirilmez)" : ""}. Açmak için sağdaki anahtar.</div>`}
+                <div class="strip ${prioOn ? "" : "dim"}">${strip}</div>
+                ${exStrip}
+                <div class="picker-tools"><input class="picker-search" type="search" placeholder="Ara…" value="${esc(st.query)}"><span class="count">${shown.length} / ${all.length}</span></div>
+                <div class="tile-grid ${exMode ? "ex-mode" : ""}">${tiles}</div>
+                ${cfg.hideNote ? `<label class="picker-all"><input type="checkbox" ${st.showAll ? "checked" : ""}> Hepsini göster (${esc(cfg.hideNote)} dahil)</label>` : ""}`;
+
+            $(".picker-head input", box).onchange = e => save({tasks: {[cfg.prioTask]: e.target.checked}});
+            $$(".seg button", box).forEach(b => b.onclick = () => { st.mode = b.dataset.mode; renderPicker(box); });
+            const search = $(".picker-search", box);
+            search.oninput = () => {
+                st.query = search.value;
+                const pos = search.selectionStart;
+                renderPicker(box);
+                const again = $(".picker-search", box);
+                again.focus();
+                again.setSelectionRange(pos, pos);
+            };
+            const allBox = $(".picker-all input", box);
+            if (allBox) allBox.onchange = () => { st.showAll = allBox.checked; renderPicker(box); };
+            $$("[data-move]", box).forEach(b => b.onclick = () => {
+                const i = +b.dataset.move, j = i + +b.dataset.dir;
+                const next = order.slice();
+                [next[i], next[j]] = [next[j], next[i]];
+                commit(next);
             });
-            box.appendChild(input);
+            $$("[data-drop]", box).forEach(b => b.onclick = () => commit(order.filter((_, i) => i !== +b.dataset.drop)));
+            $$("[data-unex]", box).forEach(b => b.onclick = () => commit(order, excluded.filter((_, i) => i !== +b.dataset.unex)));
+            $$(".pick", box).forEach(b => b.onclick = () => {
+                const n = b.dataset.name;
+                if (exMode) {
+                    if (excluded.includes(n)) commit(order, excluded.filter(x => x !== n));
+                    else commit(order.filter(x => x !== n), [...excluded, n]); // an excluded name never stays in the order
+                } else if (order.includes(n)) {
+                    commit(order.filter(x => x !== n));
+                } else {
+                    commit([...order, n], cfg.exclude ? excluded.filter(x => x !== n) : null);
+                }
+            });
+        }
+
+        function renderWallLevels() {
+            const box = $("#wall_levels");
+            const levels = (settings.walls.levels || []).map(Number);
+            box.innerHTML = Array.from({length: 18}, (_, i) => i + 1)
+                .map(n => `<button class="${levels.includes(n) ? "on" : ""}" data-lvl="${n}" title="${n}. seviye → ${n + 1}">${n}</button>`).join("")
+                + `<span class="lvl-note">${levels.length ? `${levels.length} seviye seçili` : "Hiçbiri seçili değil: her seviye"}</span>`;
+            $$("[data-lvl]", box).forEach(b => b.onclick = () => {
+                const n = +b.dataset.lvl;
+                const next = levels.includes(n) ? levels.filter(x => x !== n) : [...levels, n].sort((a, c) => a - c);
+                save({walls: {levels: next}});
+            });
+        }
+
+        function renderPickers() {
+            if (!settings) return;
+            $$("[data-picker]").forEach(renderPicker);
+            renderWallLevels();
+        }
+
+        async function loadIcons() {
+            try {
+                const data = await (await fetch("/icons/index")).json();
+                iconIndex = Object.fromEntries(Object.entries(data.icons || {}).map(([k, v]) => [k.toLowerCase(), v]));
+                // The first panel start downloads them in the background: look again until they are all there
+                if (!data.complete) setTimeout(() => loadIcons().then(renderPickers), 8000);
+            } catch (e) {}
         }
 
         function renderPriority(card) {
@@ -434,7 +568,7 @@
 
         function renderAll() {
             bindFields();
-            renderExcluded();
+            renderPickers();
             $$("[data-prio]").forEach(renderPriority);
             renderSummary();
         }
@@ -442,19 +576,21 @@
         // ---------- What Start will do ----------
         function startPlan() {
             const t = settings.tasks, home = settings.home, walls = settings.walls, g = settings.general;
-            const homeStep = t.home_base || t.home_lab || t.pet_house; // walls and helpers run inside this step
-            const needStep = "çalışmaz: Binalar, Laboratuvar ya da Evcil hayvanlardan biri açık olmalı";
+            const big = v => fmtNum(v || 0);
             const items = []; // {on, spend, name, text}
             items.push({on: t.home_base, spend: true, name: "Ana köy binaları",
-                text: `boş usta varsa geliştirme başlatır; kahramanlar ${t.heroes ? "dahil" : "hariç"}, Belediye ${home.town_hall ? "dahil" : "hariç"}`});
-            items.push({on: t.home_lab, spend: true, name: "Laboratuvar", text: "boşsa araştırma başlatır"});
-            items.push({on: t.pet_house, spend: true, name: "Evcil hayvanlar", text: "Pet House boşsa geliştirir"});
-            items.push({on: walls.enabled && homeStep, spend: true, name: "Duvar",
-                text: `turun sonunda en fazla ${walls.max_per_round} duvar`, off: walls.enabled && !homeStep ? needStep : ""});
-            items.push({on: t.builder_apprentice && homeStep, spend: false, name: "Usta çırağı", text: "süren geliştirmeye atanır",
-                off: t.builder_apprentice && !homeStep ? needStep : ""});
-            items.push({on: t.lab_assistant && homeStep, spend: false, name: "Lab asistanı", text: "süren araştırmaya atanır",
-                off: t.lab_assistant && !homeStep ? needStep : ""});
+                text: `boş usta varsa geliştirme başlatır; kahramanlar ${t.heroes ? "dahil" : "hariç"}, Belediye ${home.town_hall ? "dahil" : "hariç"}` +
+                    (t.home_base_priority && (home.priority || []).length ? `; önce sıradaki ${home.priority.length} bina` : "") +
+                    ((home.excluded || []).length ? `; ${home.excluded.length} bina hariç` : "")});
+            items.push({on: t.home_lab, spend: true, name: "Laboratuvar", text: "boşsa araştırma başlatır" +
+                (t.home_lab_priority && (home.lab_priority || []).length ? `; önce sıradaki ${home.lab_priority.length} araştırma` : "")});
+            items.push({on: t.pet_house, spend: true, name: "Evcil hayvanlar", text: "Pet House boşsa geliştirir" +
+                (t.pet_house_priority && (home.pet_priority || []).length ? `; önce sıradaki ${home.pet_priority.length} hayvan` : "")});
+            const levels = (walls.levels || []).slice().sort((a, b) => a - b);
+            items.push({on: walls.enabled, spend: true, name: "Duvar",
+                text: `her turun sonunda, en fazla ${walls.max_per_round} duvar, kalacak en az altın ${big(walls.min_gold)} / iksir ${big(walls.min_elixir)}, seviyeler: ${levels.length ? levels.join(", ") : "her seviye"}`});
+            items.push({on: t.builder_apprentice, spend: false, name: "Usta çırağı", text: "süren geliştirmeye atanır"});
+            items.push({on: t.lab_assistant, spend: false, name: "Lab asistanı", text: "süren araştırmaya atanır"});
             items.push({on: t.home_attacks, spend: true, name: "Saldırı", text: "rakip arar ve saldırır"});
             items.push({on: t.builder_base, spend: true, name: "Usta üssü binaları", text: "boş usta varsa geliştirir"});
             items.push({on: t.builder_lab, spend: true, name: "Usta üssü laboratuvarı", text: "boşsa araştırma başlatır"});
@@ -476,8 +612,7 @@
             let html = `<li class="time">${esc(timing)}</li>`;
             html += on.map(i => `<li class="on"><b>${esc(i.name)}</b> — ${esc(i.text)} ${i.spend ? `<span class="tag spend">kaynak harcar</span>` : `<span class="tag free">ücretsiz</span>`}</li>`).join("");
             if (!on.length) html += `<li class="off">Hiçbir görev açık değil; bot tur atar, köyü okur, başka bir şey yapmaz.</li>`;
-            html += off.filter(i => i.off).map(i => `<li class="off"><b>${esc(i.name)}</b> açık ama ${esc(i.off)}</li>`).join("");
-            const plainOff = off.filter(i => !i.off).map(i => i.name);
+            const plainOff = off.map(i => i.name);
             if (plainOff.length) html += `<li class="off">Yapmaz: ${esc(plainOff.join(", "))}</li>`;
             $("#summary").innerHTML = html;
         }
@@ -653,6 +788,7 @@
         // ---------- Start ----------
         (async () => {
             try { vocab = await (await fetch("/vocab")).json(); } catch (e) {}
+            await loadIcons();
             try {
                 settings = await api("/settings");
                 renderAll();
