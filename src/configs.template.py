@@ -149,6 +149,7 @@ EMULATOR_TYPE = "bluestacks" # "bluestacks" or "mumu"
 AUTO_START_EMULATOR = True
 SUSPEND_EMULATOR_ON_IDLE = False # optionally suspend emulator process when idle to cut down on resource usage
 WINDOW_DIMS = (1920, 1080) # width, height
+PREFILTER_COLOR_TOLERANCE = 1 # per-channel color tolerance when matching assets, raise if your emulator renders colors slightly differently (0 = exact match)
 ADB_ABS_DIR = "" # absolute path to dir with adb executable, leave empty to use system PATH
 BLUESTACKS_BIN_PATH = "" # absolute path to Bluestacks executable, leave empty to use system defaults
 MUMU_BIN_PATH = "" # absolute path to MuMuManager.exe, leave empty to use system defaults

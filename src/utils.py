@@ -1352,6 +1352,11 @@ class ADB_Manager:
         pyminitouch.config.ADB_EXECUTOR = adb_executable
         import pyminitouch.connection
         pyminitouch.connection._ADB = adb_executable
+        # pyminitouch builds this command as an unquoted string, which breaks on adb paths with spaces
+        # (e.g. C:\Program Files\BlueStacks_nxt\HD-Adb.exe) and makes it download an HTML page as minitouch
+        pyminitouch.connection.MNTInstaller.get_abi = lambda self: subprocess.check_output(
+            [adb_executable, "-s", self.device_id, "shell", "getprop", "ro.product.cpu.abi"], text=True
+        ).strip()
         # if cls.is_connected(): return
         subprocess.run([adb_executable, "start-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         res = adbutils.adb.connect(addr)
@@ -1588,7 +1593,19 @@ class Frame_Handler:
                 (img[..., 2].astype(np.uint32))
             )
 
-        mask_not_in_img1 = ~np.isin(pack(target), np.unique(pack(source)))
+        tol = getattr(configs, "PREFILTER_COLOR_TOLERANCE", 1)
+        if tol <= 0:
+            mask_not_in_img1 = ~np.isin(pack(target), np.unique(pack(source)))
+        else:
+            # emulators can render a shade or two off from the reference assets, so keep target pixels within tol of any source color
+            import itertools
+            ch = 1 if source.ndim == 2 else source.shape[2]
+            colors = np.unique(source.reshape(-1, ch), axis=0).astype(np.int16)
+            offsets = np.array(list(itertools.product(range(-tol, tol + 1), repeat=ch)), dtype=np.int16)
+            near = np.clip(colors[:, None, :] + offsets[None, :, :], 0, 255).astype(np.uint8)
+            lut = np.zeros(1 << (8 * ch), dtype=bool)
+            lut[pack(near.reshape(-1, 1, ch) if ch > 1 else near.reshape(-1, 1))] = True
+            mask_not_in_img1 = ~lut[pack(target)]
         out = target.copy()
         out[mask_not_in_img1] = 0
         return out
