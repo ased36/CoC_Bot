@@ -318,3 +318,7 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 
 - Sırada: Emre onayıyla yeniden iki deneme (`saldiri_yayma.py YALIN PAN`) → Emre hangisinin sağlıklı olduğuna karar verecek; sonra panelden botun kendi turu (duvar şu an kapalı, Emre açacak).
 - BlueStacks çökmeleri (NVIDIA OpenGL) sıklaştı: 19:01, 19:13, 19:36, 19:57, 20:38, 20:43. Sürücü kararı Emre'de (önceden "dokunma" dedi).
+- **Karşılaştırma (20:49–20:53, Emre 1A; Emre'nin yolu ile):**
+  - **W/S'siz:** 1,55 M / 1,08 M'lik köy; sürükleme 7,9 sn, kalan 15 dokunuşla kart boş; kuşatma, King, Queen, Warden indi, yarasa atıldı. **1 yıldız %68**, +1,18 M altın / +0,68 M iksir.
+  - **W/S'li:** görüntü −201 px (alt görünür) → alt yarı, +324 px → üst yarı; sürükleme 7,4 sn, kalan 12 dokunuş, kart boş; barbarlar + Champion + yarasa ile %52 (1 yıldız). **Kuşatma ve 3 kahraman inmedi:** geri kaydırma fazla geldi, alt kenar asker çubuğunun arkasında kaldı ve nokta seçimi görünmeyen kenarda eski noktaya düşüyordu → düzeltildi (görünmeyen kenarda başka görünen kenar). +672 k altın / +881 k iksir. Teslim penceresinde Okay bulunamadı, savaş kendiliğinden bitti.
+  - "Find a Match" bulma hatası düzeltildi (resim arama sonucu boş satırlarla karışık gelince çöküyordu). 20:47 "Unable to attack Village! Try again later" = çöken saldırı sunucuda bitmemişti; birkaç dakika sonra düzeldi.

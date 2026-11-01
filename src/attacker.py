@@ -377,8 +377,14 @@ class Attacker:
         lead_side, lead_spot = spots[1] if len(spots) > 1 else spots[0]
         logger.info(f"Heroes {hero_side}, champion {lead_side}")
         def spot_again(side, old):
-            p = self._deploy_points(ring, side, 1, spread=20, margin=0.055)
-            return p[0] if p else old
+            # After the view moved a side can be hidden (the bottom under the troop bar after the pan back, 20:52: siege
+            # and three heroes tapped on the old spot, now inside the village): then the next visible side
+            for s in [side] + [s for s in ("left", "right", "top", "bottom") if s != side]:
+                p = self._deploy_points(ring, s, 1, spread=20, margin=0.055)
+                if p:
+                    if s != side: logger.info(f"{side} is out of sight now, using {s}")
+                    return s, p[0]
+            return side, old
 
         abilities = []
         def ability(name):
@@ -457,7 +463,7 @@ class Attacker:
             done.set()
         logger.info(f"Troops: {len(sweeps)} sweep(s), {hold:.1f}s held{', card ran out' if empty.is_set() else ''}")
         fresh_ring("after the sweeps")
-        hero_spot, lead_spot = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
+        (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
         self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]))
 
         if not lead_first: drop_lead()
@@ -470,7 +476,7 @@ class Attacker:
         if siege_card:
             group.insert(0 if random.random() < siege.get("first", 0.8) else random.randint(1, len(group)), siege_card)
         fresh_ring("before the heroes")
-        hero_spot = spot_again(hero_side, hero_spot)
+        hero_side, hero_spot = spot_again(hero_side, hero_spot)
         for name in group:
             if self._card_deployed(cards[name]):
                 logger.info(f"{name} already on the field, its card is not touched")
@@ -832,8 +838,9 @@ class Attacker:
             bx, by = Frame_Handler.locate(battle_temp, frame, thresh=0.9)
             if bx is None or by is None: return None, None
             xys = Frame_Handler.locate(find_a_match_temp, frame, thresh=0.9, return_all=True)
-            if xys == [[None, None]]: return None, None
-            xys = np.array(xys)
+            xys = [p for p in xys if p[0] is not None and p[1] is not None] # matches can come mixed with empty ones (20:46)
+            if not xys: return None, None
+            xys = np.array(xys, dtype=float)
             dists = abs(xys[:, 0] - bx)
             if min(dists) > 0.01: return None, None
             x, y = xys[np.argmin(dists)]
