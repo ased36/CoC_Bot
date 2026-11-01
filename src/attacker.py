@@ -377,6 +377,22 @@ class Attacker:
         radius = np.array([np.median(wrap[i:i + 11]) for i in range(180)])
         return (cx * 1920 / w, cy * 1080 / h), radius * 1920 / w
 
+    def _start_battle(self, ring_mid, ring_out):
+        """The troop card is selected: one troop on a spot that is surely on the map and outside the red line starts the
+        battle (only then does a refused tap show the red area; before it a tap selects a building). Spots from wide to
+        narrow parts of the map; the battle is on once the scouting Next button is gone (22:47: the first spot was off a
+        stone themed map). Returns whether it started."""
+        import time, random
+        sides = random.sample((0, 180), 2)
+        spots = [self._ring_point(ring_out, a + random.uniform(-6, 6), m) for m in (-0.05, -0.1) for a in sides]
+        spots += [self._ring_point(ring_mid, a, 0.02) for a in sides + [90, 270]]
+        for x, y in spots:
+            if self._in_hud(x, y): continue
+            self._tap(x, y, spread=0.004)
+            time.sleep(random.uniform(0.3, 0.45))
+            if self._wait_village(timeout=0.3) is None: return True
+        return False
+
     def _reveal_red_area(self, before, shots=None):
         """The troop card is selected and the battle is on: one tap on the middle of the village (red area, nothing
         drops) and frames as fast as they come, while the tint is on. before: a frame without the tint (taken before the
@@ -504,11 +520,12 @@ class Attacker:
             # One troop where the map is widest starts the battle (before it a tap only selects a building), then a tap
             # on the middle of the village makes the game show the red area
             clean = Frame_Handler.get_frame(grayscale=False) # no tint yet
-            if battle_start is None:
-                self._tap(*self._ring_point(ring_out, random.choice((0, 180)) + random.uniform(-6, 6), -0.05), spread=0.004)
-                battle_start = time.time()
-                time.sleep(random.uniform(0.3, 0.5))
-            red = self._reveal_red_area(clean, shots)
+            started = battle_start is not None or self._start_battle(ring, ring_out)
+            if started:
+                battle_start = battle_start or time.time()
+                red = self._reveal_red_area(clean, shots)
+            else:
+                logger.info("Battle did not start with one troop, using the recorded paths")
         hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
         jitter = lambda: random.uniform(-12, 12)
         # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
