@@ -371,3 +371,19 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
   6. Hazine / maden arabası / engel toplama, Hammer Jam indirimli geliştirmeler.
   7. Usta üssü saldırısı (şu an kapalı).
   8. BlueStacks NVIDIA çökmeleri (Emre 2A: dokunma — yeniden sorulmaz, yalnız bilgi).
+
+## 02.11 — "bunun üstüne ne ekleyelim" araştırması (kod yazılmadı, Emre seçecek)
+
+**Dün geceki kayıttan (23:13–23:46, 8f2cd66, botun kendi turu):**
+- Kırmızı alan 23:13'ten beri **10 köyün 10'unda okundu** (önceki "köylerin yarısı" notu eskidi; 4 "not seen" hepsi 23:07 öncesi). "Okay not found" bütün günde 1, "Village did not load" 2 (biri sunucu tarafı, 20:47).
+- 9 saldırıdan 3'ünde (23:27, 23:32, 23:35) kalan 60 dokunuş boşa, kart boşalmadı; 23:27'de kuşatma + 3 kahraman hiç inmedi, 23:35'te kahramanlar ancak yeniden denemede. Yine de ganimet iyi: saldırı başına ~1,2 M altın / ~1,1 M iksir, tur ~2 dk.
+- **Sebep (kayıtlı karelerde kuru çizim, scratchpad `kalan_noktalar.py`):** kırmızı çizgi doğru, ama kalan barbar noktaları çizginin %3 / %5 / %7 dışında (58–134 px); büyük köylerde çizgi ile harita kenarı arası ~%1–2 → noktaların neredeyse hepsi ormanda / su kenarında. Kahraman noktası da %3 dışarıda ve inmeyince "daha dışarı" deneniyor (yanlış yön). Sürüklemeler (%1,5–3,5) inmiş.
+- **MyBot'ta (`COCBot/functions/Attack/RedArea/GetOffestPixelRedArea2.au3`):** bırakma noktası kırmızı çizgi pikselinin 3 oyun pikseli dışı (≈ 7 px, ekranın ~%0,4'ü), izometrik yönde (x 4/3, y 1); çizgi bulunamazsa sabit dış dörtgen (`_GetVectorOutZone`, haritayı tam uzaklaştırıp ortalayınca).
+- Saatte saldırı: 21:00'de 21, 23:00–23:46'da 12; 24 saat aralıksız çalışabiliyor (mola ve günlük sınır yok, `hours_enabled` kapalı).
+- Ordu: Mart 2025 "Clash Anytime" güncellemesinden beri eğitim süresi yok, kahraman iyileşmesi yok, ordu saldırıdan hemen sonra hazır (kayıtta 9/9 saldırıda tam ordu) → ordu bekleme / Quick Train işi gereksiz.
+- Telegram: `utils.send_notification` var, anahtar `src/configs.py`'de (git'e girmez), ama yalnız geliştirme başlarken çağrılıyor; saldırı / hata / çökme bildirimi yok. MyBot'ta: son saldırı (+ ekran görüntüsü), istatistik, usta / kalkan durumu, başlat / durdur / saldırı aç-kapa, bilgisayarı kapat komutları.
+- Kara iksir her ekranda 250 000 (depo dolu); panelde Binalar / Kahramanlar / Lab / Evcil kapalı, yalnız duvar + saldırı açık → gelen kara iksir boşa.
+- Klan kalesi büyüleri (yıldırım x1, x2) hiçbir saldırıda kullanılmıyor, kalede duruyor (zarar yok).
+- BlueStacks dökümleri: 02.11 00:17 ve 00:39 (bot 23:46'da durmuştu).
+
+**Emre'ye sorulan seçenekler:** sohbette numaralı (1 kalan barbar / kahraman yeri, 2 mola + günlük sınır, 3 Telegram, 4 klan kalesi, 5 kara iksir, 6 usta üssü saldırısı); yapılmaması önerilenler: ordu kontrolü, hazine / toplayıcı / maden arabası, Hammer Jam (15.11'de bitiyor, menü zaten indirimli fiyatı okuyor), Okay / Village did not load (çok seyrek).
