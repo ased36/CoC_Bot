@@ -201,14 +201,16 @@ class Attacker:
             time.sleep(0.2)
         return False
 
-    def _click_button(self, name, timeout=3, scales=(0.6, 0.7, 0.8, 0.9, 1.0, 1.1)):
-        """Tap a button image found at any of a few sizes (the button pictures were taken at other UI sizes)."""
+    def _click_button(self, name, timeout=3, scales=(0.6, 0.7, 0.8, 0.9, 1.0, 1.1), on_found=None):
+        """Tap a button image found at any of a few sizes (the button pictures were taken at other UI sizes).
+        on_found: called once the button is seen, before the tap (the results screen picture for Telegram)."""
         import time, cv2
         templates = [cv2.resize(self.assets[name], None, fx=s, fy=s, interpolation=cv2.INTER_AREA) for s in scales]
         start = time.time()
         while time.time() - start < timeout:
             for x, y in Frame_Handler.batch_locate(templates, grayscale=False, thresh=0.85):
                 if x is not None:
+                    if on_found: on_found()
                     self._tap(x, y, spread=0.003)
                     return True
             time.sleep(0.3)
@@ -799,7 +801,7 @@ class Attacker:
         style = self.load_style(style_name)
         shots = DEBUG_DIR / "attacks" / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         shots.mkdir(parents=True, exist_ok=True)
-        self.last_result = shots / "result_00.png" # the results screen, sent with the Telegram attack message
+        self.last_result = shots / "result.png" # the results screen with the loot won, sent with the Telegram attack message
         def shot(name):
             cv2.imwrite(str(shots / f"{name}.png"), cv2.cvtColor(Frame_Handler.get_frame(grayscale=False), cv2.COLOR_RGB2BGR))
 
@@ -862,12 +864,17 @@ class Attacker:
             if n % 3 == 0: shot(f"battle_{n:03d}")
             time.sleep(1.5)
 
-        # Results screen: Return Home (screenshots kept until its picture is measured on this UI)
+        # Results screen: Return Home (screenshots kept until its picture is measured on this UI). The picture for
+        # Telegram is taken once Return Home shows: the loot won is on screen then (the first frame was still the
+        # dimmed End Battle dialog, Emre 02.11)
+        def result_shot():
+            time.sleep(0.8) # the loot numbers count up for a moment
+            shot("result")
         start = time.time()
         while time.time() - start < 60:
             shot(f"result_{int(time.time() - start):02d}")
             # The village takes a few seconds to load after Return Home (clouds): wait for it instead of looking again
-            pressed = self._click_button("return_home", timeout=1)
+            pressed = self._click_button("return_home", timeout=1, on_found=result_shot)
             for _ in range(15 if pressed else 1):
                 if in_home_base():
                     TEMP_CACHE["location"] = "home_base"
@@ -875,6 +882,7 @@ class Attacker:
                     return True
                 time.sleep(1)
         logger.warning("Return Home not found, restarting CoC instead")
+        self.last_result = shots / "result_00.png" # no results screen seen: the last picture there is
         if restart: start_coc()
         else: stop_coc()
         return False
