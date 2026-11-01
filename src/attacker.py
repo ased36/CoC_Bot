@@ -333,6 +333,69 @@ class Attacker:
         threading.Thread(target=run, daemon=True).start()
         return empty, done
 
+    @classmethod
+    def _red_area_from(cls, before, after):
+        """The red area the game shows for ~2 s after a tap on it (measured 22:32): the whole no-deploy zone gets a tint
+        that lowers the Lab a* channel by ~5-10 over the village, with sharp stepped edges, at ~0.9-1.5 s after the tap.
+        Returns the ring of that zone ((center px), radius px per 2 degrees, as _deploy_ring) or None when it is not seen."""
+        import cv2, numpy as np
+        a = cv2.cvtColor(before, cv2.COLOR_RGB2LAB).astype(np.float32)[..., 1]
+        b = cv2.cvtColor(after, cv2.COLOR_RGB2LAB).astype(np.float32)[..., 1]
+        d = cv2.GaussianBlur(cv2.medianBlur(b - a, 5), (0, 0), 2)
+        h, w = d.shape
+        m = (d < -2.5).astype(np.uint8)
+        hud = np.zeros_like(m)
+        for x1, y1, x2, y2 in cls.HUD_BOXES: hud[int(y1 * h):int(y2 * h), int(x1 * w):int(x2 * w)] = 1
+        m[hud > 0] = 0
+        m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8)) # walking troops and their shadows
+        m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((25, 25), np.uint8))
+        n, lab, st, cent = cv2.connectedComponentsWithStats(m)
+        if n < 2: return None
+        big = 1 + np.argmax(st[1:, cv2.CC_STAT_AREA])
+        if st[big, cv2.CC_STAT_AREA] < 0.08 * h * w: return None # a few moving troops, not the zone (or not shown yet)
+        cs, _ = cv2.findContours((lab == big).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        pts = max(cs, key=cv2.contourArea)[:, 0, :].astype(float)
+        # Edge points that touch a HUD box or the screen edge are where the zone is hidden, not where it ends
+        near = cv2.dilate(hud, np.ones((21, 21), np.uint8))
+        xi, yi = pts[:, 0].astype(int), pts[:, 1].astype(int)
+        hidden = (near[yi, xi] > 0) | (xi < 10) | (xi > w - 11) | (yi < 10)
+        cx, cy = cent[big]
+        ang = (np.degrees(np.arctan2(pts[:, 1] - cy, pts[:, 0] - cx)) + 360) % 360
+        r = np.hypot(pts[:, 0] - cx, pts[:, 1] - cy)
+        radius = np.full(180, np.nan)
+        for i in range(180):
+            sel = ((ang >= i * 2 - 1) & (ang < i * 2 + 1) | (ang >= i * 2 + 359)) & ~hidden
+            if sel.any(): radius[i] = r[sel].max()
+        ok = ~np.isnan(radius)
+        if ok.sum() < 60: return None
+        idx = np.arange(180)
+        radius = np.interp(idx, np.r_[idx[ok] - 180, idx[ok], idx[ok] + 180], np.r_[radius[ok], radius[ok], radius[ok]])
+        # Narrow spikes (troops walking at the edge) and notches (a corner under the HUD) are not the zone's shape:
+        # circular median over 22 degrees
+        wrap = np.r_[radius[-5:], radius, radius[:5]]
+        radius = np.array([np.median(wrap[i:i + 11]) for i in range(180)])
+        return (cx * 1920 / w, cy * 1080 / h), radius * 1920 / w
+
+    def _reveal_red_area(self, shots=None):
+        """The troop card is selected and the battle is on: one tap on the middle of the village (red area, nothing
+        drops), then the zone the game shows is read from the frame ~1.1 s later. Returns its ring or None."""
+        import time, cv2
+        before = Frame_Handler.get_frame(grayscale=False)
+        guess = self._deploy_ring(before)
+        cx, cy = (guess[0][0] / 1920, guess[0][1] / 1080) if guess else self.EMRE_CENTER
+        self._tap(cx, cy, spread=0.004)
+        # The tint fades in: partial at 0.9 s, whole at 1.4 s (22:32); a frame takes ~0.45 s
+        time.sleep(1.2)
+        t0, ring = time.time(), None
+        while ring is None and time.time() - t0 < 1.0:
+            after = Frame_Handler.get_frame(grayscale=False)
+            ring = self._red_area_from(before, after)
+        if shots is not None:
+            cv2.imwrite(str(shots / "red_before.png"), cv2.cvtColor(before, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(str(shots / "red_after.png"), cv2.cvtColor(after, cv2.COLOR_RGB2BGR))
+        logger.info("Red area " + ("read" if ring else "not seen, using the recorded paths"))
+        return ring
+
     @staticmethod
     def _view_shift(a, b):
         """How far the view moved between two frames (dx, dy in pixels), from the field above the troop bar."""
@@ -357,9 +420,11 @@ class Attacker:
         # during the attack the rings move with it (the shift is measured from a fresh frame)
         moved = [0.0, 0.0]
         ring, ring_out = self._emre_ring(self.EMRE_MID), self._emre_ring(self.EMRE_OUTER)
+        # Once the game has shown the real red area (Emre 1A, 22:32) everything goes by that line instead
+        red = None
         last = {"frame": Frame_Handler.get_frame(grayscale=False)}
         def fresh_ring(label):
-            nonlocal ring, ring_out
+            nonlocal ring, ring_out, red
             frame = Frame_Handler.get_frame(grayscale=False)
             dx, dy = self._view_shift(last["frame"], frame)
             last["frame"] = frame
@@ -368,6 +433,7 @@ class Attacker:
                 moved[0] += dx
                 moved[1] += dy
                 ring, ring_out = self._emre_ring(self.EMRE_MID, moved), self._emre_ring(self.EMRE_OUTER, moved)
+                if red: red = ((red[0][0] + dx, red[0][1] + dy), red[1])
 
         # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
         spots = []
@@ -384,7 +450,7 @@ class Attacker:
             # After the view moved a side can be hidden (the bottom under the troop bar after the pan back, 20:52: siege
             # and three heroes tapped on the old spot, now inside the village): then the next visible side
             for s in [side] + [s for s in ("left", "right", "top", "bottom") if s != side]:
-                p = self._deploy_points(ring_out, s, 1, spread=20, margin=0.01)
+                p = self._deploy_points(red, s, 1, spread=20, margin=0.03) if red else self._deploy_points(ring_out, s, 1, spread=20, margin=0.01)
                 if p:
                     if s != side: logger.info(f"{side} is out of sight now, using {s}")
                     return s, p[0]
@@ -435,6 +501,14 @@ class Attacker:
         # lifts the finger earlier if the army is smaller (the next card would be selected); the rest go one by one
         troop_x = cards[troops["card"]]
         tap_card(troops["card"])
+        if troops.get("red_line", True):
+            # One troop where the map is widest starts the battle (before it a tap only selects a building), then a tap
+            # on the middle of the village makes the game show the red area
+            if battle_start is None:
+                self._tap(*self._ring_point(ring_out, random.choice((0, 180)) + random.uniform(-6, 6), -0.05), spread=0.004)
+                battle_start = time.time()
+                time.sleep(random.uniform(0.3, 0.5))
+            red = self._reveal_red_area(shots)
         hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
         jitter = lambda: random.uniform(-12, 12)
         # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
@@ -468,7 +542,8 @@ class Attacker:
                 if empty.is_set(): break
                 if pans[i]: pan(pans[i])
                 fresh_ring(f"before sweep {i + 1}")
-                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep, lead_in=-0.03, margins=(0.0, 0.03)), seconds, stop=empty.is_set,
+                path = self._sweep_path(red, start, sweep, lead_in=0.0, margins=(0.015, 0.035)) if red else self._sweep_path(ring_out, start, sweep, lead_in=-0.03, margins=(0.0, 0.03))
+                Input_Handler.drag_path(path, seconds, stop=empty.is_set,
                                         hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
                 self._pause(troops.get("sweep_pause", [0.25, 0.6]))
         finally:
@@ -477,7 +552,7 @@ class Attacker:
         fresh_ring("after the sweeps")
         (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
         if not empty.is_set():
-            self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
+            self._leftover_troops(red or ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.03, 0.05, 0.07) if red else (0.035, 0.055, 0.015), pause=0.05)
 
         if not lead_first: drop_lead()
 
