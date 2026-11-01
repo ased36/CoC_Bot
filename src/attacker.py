@@ -285,7 +285,7 @@ class Attacker:
         for _ in range(12):
             if not self._in_hud(*self._ring_point(ring, start, 0.04 + lead_in)): break
             start += 8 if sweep > 0 else -8
-        phase, waves, base = random.uniform(0, 2 * np.pi), random.uniform(1.5, 3), random.uniform(0.03, 0.045)
+        phase, waves, base = random.uniform(0, 2 * np.pi), random.uniform(1.5, 3), random.uniform(0.05, 0.07) # further out: the line guessed from red building parts is too tight (Emre 20:20)
         n = max(int(abs(sweep) / 5), 8)
         def margin(i): return base + 0.012 * np.sin(phase + waves * 2 * np.pi * i / n) + lead_in * max(0.0, 1 - i / (0.15 * n))
         return [self._ring_point(ring, start + sweep * i / n, margin(i)) for i in range(n + 1)]
@@ -343,7 +343,7 @@ class Attacker:
         # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
         spots = []
         for side in random.sample(list(self.CORNER_ANGLES), 4):
-            p = self._deploy_points(ring, side, 1, spread=20)
+            p = self._deploy_points(ring, side, 1, spread=20, margin=0.055)
             if p: spots.append((side, p[0]))
         if not spots:
             logger.error("Attack: no visible edge to deploy on")
@@ -352,7 +352,7 @@ class Attacker:
         lead_side, lead_spot = spots[1] if len(spots) > 1 else spots[0]
         logger.info(f"Heroes {hero_side}, champion {lead_side}")
         def spot_again(side, old):
-            p = self._deploy_points(ring, side, 1, spread=20)
+            p = self._deploy_points(ring, side, 1, spread=20, margin=0.055)
             return p[0] if p else old
 
         abilities = []

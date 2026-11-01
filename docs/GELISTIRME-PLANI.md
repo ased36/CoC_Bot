@@ -298,10 +298,14 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 - **Düzeltme (canlıda denenmedi):** sürükleme köyden uzakta başlar (ilk %15'te +%5 pay), her sürüklemeden önce ve sonra ve kahramanlardan önce taze kare → kayma kaydı ("View moved …") + sınır ve noktalar yeniden; sürükleme sırasında kareler `debug/attacks/<saat>/hold_*.png` (oyunun ne yaptığı görülsün).
 - **Betik notu:** betikten çalışırken `Settings_Handler.load()` şart (yoksa bütün şartlar 0 → ilk köye saldırır; 20:01 denemesi bu yüzden aramadan durduruldu). Betiği durdurmak onun açtığı BlueStacks'i de kapatır.
 
-## DEVİR 01.11 20:20
+## DEVİR 01.11 20:30
 
 - Sırada: Emre onayıyla 3. canlı saldırı (başta sabit basılı tutma denenecek) (scratchpad `saldiri_yayma.py`: parse_args → OCR → init_instance → ensure_emulator → start_coc → Settings_Handler.load → search → scripted_attack("yayma")). Bakılacak: "View moved" satırı, `hold_*.png` karelerinde barbarlar sürüklemede iniyor mu, kalan dokunuşlar kartı boşaltıyor mu, kahramanlar iniyor mu.
 - Kayma sürerse seçenekler: sürüklemeyi tam ekran kenarından başlatmak (Emre gibi x ≈ 0,05–0,1), ya da önce kısa basılı tutup (tek nokta, kayma olmaz) sonra yürümek.
 - Sınır tahmini hâlâ binalardaki kırmızılardan (bazı köylerde yol içeri giriyor). Sınırı bulmanın başka yolu düşünülecek (ör. çimen rengi dışındaki her şey = bina).
 - **2. canlı saldırı (20:13, Emre 1A): 2 yıldız, %93**, +954 k altın / +750 k iksir (977 k / 973 k'lık köy, 2. arama). Kuşatma, King, Warden indi; 11 yarasa alt kenara. Sürüklemede yine **hiç barbar inmedi**: `hold_*.png` karelerinde 7,5 sn boyunca kart x60, köy ekranda kayıyor ("View moved -67, -44"). Barbarları kalan adımının 60 dokunuşu indirdi (46 indi, 14 elde).
 - **Asıl sebep (kayıttan doğrulandı):** Emre'nin asker bırakan 23 sürüklemesinin hepsinde parmak önce **0,36–0,53 sn kıpırdamadan** duruyor, sonra yürüyor; hemen kıpırdayan sürüklemeler (19:03) kamera kaydırması. Botunki anında yürüyordu. **Düzeltme:** `drag_path(hold_start=…)`, yaml `hold_still: [0.35, 0.55]`. Canlıda denenmedi.
+- **Pay büyütüldü (Emre 20:20, "hala dışlarıya atamıyorsun"):** sürükleme payı %3–4,5 → %5–7, kahraman/kuşatma noktası %3,5 → %5,5 (sınır binalardaki kırmızılardan dar tahmin ediliyor).
+- **3. canlı saldırı (20:22, Emre 1A): 2 yıldız, %96, sürükleme ÇALIŞTI.** 1,6 M / 1,6 M'lik köy (2. arama), +1,38 M altın / +1,47 M iksir. Başta sabit basılı tutmayla tek tur: `hold_*.png`'de kart x60 → x45 → x25 → boş, görüntü kayması yok; kalan 10 dokunuşla kart boşaldı. Champion (sol, yetenek hemen), Queen (yetenek hemen), kuşatma, King, Warden sağdan indi, 11 yarasa sağa; 55. sn'de teslim.
+- **"Beklenmeyen kapanma" penceresi (20:24) çökme değil:** deneme betiği bitince botun çıkış işleyicisi (`Exit_Handler` → emülatör `stop` → `reboot -p`) Android'i kapattı (Player.log 20:24:11 "Power down", döküm yok). Betik artık bunu kaldırıyor. Botun kendisi kapanırken de aynısını yapar (upstream davranışı) — değiştirilip değiştirilmeyeceği açık.
+- **Sırada:** paneldeki "Ana köyde saldır" ile botun kendi turunda yayma stili (gözetimsiz); sınırı daha iyi bulma (çimen dışı = bina) isteğe bağlı.
