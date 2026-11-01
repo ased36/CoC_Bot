@@ -17,8 +17,8 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 
 | Satır | Değer |
 |---|---|
-| Kayıtlı ordu (Quick Train) | Ordu 1 — oyunda süper barbar + 11 yıldırım olarak kaydedilir (Emre ayarlar) |
-| Ordu boyutu / içerik | __ süper barbar, 11 yıldırım, kahramanlar: __ |
+| Kayıtlı ordu (Quick Train) | Ordu 1 — oyunda süper barbar + 11 yıldırım olarak kaydedilir (Emre ayarlar). Oyunda Quick Train'in yeni adı "Saved Recipes" |
+| Ordu boyutu / içerik | 60 süper barbar (sv. 11), 11 yıldırım (sv. 10), kahramanlar: King 90, Queen 90, Warden 65, Champion 70 (01.11 ordu ekranından okundu, 6A). 3 kuşatma makinesi ordudaydı, stilde yok → kullanılmaz |
 | Klan askerleri | kullanılmaz |
 
 ### Arama (panelde de değişir)
@@ -27,9 +27,10 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 |---|---|
 | En az altın | 400 000 |
 | En az iksir | 0 (0 = şart yok) |
-| En az kara iksir | __ |
+| En az kara iksir | 0 = şart yok (3A) |
 | Birleşim | hepsi birden (0 yazılan şart sayılmaz) |
 | En fazla arama | 30, bulamazsa vazgeç, sonraki turda yeniden |
+| Şartları düşür | her 15 aramada %10 (panelden; Emre bazen %30 yapar) — 2B |
 
 ### Giriş
 
@@ -49,7 +50,7 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 | Yıldırım hedefi | kara iksir sondaları |
 | Dağılım | 4 sonda: 3 + 3 + 3 + 2 = 11 |
 | Az sonda bulunursa | bulunanlara bölünür; hiç bulunamazsa yıldırım atılmaz |
-| Ne zaman | ordudan önce / sonra / ortasında: __ |
+| Ne zaman | ordudan önce (4A) |
 | Bazen saptır | yıldırımın düştüğü yer sondanın merkezinden biraz kayar `(öneri)` |
 
 ### Kahramanlar
@@ -64,7 +65,7 @@ Bilmediğin satırı boş bırak; Claude önerisini yazar, sen onaylarsın.
 | Satır | Değer |
 |---|---|
 | Bitir | savaş bitene kadar bekle, sonra Return Home |
-| Erken bitir | __ (ör. 20 sn ganimet gelmezse, %50 geçince) |
+| Erken bitir | 20 sn ganimet değişmezse bitir (5B) |
 
 ---
 

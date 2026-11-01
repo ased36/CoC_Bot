@@ -55,11 +55,146 @@ class Attacker:
         logger.warning(f"Return Home not found within {timeout}s, restarting CoC instead")
         return False
 
-    def start_normal_attack(self, timeout=60):
-        import time, numpy as np
+    # ============================================================
+    # 🔍 Search
+    # ============================================================
 
-        # Click attack
-        Input_Handler.click(0.07, 0.9)
+    # Available loot on the search screen (x1, y1, x2, y2), measured at 1920x1080
+    LOOT_REGIONS = {
+        "gold": (0.050, 0.118, 0.160, 0.165),
+        "elixir": (0.050, 0.172, 0.160, 0.220),
+        "dark": (0.050, 0.225, 0.160, 0.272),
+    }
+
+    @staticmethod
+    def _tap(x, y, spread=0.004):
+        import random
+        # A few pixels off every time, like a finger
+        Input_Handler.click(x + random.uniform(-spread, spread), y + random.uniform(-spread, spread))
+
+    def _click_battle(self):
+        # The shop's pack price buttons sit exactly where Battle is; only tap it when it is really there
+        if not in_home_base(): return False
+        x, y = Frame_Handler.locate(self.assets["battle"], grayscale=False, thresh=0.97)
+        if x is None or x > 0.15 or y < 0.85: return False
+        self._tap(x, y)
+        return True
+
+    def _wait_village(self, timeout=30):
+        import time
+        # The Next button shows up once the clouds are gone and the loot is on screen
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            x, y = Frame_Handler.locate(self.assets["next"], grayscale=False, thresh=0.9)
+            if x is not None: return x, y
+            time.sleep(0.2)
+        return None
+
+    def _read_loot(self):
+        import re
+        frame = Frame_Handler.get_frame(grayscale=False)
+        loot = {}
+        for name, region in self.LOOT_REGIONS.items():
+            digits = re.sub(r"\D", "", OCR_Handler.read_digits(Frame_Handler.crop(frame, *region)))
+            loot[name] = int(digits) if digits else None
+        return loot, frame
+
+    @staticmethod
+    def loot_minimums(attack, n):
+        # Every `lower_every` searches the minimums drop by `lower_pct` % of the panel value
+        every, pct = attack.get("lower_every", 0) or 0, attack.get("lower_pct", 0) or 0
+        steps = (n - 1) // every if every > 0 else 0
+        factor = max(0.0, 1 - steps * pct / 100)
+        return {k: int((attack.get(f"min_{k}", 0) or 0) * factor) for k in ("gold", "elixir", "dark")}
+
+    @staticmethod
+    def loot_ok(loot, mins):
+        # Every non-zero minimum has to hold; 0 means no condition, an unreadable value fails it
+        return all(m <= 0 or (loot.get(k) or 0) >= m for k, m in mins.items())
+
+    def _leave_search(self, timeout=20):
+        import time
+        # No troops deployed yet, so End Battle goes straight home and costs nothing
+        if not self._click_end_battle(timeout=5):
+            logger.error("End Battle not found on the search screen")
+            return False
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if in_home_base():
+                TEMP_CACHE["location"] = "home_base"
+                return True
+            time.sleep(0.5)
+        logger.error("Did not get back home from the search screen")
+        return False
+
+    def _save_village(self, frame, n):
+        import cv2, datetime
+        # Kept for building templates (dark elixir drills); debug/ is not committed
+        folder = DEBUG_DIR / "villages"
+        folder.mkdir(parents=True, exist_ok=True)
+        name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{n:02d}.png"
+        cv2.imwrite(str(folder / name), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    def search(self, attack, search_only=False):
+        """Next through villages until the loot minimums hold.
+        Returns the loot of the chosen village (still on its screen unless search_only), or None when back home."""
+        import time, random
+
+        if not self._open_search(): return None
+        max_searches = max(1, int(attack.get("max_searches", 30) or 30))
+        fmt = lambda v: "-" if v is None else f"{v:,}".replace(",", ".")
+        for n in range(1, max_searches + 1):
+            if self._wait_village() is None:
+                logger.error("Village did not load")
+                self._leave_search()
+                return None
+            time.sleep(0.5)
+            loot, frame = self._read_loot()
+            if search_only or attack.get("save_villages"): self._save_village(frame, n)
+            mins = self.loot_minimums(attack, n)
+            logger.info(
+                f"Search {n}: gold={fmt(loot['gold'])} elixir={fmt(loot['elixir'])} dark={fmt(loot['dark'])} "
+                f"min={fmt(mins['gold'])}/{fmt(mins['elixir'])}/{fmt(mins['dark'])}"
+            )
+            if self.loot_ok(loot, mins):
+                logger.info(f"Village found after {n} searches")
+                if search_only: self._leave_search()
+                return loot
+            if n == max_searches: break
+            # Look at the village for a moment, but decide well inside the 30 s scouting time
+            time.sleep(random.uniform(1.5, 4.0))
+            xy = self._wait_village(timeout=2)
+            if xy is None:
+                logger.error("Next button not found")
+                self._leave_search()
+                return None
+            self._tap(*xy)
+            time.sleep(1)
+        logger.info(f"No village in {max_searches} searches, trying again next round")
+        self._leave_search()
+        return None
+
+    @require_exit()
+    def run_search_only(self, timeout=10):
+        import time
+
+        try:
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                if in_home_base(): break
+            if time.time() - start_time >= timeout:
+                logger.error("Not in home base. Aborting search.")
+                return
+            self.search(Settings_Handler.get_section("attack"), search_only=True)
+        except Exception:
+            logger.exception("Error in run_search_only():")
+
+    def _open_search(self):
+        import numpy as np
+
+        if not self._click_battle():
+            logger.error("Battle button not found")
+            return False
 
         # Find a match
         find_a_match_temp = render_text("Find a Match", "SupercellMagic", 29)
@@ -83,22 +218,14 @@ class Attacker:
             logger.error("Failed to click find a match button")
             return False
 
-        # Confirm attack
+        # Confirm attack (the army window can take a few seconds to open)
         if not click_with_timeout(
             lambda: Frame_Handler.locate(self.assets["confirm_attack"], thresh=0.9),
-            timeout=5
+            timeout=10
         ):
             logger.error("Failed to confirm attack")
             return False
-
-        # Wait until "end battle" button is found
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            x, y = Frame_Handler.locate(self.assets["end_battle"], thresh=0.9)
-            if x is not None and y is not None: return True
-            time.sleep(0.1)
-        logger.error("Failed to search for attack")
-        return False
+        return True
     
     def start_builder_attack(self, timeout=60):
         import time
@@ -362,10 +489,10 @@ class Attacker:
                 logger.error("Not in home base. Aborting home attack.")
                 return
             
-            # Complete an attack
-            if self.start_normal_attack(timeout):
+            # Find a village worth attacking, then attack it
+            if self.search(Settings_Handler.get_section("attack")) is not None:
                 self.complete_normal_attack(restart=restart, exclude_clan_troops=EXCLUDE_CLAN_TROOPS)
-            else:
+            elif not in_home_base():
                 start_coc() # reset in case stuck on find a match screen
         
         except Exception:

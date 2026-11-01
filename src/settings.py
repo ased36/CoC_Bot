@@ -81,6 +81,14 @@ def default_settings():
             "min_elixir": 1_000_000,
             "max_per_round": 5,
         },
+        "attack": {
+            "min_gold": 400_000, # every non-zero minimum has to hold, 0 = no condition
+            "min_elixir": 0,
+            "min_dark": 0,
+            "max_searches": 30, # then give up until the next round
+            "lower_every": 15, # every this many searches the minimums drop...
+            "lower_pct": 10, # ...by this % of the values above
+        },
         "resources": {},
         "stats": dict(copy.deepcopy(EMPTY_STATS), since=time.time()),
     }

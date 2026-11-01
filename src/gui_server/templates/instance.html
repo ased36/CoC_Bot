@@ -127,8 +127,16 @@
                     <div class="row"><div class="label">Saat aralığı</div><div class="pair"><input type="time" data-path="general.hours_start"> – <input type="time" data-path="general.hours_end"></div></div>
                 </div>
                 <div class="card">
-                    <h2>Saldırı</h2>
-                    <div class="info" style="margin-top:4px">Saldırılar kapalı. Saldırı ayarları bu panele 4. oturumda gelecek.</div>
+                    <h2>Saldırı — arama</h2>
+                    <p class="hint">Rakip köyde ganimet okunur; şartlar tutmazsa Next. 0 yazılan şart sayılmaz, diğerlerinin hepsi tutmalı.</p>
+                    <div class="row"><div class="label">Ana köyde saldır<small>Kapalıyken bot saldırmaz; "Yalnız ara" yine çalışır</small></div><label class="switch"><input type="checkbox" data-task="home_attacks"><span></span></label></div>
+                    <div class="row"><div class="label">En az altın</div><input type="text" inputmode="numeric" data-path="attack.min_gold" data-big></div>
+                    <div class="row"><div class="label">En az iksir</div><input type="text" inputmode="numeric" data-path="attack.min_elixir" data-big></div>
+                    <div class="row"><div class="label">En az kara iksir</div><input type="text" inputmode="numeric" data-path="attack.min_dark" data-big></div>
+                    <div class="row"><div class="label">En fazla arama<small>Bulamazsa vazgeçer, sonraki turda yeniden</small></div><input type="number" min="1" max="200" data-path="attack.max_searches"></div>
+                    <div class="row"><div class="label">Şartları düşür: her<small>Bu kadar aramada bir</small></div><input type="number" min="0" max="200" data-path="attack.lower_every"></div>
+                    <div class="row"><div class="label">Ne kadar düşsün, %<small>Yukarıdaki değerlerin yüzdesi; 0 = düşmez</small></div><input type="number" min="0" max="100" data-path="attack.lower_pct"></div>
+                    <div class="info">Örnek: 400 000 altın, her 15 aramada %10 → 1–15. arama 400 000, 16–30. arama 360 000, 31–45. arama 320 000. Her Next oyunda 1 400 altın civarı tutar.</div>
                 </div>
             </div>
         </section>
@@ -150,6 +158,7 @@
     <footer class="bottombar">
         <button class="btn primary" id="btn_toggle">Başlat</button>
         <button class="btn small" id="btn_scan" title="Oyunu açıp kaynakları okur, hiçbir şeye dokunmaz">Köyü oku</button>
+        <button class="btn small" id="btn_search" title="Bot dururken: rakip köylerin ganimetini okur ve Next'e basar, saldırmaz">Yalnız ara</button>
         <div class="group">
             <span class="lbl">Duraklat</span>
             <button class="btn small" data-pause="5">5 dk</button>
@@ -472,6 +481,7 @@
                 cls = "pause"; msg = `Duraklatıldı · ${Math.floor(left / 60)}:${pad(left % 60)} kaldı`;
             }
             else if (!state.active && state.scan_requested) { cls = "busy"; msg = "Köy okunuyor…"; }
+            else if (!state.active && state.search_requested) { cls = "busy"; msg = "Yalnız arama sürüyor (saldırmaz)…"; }
             else if (!state.active && state.status === "now") { cls = "busy"; msg = "Durduruluyor · elindeki adımı bitiriyor"; }
             else if (!state.active) { cls = ""; msg = "Bekliyor · geliştirme ve saldırı için Başlat"; }
             else if (state.status === "now") { cls = "busy"; msg = "Tur sürüyor"; }
@@ -482,6 +492,7 @@
             text.textContent = msg;
 
             $("#btn_toggle").textContent = state.active ? "Durdur" : "Başlat";
+            $("#btn_search").disabled = state.active || state.search_requested;
             $("#btn_resume").style.display = paused ? "" : "none";
 
             const r = state.resources || {};
@@ -502,6 +513,11 @@
 
         $("#btn_scan").onclick = async () => {
             try { await api("/scan", {}); } catch (e) {}
+            refreshState();
+        };
+
+        $("#btn_search").onclick = async () => {
+            try { await api("/search", {}); } catch (e) {}
             refreshState();
         };
 

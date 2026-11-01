@@ -47,6 +47,7 @@ class Instance:
         self.next_check = 0
         self.active = True # False: the bot process idles until the Start button (only reads the village when asked)
         self.scan_requested = False
+        self.search_requested = False
         self.settings = settings_store.load(self.id)
         settings_store.save(self.id, self.settings)
 
@@ -59,10 +60,11 @@ class Instance:
 
     @property
     def mode(self):
-        # run: full rounds · scan: read the village once, touch nothing · paused / idle: wait
+        # run: full rounds · scan: read the village once, touch nothing · search: search only, no attack · paused / idle: wait
         if self.end_time > time.time(): return "paused"
         if self.active: return "run"
         if self.scan_requested: return "scan"
+        if self.search_requested: return "search"
         return "idle"
 
     def add_event(self, text):
@@ -136,7 +138,7 @@ def handle_end_time(id):
 @app.route("/instances/<id>/running", methods=["GET"])
 def handle_running(id):
     instance = get_instance(id)
-    return {"running": instance.mode in ("run", "scan")}
+    return {"running": instance.mode in ("run", "scan", "search")}
 
 @app.route("/instances/<id>/mode", methods=["GET"])
 def handle_mode(id):
@@ -146,6 +148,13 @@ def handle_mode(id):
 def handle_scan(id):
     instance = get_instance(id)
     instance.scan_requested = True
+    return {"mode": instance.mode}
+
+@app.route("/instances/<id>/search", methods=["POST"])
+def handle_search(id):
+    # Only while stopped; a running bot searches as part of its attack
+    instance = get_instance(id)
+    if not instance.active: instance.search_requested = True
     return {"mode": instance.mode}
 
 @app.route("/instances/<id>/status", methods=["GET", "POST"])
@@ -165,6 +174,7 @@ def handle_state(id):
         "active": instance.active,
         "mode": instance.mode,
         "scan_requested": instance.scan_requested,
+        "search_requested": instance.search_requested,
         "status": instance.run_status,
         "end_time": instance.end_time,
         "next_check": instance.next_check,
@@ -227,6 +237,9 @@ def handle_report(id):
         elif kind == "scan_done":
             if instance.scan_requested: instance.add_event("Köy okundu")
             instance.scan_requested = False
+        elif kind == "search_done":
+            if instance.search_requested: instance.add_event("Yalnız arama bitti")
+            instance.search_requested = False
         elif kind == "round_end":
             instance.next_check = data.get("next_check", 0)
             instance.add_event(f"Tur bitti ({int(data.get('duration', 0))} sn)")

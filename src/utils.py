@@ -521,6 +521,11 @@ class Settings_Handler:
         if cls.current is None: return default
         return cls.current.get(section, {}).get(key, default)
 
+    @classmethod
+    def get_section(cls, section):
+        if cls.current is None: return {}
+        return cls.current.get(section, {})
+
 class Resource_Reader:
     # (x1, y1, x2, y2) fractions of the home village screen, measured at 1920x1080
     REGIONS = {

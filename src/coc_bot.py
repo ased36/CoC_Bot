@@ -42,6 +42,25 @@ class CoC_Bot:
             update_status("error" if res == "error" else "idle")
         report("scan_done")
 
+    def search_only(self, general):
+        import time
+
+        # Panel's "search only" button: read loot and press Next, never deploy anything
+        logger.info("Search only: looking for a village without attacking")
+        started, res = start_coc(detailed=True)
+        if started:
+            update_status("now")
+            to_home_base(ref_cache=True)
+            self.attacker.run_search_only()
+            Resource_Reader.read()
+            if general.get("close_game", True):
+                stop_coc(sleep=configs.SUSPEND_EMULATOR_ON_IDLE)
+            update_status(time.time())
+        else:
+            logger.warning("Could not search: CoC did not start")
+            update_status("error" if res == "error" else "idle")
+        report("search_done")
+
     def run(self):
         import time
         from datetime import datetime
@@ -66,6 +85,10 @@ class CoC_Bot:
                 if mode == "scan":
                     waiting_logged = None
                     self.scan(general)
+                    continue
+                if mode == "search":
+                    waiting_logged = None
+                    self.search_only(general)
                     continue
 
                 if not in_working_hours(general):

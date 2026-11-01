@@ -64,10 +64,10 @@ Alt şerit: Başlat / Durdur / Duraklat (5-15-30-özel) · altın · iksir · ka
 | Ayar | Seçenek | Varsayılan | |
 |---|---|---|---|
 | Saldır | aç/kapa | kapalı | ✅ |
-| Arama şartı | en az altın · en az iksir · en az kara iksir · birleşim VE / VEYA / TOPLAM | 300k / 300k / 0, VE | 🟨 (rakip ganimeti okunacak + "Next" düğmesi) |
+| Arama şartı | en az altın · en az iksir · en az kara iksir · birleşim VE / VEYA / TOPLAM | 400k / 0 / 0, VE (0 = sayılmaz) | ✅ 4. oturum, yalnız VE |
 | En fazla Belediye seviyesi | sayı | sınırsız | 🟨 |
-| Şartları düşür | her X aramada %Y | 20 / 10 | ✅ (arama varsa) |
-| En fazla arama | sayı, sonra: ilk köye saldır · vazgeç | 50, vazgeç | ✅ |
+| Şartları düşür | her X aramada %Y | 15 / 10 | ✅ 4. oturum (panel değerinin yüzdesi, birikmez) |
+| En fazla arama | sayı, sonra: ilk köye saldır · vazgeç | 30, vazgeç | ✅ 4. oturum (yalnız vazgeç) |
 | Depolar doluysa saldırma | aç/kapa | açık | 🟨 (depo çubuğunun doluluğu) |
 | Kahramanları bekle | aç/kapa | kapalı | 🟨 |
 | Klan askerlerini kullan | aç/kapa | kapalı | ✅ (var) |
@@ -173,6 +173,17 @@ Emre'nin hedefi: 4 usta hep geliştirmede, 1'i savaş + duvar için. **Bulgu:** 
 - **Ordu (7A):** Quick Train kayıtlı ordu (panelden 1/2/3 seçilir). MyBot gibi asker asker ordu yazma sonra.
 - **İnsan gibi (Emre):** her saldırı farklı: dalgalı bırakma, rastgele beklemeler, dokunuş sapması, bazen bir taraf geç, bazen yıldırım biraz sapsın.
 - **Deneme sırası:** önce "yalnız ara" (saldırmaz, ganimet okur, Next'e basar), sonra Emre'nin onayıyla tek gerçek saldırı. Bilinen kırıklar: `confirm_attack` ve `return_home` resimleri tutmuyor → canlıda ölçülecek.
+- **Ek kararlar (01.11, 4. oturum başı):** 2B en fazla 30 arama + **her 15 aramada şartlar %10 düşer** (ikisi de panelden; Emre bazen %30 yapar) · 3A kara iksir şartı yok · 4A yıldırım ordudan önce · 5B **20 sn ganimet değişmezse savaşı bitir** · 6A ordu ekrandan okunur.
+
+## 4. oturum (01.11) — ne yapıldı (yarım: arama bitti, saldırı betiği sırada)
+
+- **Satın alma kazası (06:10):** deneme betiğimin kör tıklaması (sağ ortaya → Shop'un kenarı; sonra Battle yerine → mağazada TH15 Pack fiyat düğmesi) Google Play "Satın al ₺159,00" penceresini açtı; ekrana dokunmadan Android Geri tuşuyla kapatıldı, satın alma olmadı. Ders: kör koordinat yok. Botun Battle tıklaması da kördü → artık `_click_battle` önce ana köyü ve Battle düğmesinin resmini (`assets/attacker/battle.png`, eşik 0,97; köyde 1,0, mağazada 0,38) doğruluyor. Emre: Play'de satın alma şifresi açmayacak, ayrı bekçi istemedi.
+- **Ölçümler (1920×1080):** Battle → savaş penceresi ("Find a Match 1400" — her arama ve Next 1 400 altın) → ordu penceresi, sağ altta yeşil "Attack!" = `confirm_attack` (resim tutuyor, güven 0,98; eski hata pencerenin 5 sn'den geç açılmasıydı → 10 sn) → bulutlar → rakip köy ~3,5 sn sonra. Rakip köy ekranı: sol üstte "Available Loot" altın (0.050, 0.118, 0.160, 0.165), iksir (…0.172–0.220), kara (…0.225–0.272) — beyaz rakam, `read_digits` ile okunur (2 köyde ekranla birebir karşılaştırıldı, 14 köyde değerler makul, tek tek bakılmadı); sağda **Next** (`assets/attacker/next.png`), solda End Battle. **"Battle starts in 30s"**: süre dolunca savaş başlar, Next kalkar → karar 30 sn içinde. Asker koymadan End Battle → onay sormadan doğrudan köy, saldırı sayılmaz.
+- **Kod:** `attacker.py` → `search()` (ganimet oku, `loot_minimums` her `lower_every` aramada panel değerinin `lower_pct` %'si kadar düşürür, `loot_ok` 0 olmayan her şart tutmalı, okunamayan şart tutmaz; köyde 1,5–4 sn rastgele bakıp Next, dokunuşlar birkaç piksel sapmalı; bulamazsa End Battle ile döner), `run_search_only()`, eski `start_normal_attack` → `_open_search()`. `run_home_base` artık `search()` sonra eski kör asker bırakma (`complete_normal_attack`, betikle değişecek; saldırılar kapalı). Yalnız aramada her köy `debug/villages/`e kaydedilir (sonda şablonu için).
+- **Panel:** Genel → "Saldırı — arama" kartı (ana köyde saldır anahtarı, en az altın/iksir/kara, en fazla arama, her N aramada %Y düşür); alt şeritte **"Yalnız ara"** düğmesi (bot dururken; kip `search`, bitince "Yalnız arama bitti"). Kayıt Türkçe ("Arama 3: altın … — şart altın ≥ 400.000").
+- **Canlı deneme:** (1) gerçek şart 400 000: 1. köy 697 145 altın → "uygun", saldırmadan döndü (15 sn). (2) yol denemesi, şart bilerek 3 000 000 (30 arama + düşüş + vazgeçme görülsün diye; Emre 1 milyonluk köylerin geçilmesine şaşırdı — denemeden önce açıkça söylenmeli): 14 arama sorunsuz (~11 sn/arama), 15.'de **BlueStacks kapandı** (HD-Player süreci yok; Emre mi kapattı, çöktü mü belli değil), ADB koptu. Kayıp yok (~21 000 altın arama bedeli).
+- **Sonda:** henüz bulunamadı. Gözle bakılan adaylar sonda değil: mor kristal yığını = Wizard Tower, şişeli siyah kule = TH15 Spell Tower, pembe tanklı pompa = iksir toplayıcı. 15 köy `debug/villages/`de → sonraki oturumda kara iksir sondası buradan bulunacak (sondayı dokunup adını görmek rakip köyde mümkün değil; gerekirse Emre kendi köyünde gösterir).
+- **Sıradaki:** (1) 2A: panel ayarıyla (400 000 / 30 / 15 / %10) yalnız ara — bulunca durur, saldırmaz. (2) Sonda şablonu. (3) Saldırı betiği `attacks/super-barbar.yaml` + yıldırım + kahraman + 20 sn ganimet bekçisi + Return Home ölçümü. (4) Emre onayıyla tek gerçek saldırı. Hammer Jam henüz başlamamıştı (06:15, Wizard Tower düz fiyat 1 040 000) → etkinlik başlayınca menü fiyatı.
 
 ## Ek: ClashFarmer + MyBot'ta olup bizde olmayanlar (01.11 araştırması)
 
