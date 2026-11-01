@@ -724,45 +724,32 @@ class Upgrader:
             return int(digits)
         return None
 
+    def _menu_swipe_back(self, bounds):
+        import time
+        left, top, right, bottom = bounds
+        # The reverse of _menu_swipe: one page back up
+        Input_Handler.swipe(x1=(left + right) / 2, y1=top + 0.15, x2=(left + right) / 2, y2=bottom - 0.075, duration=0, hold_end_time=100)
+        time.sleep(0.3)
+
     def _select_wall(self, bounds):
-        """Scroll the open menu page by page and tap the first wall row that is affordable, payable and of a chosen level.
-        Rows are tapped on the page where they are seen (no closing and replaying the menu). Returns the row, or None."""
+        """Read every wall row in the open menu (they sit together), then tap the cheapest one = the lowest level that is
+        affordable, payable and of a chosen level, scrolling back to its page. Returns the row, or None."""
         import time, numpy as np
         left, top, right, bottom = bounds
         levels = set(Settings_Handler.get("walls", "levels", []) or [])
         known = getattr(self, "_wall_levels", {}) # cost -> level, remembered between walls
         self._wall_levels = known
         templates = [render_text("Wall", "SupercellMagic", 17)]
+        read = lambda frame, y_min: [r for r in self._read_rows(frame, "home", bounds, y_min, ["Wall"], templates) if "wall" in r["names"] and r["cost"]]
+
+        # 1) Scroll down until the wall rows are behind us; a higher level can come before a lower one in the list
         frame = Frame_Handler.get_frame(grayscale=False)
-        seen, page = 0, 0
+        rows, page = {}, 0 # cost -> row (pages overlap, so the same row can be read twice)
         while True:
             y_min = max(top, self._menu_header_y("home", frame) or top) if page == 0 else top
-            walls = [r for r in self._read_rows(frame, "home", bounds, y_min, ["Wall"], templates) if "wall" in r["names"] and r["cost"]]
-            seen += len(walls)
-            for r in sorted(walls, key=lambda r: r["cost"]):
-                if not r["affordable"] or self._wall_payment(r["cost"]) is None: continue
-                if levels and known.get(r["cost"]) is not None and known[r["cost"]] not in levels: continue
-                Input_Handler.click((left + right) / 2, r["name_y"])
-                if levels and known.get(r["cost"]) in levels: time.sleep(0.7) # level already confirmed for this cost
-                elif levels:
-                    # OCR once read 12 as 11 and the walls were skipped for the rest of the session:
-                    # a level counts only when two reads agree, and only an agreed level is remembered
-                    reads = []
-                    for _ in range(5): # the view slides to the wall first
-                        time.sleep(0.6)
-                        value = self._selected_wall_level()
-                        if value is not None: reads.append(value)
-                        if len(reads) >= 2 and reads[-1] == reads[-2]: break
-                    agreed = len(reads) >= 2 and reads[-1] == reads[-2]
-                    level = reads[-1] if agreed else None
-                    if agreed: known[r["cost"]] = level
-                    if level not in levels:
-                        logger.info(f"Wall level {level if level is not None else '?'} not chosen ({r['cost']:,})".replace(",", "."))
-                        continue
-                else: time.sleep(0.7)
-                return r
-            # Wall rows sit together: once they were seen and a page has none, the rest of the list has no walls
-            if seen and not walls: break
+            walls = read(frame, y_min)
+            for r in walls: rows.setdefault(r["cost"], dict(r, page=page))
+            if rows and not walls: break
             if page + 1 >= self.MAX_MENU_PAGES: break
             self._menu_swipe(bounds)
             new_frame = Frame_Handler.get_frame(grayscale=False)
@@ -770,7 +757,44 @@ class Upgrader:
             b = Frame_Handler.grayscale(Frame_Handler.crop(new_frame, left, top, right, bottom)).astype(int)
             if np.abs(a - b).mean() / 255 < 0.01: break # end of the list
             frame, page = new_frame, page + 1
-        if not seen: logger.info("No wall in the menu")
+
+        # 2) Cheapest first: scroll to its page, find it again by cost, tap it, check its level when levels are chosen
+        for r in sorted(rows.values(), key=lambda r: r["cost"]):
+            if not r["affordable"] or self._wall_payment(r["cost"]) is None: continue
+            if levels and known.get(r["cost"]) is not None and known[r["cost"]] not in levels: continue
+            while page > r["page"]:
+                self._menu_swipe_back(bounds); page -= 1
+            while page < r["page"]:
+                self._menu_swipe(bounds); page += 1
+            same = []
+            for _ in range(2): # page boundaries drift a little: one more step back if the row is not on screen
+                same = [x for x in read(Frame_Handler.get_frame(grayscale=False), top) if x["cost"] == r["cost"]]
+                if same: break
+                self._menu_swipe_back(bounds); page -= 1
+            if not same:
+                logger.info(f"Wall row not found again ({r['cost']:,})".replace(",", "."))
+                continue
+            Input_Handler.click((left + right) / 2, same[0]["name_y"])
+            if levels and known.get(r["cost"]) in levels: time.sleep(0.7) # level already confirmed for this cost
+            elif levels:
+                # OCR once read 12 as 11 and the walls were skipped for the rest of the session:
+                # a level counts only when two reads agree, and only an agreed level is remembered
+                reads = []
+                for _ in range(5): # the view slides to the wall first
+                    time.sleep(0.6)
+                    value = self._selected_wall_level()
+                    if value is not None: reads.append(value)
+                    if len(reads) >= 2 and reads[-1] == reads[-2]: break
+                agreed = len(reads) >= 2 and reads[-1] == reads[-2]
+                level = reads[-1] if agreed else None
+                if agreed: known[r["cost"]] = level
+                if level not in levels:
+                    logger.info(f"Wall level {level if level is not None else '?'} not chosen ({r['cost']:,})".replace(",", "."))
+                    continue
+            else: time.sleep(0.7)
+            return same[0]
+
+        if not rows: logger.info("No wall in the menu")
         elif levels: logger.info(f"No wall of the chosen levels ({', '.join(map(str, sorted(levels)))})")
         else:
             last = Resource_Reader.last
