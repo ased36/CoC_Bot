@@ -1,21 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CoC Bot</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
 </head>
-<body>
-    <header>
-        <img src="{{ url_for('static', filename='coc_bot_logo.png') }}" alt="CoC Bot">
-        <h1 class="themed_text">CoC Bot</h1>
-    </header>
-
-    <div class="container">
+<body class="home">
+    <div class="home-card card">
+        <div class="brand">
+            <img src="{{ url_for('static', filename='coc_bot_logo.png') }}" alt="">
+            <div class="name"><b>CoC Bot</b><small>Kontrol paneli</small></div>
+        </div>
+        <p class="hint">Bir bot kopyası seçin ya da adını yazın (BlueStacks kopya adı, ör. <b>main</b>).</p>
         <form method="POST" class="custom-input-form">
-            <input type="text" name="id" placeholder="ID" required title="Instance ID" autofocus>
-            <button type="submit" name="id"><i class="fas fa-arrow-right"></i></button>
+            <input type="text" name="id" placeholder="Kopya adı" required title="Kopya adı" autofocus>
+            <button type="submit" name="id" class="btn primary">Aç →</button>
         </form>
         <form class="stacked-buttons"></form>
     </div>
@@ -38,7 +41,7 @@
                 });
                 const res = await response.json();
                 if (res === 0) {
-                    alert("Invalid ID");
+                    alert("Geçersiz kopya adı");
                     return false;
                 } else {
                     return true;
@@ -56,6 +59,7 @@
                 if (!document.getElementById(`id_${id}`)) {
                     const idButton = document.createElement("button");
                     idButton.type = "submit";
+                    idButton.className = "btn";
                     idButton.id = `id_${id}`;
                     idButton.value = id;
                     idButton.innerHTML = `${id}`;

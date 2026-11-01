@@ -95,7 +95,7 @@ class Attacker:
             radius[i] = lo
         return (cx, cy), radius
 
-    def _deploy_points(self, ring, corner, n, spread=35, margin=0.02):
+    def _deploy_points(self, ring, corner, n, spread=35, margin=0.035):
         """n screen points just outside the red line around a corner, spread over both of its edges."""
         import numpy as np
         (cx, cy), radius = ring
@@ -110,7 +110,7 @@ class Attacker:
                 # Where the hull ends at a HUD box or the screen edge the real line is hidden further out: no safe point there
                 if self._in_hud(ex, ey) or any(self._in_hud(ex + dx, ey + dy) for dx, dy in ((0.015, 0), (-0.015, 0), (0, 0.045), (0, -0.03))): continue
                 if ey < 0.045 or not 0.02 <= ex <= 0.98: continue # cut by the screen edge (after the view moved)
-                r = edge + margin * w + np.random.uniform(0, 0.01) * w
+                r = edge + margin * w + np.random.uniform(0, 0.015) * w
                 x, y = (cx + r * np.cos(np.radians(a))) / w, (cy + r * np.sin(np.radians(a))) / h
                 if 0.02 <= x <= 0.98 and 0.03 <= y and not self._in_hud(x, y): points.append((x, y))
                 if len(points) == n: return points
@@ -161,6 +161,22 @@ class Attacker:
         # A used up card turns gray
         section = Frame_Handler.get_frame_section(x - 0.01, 0.89, x + 0.01, 0.91, grayscale=False).astype(int)
         return (abs(section[..., 0] - section[..., 1]).max() < 8) and (abs(section[..., 1] - section[..., 2]).max() < 8)
+
+    @staticmethod
+    def _card_deployed(x, frame=None):
+        # A siege machine or hero on the field shows a health bar above its card (~850 green pixels at full health, 0 before)
+        if frame is None: frame = Frame_Handler.get_frame(grayscale=False)
+        s = Frame_Handler.crop(frame, x - 0.02, 0.795, x + 0.02, 0.815).astype(int)
+        return int(((s[..., 1] > 150) & (s[..., 1] - s[..., 0] > 50) & (s[..., 1] - s[..., 2] > 50)).sum()) > 400
+
+    def _wait_deployed(self, x, timeout=2.0):
+        # The bar shows up a moment after the drop (the hero or machine walks in)
+        import time
+        start = time.time()
+        while time.time() - start < timeout:
+            if self._card_deployed(x): return True
+            time.sleep(0.2)
+        return False
 
     def _click_button(self, name, timeout=3, scales=(0.6, 0.7, 0.8, 0.9, 1.0, 1.1)):
         """Tap a button image found at any of a few sizes (the button pictures were taken at other UI sizes)."""
@@ -256,40 +272,80 @@ class Attacker:
                 plan.setdefault(c, []).extend(extra)
                 short -= len(extra)
             return plan
+        troop_x = cards[troops["card"]]
+        def drop(points):
+            # A smaller army runs out early: then the game selects the siege card and a further tap would drop it here
+            for i, (x, y) in enumerate(points):
+                if i % 4 == 3 and self._card_empty(troop_x): return False
+                self._tap(x, y)
+                self._pause(gap)
+            return True
         upper = [c for c in corners if c != "bottom"]
         plan = plan_points(ring, upper)
         tap_card(troops["card"])
+        left = True
         for corner in upper:
-            for x, y in plan.get(corner, []):
-                self._tap(x, y)
-                self._pause(gap)
+            if not drop(plan.get(corner, [])):
+                left = False
+                break
             self._pause(troops.get("corner_pause", [0.3, 0.9]))
-        if "bottom" in corners:
+        if left and "bottom" in corners:
             ring = self._show_bottom() or ring
             plan = plan_points(ring, ["bottom"])
             logger.info(f"Bottom corner: view moved up, {len(plan.get('bottom', []))} points")
             tap_card(troops["card"])
             for corner, points in plan.items():
-                for x, y in points:
-                    self._tap(x, y)
-                    self._pause(gap)
+                if not drop(points): break
+        # Troops a tap could not drop (red area): select the card again and drop them one by one further out
+        time.sleep(0.4)
+        if not self._card_empty(troop_x):
+            visible = [c for c in corners if c != "bottom"] or ["left", "right"]
+            extra = [p for c in visible for p in self._deploy_points(ring, c, 8, margin=0.06)]
+            random.shuffle(extra)
+            tap_card(troops["card"])
+            n = 0
+            for x, y in extra:
+                time.sleep(0.25)
+                if self._card_empty(troop_x): break
+                self._tap(x, y)
+                n += 1
+            logger.info(f"Leftover troops: {n} more taps, card {'empty' if self._card_empty(troop_x) else 'still not empty'}")
         self._deselect()
 
+        def place(x_card, corner, label):
+            """The card is selected: drop it near the corner, further out each time the red line refuses it."""
+            for margin in (0.035, 0.06, 0.09):
+                points = self._deploy_points(ring, corner, 1, margin=margin) or self._deploy_points(ring, random.choice(corners), 1, margin=margin)
+                if not points: continue
+                self._tap(*points[0])
+                if self._wait_deployed(x_card, timeout=2.5): return True
+                if self._card_empty(x_card): return True # used up (a siege machine already gone)
+                logger.info(f"{label} did not land, trying further out")
+            logger.warning(f"{label} could not be deployed")
+            return False
+
+        # Siege machine: its card is tapped once only; a second tap unloads it early
         siege = style.get("siege")
         siege_card = next((c for c in sorted(cards) if siege and c.startswith(siege.get("card", "-"))), None)
         if siege_card:
-            tap_card(siege_card)
-            for x, y in self._deploy_points(ring, random.choice(corners), siege.get("count", 1)): self._tap(x, y)
+            if self._card_deployed(cards[siege_card]):
+                logger.info("Siege already on the field, its card is not touched")
+            else:
+                tap_card(siege_card)
+                place(cards[siege_card], random.choice(corners), "Siege")
             self._deselect()
 
-        # Heroes from one corner, behind the troops; abilities later, each on its own random delay
+        # Heroes from one corner, behind the troops; abilities later, each on its own random delay, only for heroes that landed
         heroes = style.get("heroes", {})
         hero_corner = random.choice(corners)
         abilities = []
-        for name in random.sample([h for h in heroes.get("cards", []) if h in cards], len([h for h in heroes.get("cards", []) if h in cards])):
-            tap_card(name)
-            x, y = self._deploy_points(ring, hero_corner, 1)[0]
-            self._tap(x, y)
+        names = [h for h in heroes.get("cards", []) if h in cards]
+        for name in random.sample(names, len(names)):
+            if not self._card_deployed(cards[name]): # an extra tap above may have dropped it already
+                tap_card(name)
+                if not place(cards[name], hero_corner, name):
+                    self._deselect()
+                    continue
             abilities.append((time.time() + random.uniform(*heroes.get("ability_after", [8, 12])), name))
             self._pause(heroes.get("gap", [0.25, 0.7]))
         self._deselect()

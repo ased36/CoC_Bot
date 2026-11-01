@@ -2,14 +2,19 @@
 <html lang="tr">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CoC Bot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
 </head>
 <body>
     <header class="topbar">
         <div class="brand">
             <img src="{{ url_for('static', filename='coc_bot_logo.png') }}" alt="">
-            CoC Bot <span class="instance">{{ id }}</span>
+            <div class="name"><b>CoC Bot</b><small>Kontrol paneli</small></div>
+            <span class="instance">{{ id }}</span>
         </div>
         <nav class="tabs">
             <button class="tab active" data-page="status">Durum</button>
@@ -18,12 +23,27 @@
             <button class="tab" data-page="general">Genel</button>
             <button class="tab" data-page="stats">İstatistik</button>
         </nav>
+        <div class="res">
+            <span class="gold" title="Altın"><i></i><b id="r_gold">–</b></span>
+            <span class="elixir" title="İksir"><i></i><b id="r_elixir">–</b></span>
+            <span class="dark" title="Kara iksir"><i></i><b id="r_dark">–</b></span>
+            <span class="gems" title="Mücevher"><i></i><b id="r_gems">–</b></span>
+            <span class="builders" title="Boş usta / toplam"><i></i><b id="r_builders">–</b></span>
+            <span class="when" id="r_when"></span>
+        </div>
         <div class="save-state" id="save_state"></div>
     </header>
 
     <main>
         <!-- Durum -->
         <section class="page active" id="page_status">
+            <div class="kpis">
+                <div class="kpi gold"><div class="k"><i></i>Altın</div><div class="v" id="k_gold">–</div><div class="s" id="k_when"></div></div>
+                <div class="kpi elixir"><div class="k"><i></i>İksir</div><div class="v" id="k_elixir">–</div><div class="s"></div></div>
+                <div class="kpi dark"><div class="k"><i></i>Kara iksir</div><div class="v" id="k_dark">–</div><div class="s"></div></div>
+                <div class="kpi gems"><div class="k"><i></i>Mücevher</div><div class="v" id="k_gems">–</div><div class="s"></div></div>
+                <div class="kpi builders"><div class="k"><i></i>Boş usta</div><div class="v" id="k_builders">–</div><div class="s">boş / toplam</div></div>
+            </div>
             <div class="grid">
                 <div class="card">
                     <h2>Başlat'a basınca bot şunları yapar</h2>
@@ -70,7 +90,7 @@
                     <div class="row"><div class="label">Tur başına en fazla geliştirme<small>Ana köy ve usta üssü için ayrı ayrı sayılır</small></div><input type="number" min="1" max="50" data-path="home.max_upgrades"></div>
                     <div class="row"><div class="label">Boşta bırakılacak usta<small>Bu kadar usta hiç kullanılmaz (0 = hepsi kullanılır)</small></div><input type="number" min="0" max="6" data-path="home.open_builders"></div>
 
-                    <h2 style="margin-top:18px">Duvar <span class="tag spend">kaynak harcar</span></h2>
+                    <h2 class="split">Duvar <span class="tag spend">kaynak harcar</span></h2>
                     <p class="hint">Kapalıyken bot hiç duvar yapmaz. Açıkken turun sonunda, binalardan artan kaynakla yapar. Duvar usta beklemez, ustalar doluyken de yapılır.</p>
                     <div class="row"><div class="label">Duvar geliştir</div><label class="switch"><input type="checkbox" data-path="walls.enabled"><span></span></label></div>
                     <div class="row"><div class="label">Tur başına en fazla duvar</div><input type="number" min="1" max="50" data-path="walls.max_per_round"></div>
@@ -85,7 +105,7 @@
                     <div class="row"><div class="label">Öncelik listesinde uygun yoksa<small>Listedekiler bitince ya da liste kapalıyken</small></div><select data-path="home.fallback"><option value="cheapest">En ucuz</option><option value="random">Rastgele</option></select></div>
                     <div class="row"><div class="label">Kaynak tercihi<small>Önce bu kaynakla ödenenler arasından seçilir</small></div><select data-path="home.prefer_resource"><option value="any">Fark etmez</option><option value="gold">Altınla olanlar önce</option><option value="elixir">İksirle olanlar önce</option></select></div>
 
-                    <h2 style="margin-top:18px">Geliştirmeden sonra kalacak en az</h2>
+                    <h2 class="split">Geliştirmeden sonra kalacak en az</h2>
                     <p class="hint">Maliyet düşülünce bu kadar kalmayacaksa o geliştirme başlatılmaz. 0 = sınır yok.</p>
                     <div class="row"><div class="label"><i class="rdot gold"></i>Altın</div><input type="text" inputmode="numeric" data-path="home.keep_gold" data-big></div>
                     <div class="row"><div class="label"><i class="rdot elixir"></i>İksir</div><input type="text" inputmode="numeric" data-path="home.keep_elixir" data-big></div>
@@ -153,7 +173,7 @@
                 <div class="card">
                     <h2>Saldırı</h2>
                     <p class="hint">Açıksa bot her turda geliştirmelerden sonra rakip arar ve saldırır. Kapalıyken hiç saldırmaz; alttaki "Yalnız ara" düğmesi yine çalışır (arar, bulunca köye döner).</p>
-                    <div class="row"><div class="label">Ana köyde saldır<small>Saldırı betiği henüz hazır değil; şimdilik kapalı kalmalı</small></div><label class="switch"><input type="checkbox" data-task="home_attacks"><span></span></label></div>
+                    <div class="row"><div class="label">Ana köyde saldır<small>Süper barbar betiği: yıldırım, 4 köşe, kuşatma, kahramanlar. Ordu dolu olmalı.</small></div><label class="switch"><input type="checkbox" data-task="home_attacks"><span></span></label></div>
                 </div>
                 <div class="card">
                     <h2>Hangi köye saldırılsın?</h2>
@@ -187,9 +207,12 @@
     </main>
 
     <footer class="bottombar">
-        <button class="btn primary" id="btn_toggle">Başlat</button>
-        <button class="btn small" id="btn_scan" title="Oyunu açıp kaynakları okur, hiçbir şeye dokunmaz">Köyü oku</button>
-        <button class="btn small" id="btn_search" title="Bot dururken: rakip köylerin ganimetini okur ve Next'e basar, saldırmaz">Yalnız ara</button>
+        <div class="actions">
+            <button class="btn primary" id="btn_toggle">Başlat</button>
+            <button class="btn secondary" id="btn_scan" title="Oyunu açıp kaynakları okur, hiçbir şeye dokunmaz">Köyü oku</button>
+            <button class="btn secondary" id="btn_search" title="Bot dururken: rakip köylerin ganimetini okur ve Next'e basar, saldırmaz">Yalnız ara</button>
+        </div>
+        <span class="divider"></span>
         <div class="group">
             <span class="lbl">Duraklat</span>
             <button class="btn small" data-pause="5">5 dk</button>
@@ -200,14 +223,6 @@
             <button class="btn small" id="btn_resume" style="display:none">Devam et</button>
         </div>
         <div class="status" id="status"><span class="dot"></span><span id="status_text">…</span></div>
-        <div class="res">
-            <span class="gold" title="Altın"><i></i><b id="r_gold">–</b></span>
-            <span class="elixir" title="İksir"><i></i><b id="r_elixir">–</b></span>
-            <span class="dark" title="Kara iksir"><i></i><b id="r_dark">–</b></span>
-            <span class="gems" title="Mücevher"><i></i><b id="r_gems">–</b></span>
-            <span class="builders" title="Boş usta / toplam"><i></i><b id="r_builders">–</b></span>
-            <span class="when" id="r_when"></span>
-        </div>
     </footer>
 
     <script>
@@ -579,6 +594,7 @@
             text.textContent = msg;
 
             $("#btn_toggle").textContent = state.active ? "Durdur" : "Başlat";
+            $("#btn_toggle").classList.toggle("stop", !!state.active);
             $("#btn_search").disabled = state.active || state.search_requested;
             $("#btn_resume").style.display = paused ? "" : "none";
 
@@ -589,6 +605,12 @@
             $("#r_gems").textContent = fmtNum(r.gems);
             $("#r_builders").textContent = r.builders_free === undefined || r.builders_free === null ? "–" : `${r.builders_free}/${r.builders_total}`;
             $("#r_when").textContent = r.t ? `okuma ${fmtClock(r.t)}` : "";
+            $("#k_gold").textContent = fmtNum(r.gold);
+            $("#k_elixir").textContent = fmtNum(r.elixir);
+            $("#k_dark").textContent = fmtNum(r.dark);
+            $("#k_gems").textContent = fmtNum(r.gems);
+            $("#k_builders").textContent = $("#r_builders").textContent;
+            $("#k_when").textContent = r.t ? `son okuma ${fmtClock(r.t)}` : "henüz okunmadı";
         }
 
         $("#btn_toggle").onclick = async () => {
