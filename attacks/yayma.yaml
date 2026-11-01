@@ -12,6 +12,7 @@ troops:
   hold_share: [0.9, 0.96]  # sürükleme kartın bitmesinden biraz önce biter; kalan 2–6 barbar tek tek (Emre de böyle)
   halves: 0.7              # 10 saldırının 7'sinde iki yarım (üst + alt), 3'ünde tek tur
   sweep_pause: [0.25, 0.6] # iki yarım arası
+  hold_still: [0.35, 0.55] # parmak önce kıpırdamadan durur, sonra yürür (Emre 0,36–0,53 sn; hemen yürüyen sürükleme görüntüyü kaydırır)
 
 siege:
   card: siege

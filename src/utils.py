@@ -1733,14 +1733,18 @@ class Input_Handler:
         builder.publish(ADB_Manager.minitouch_device.connection)
 
     @classmethod
-    def drag_path(cls, points, duration, stop=None, pointer=0):
+    def drag_path(cls, points, duration, stop=None, pointer=0, hold_start=0.0):
         """Hold one finger down and move it through points (fractions) at an even speed for duration seconds;
-        lifts early once stop() is true. With a troop card selected a held finger keeps dropping troops (~7 a second)."""
+        lifts early once stop() is true. With a troop card selected a held finger keeps dropping troops (~7 a second),
+        but only after it stayed still for a moment first (hold_start, part of duration): a finger that moves right
+        away moves the view instead (01.11 20:04 and 20:13; Emre keeps still 0.36-0.53 s on every drop sweep)."""
         import time, numpy as np
         from pyminitouch import CommandBuilder
         pts = np.array(points, dtype=float)
         # Steps of ~60 ms (each publish already sleeps 50 ms); distances in screen proportions (16:9) for an even speed
         seg = np.r_[0, np.cumsum(np.hypot(np.diff(pts[:, 0]) * 16 / 9, np.diff(pts[:, 1])))]
+        hold_start = min(hold_start, duration * 0.5)
+        duration -= hold_start
         steps = max(int(duration / 0.06), 2)
         at = np.linspace(0, seg[-1], steps)
         xs, ys = np.interp(at, seg, pts[:, 0]), np.interp(at, seg, pts[:, 1])
@@ -1748,6 +1752,7 @@ class Input_Handler:
         builder = CommandBuilder()
         builder.down(pointer, *cls._to_raw(xs[0], ys[0]), 100)
         builder.publish(conn)
+        if hold_start > 0: time.sleep(hold_start)
         start = time.time()
         try:
             for i in range(1, steps):

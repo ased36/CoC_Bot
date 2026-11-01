@@ -412,7 +412,8 @@ class Attacker:
             for i, ((start, sweep), seconds) in enumerate(zip(sweeps, times)):
                 if empty.is_set(): break
                 fresh_ring(f"before sweep {i + 1}")
-                Input_Handler.drag_path(self._sweep_path(ring, start, sweep), seconds, stop=empty.is_set)
+                Input_Handler.drag_path(self._sweep_path(ring, start, sweep), seconds, stop=empty.is_set,
+                                        hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
                 self._pause(troops.get("sweep_pause", [0.25, 0.6]))
         finally:
             done.set()
