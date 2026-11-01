@@ -472,8 +472,11 @@ class Upgrader:
         return filter_color([180, 247, 86], band, tol=10, return_mask=True)[1].mean() > 0.003
 
     def _row_is_discounted(self, frame, left, y):
-        band = Frame_Handler.crop(frame, left, y - self.NAME_DY - 0.02, 1.0, y + 0.02)
-        return Frame_Handler.locate(self.assets["green_tag"], band, thresh=0.80, grayscale=False, normalize=False) != (None, None)
+        # Discounts (Hammer Jam etc.) put a small lime-green tag on the row's top-left corner, left of the menu bounds.
+        # Measured 01.11: ~235 tag pixels on a discounted row, 0 on the others; the old template was larger than the tag
+        corner = Frame_Handler.crop(frame, 0.732, y - 0.057, 0.755, y - 0.020).astype(int)
+        r, g, b = corner[..., 0], corner[..., 1], corner[..., 2]
+        return ((g > 170) & (r > 60) & (r < 200) & (b < 70) & (g - r > 40)).mean() > 0.04
 
     def _read_rows(self, frame, kind, bounds, y_min, names=[], templates=[]):
         """Every fully visible row on screen: cost, resource, affordable, new, discounted and which of names it shows."""

@@ -538,21 +538,35 @@ class Resource_Reader:
     last = {}
 
     @classmethod
-    def read(cls):
+    def _read_frame(cls, frame):
         import re
+
+        values = {}
+        for name, region in cls.REGIONS.items():
+            digits = re.sub(r"\D", "", OCR_Handler.read_digits(Frame_Handler.crop(frame, *region)))
+            if name == "builders":
+                # "0/5"; the slash is sometimes read as 7, so take the first and last digit
+                values["builders_free"] = int(digits[0]) if len(digits) >= 2 else None
+                values["builders_total"] = int(digits[-1]) if len(digits) >= 2 else None
+            else:
+                values[name] = int(digits) if digits else None
+        return values
+
+    @classmethod
+    def read(cls):
+        import time
 
         try:
             if not in_home_base(): return None
-            frame = Frame_Handler.get_frame(grayscale=False, use_cached=True)
-            values = {}
-            for name, region in cls.REGIONS.items():
-                digits = re.sub(r"\D", "", OCR_Handler.read_digits(Frame_Handler.crop(frame, *region)))
-                if name == "builders":
-                    # "0/5"; the slash is sometimes read as 7, so take the first and last digit
-                    values["builders_free"] = int(digits[0]) if len(digits) >= 2 else None
-                    values["builders_total"] = int(digits[-1]) if len(digits) >= 2 else None
-                else:
-                    values[name] = int(digits) if digits else None
+            values = cls._read_frame(Frame_Handler.get_frame(grayscale=False, use_cached=True))
+            # The bars are see-through: something moving behind them can add a digit (4.765.341 once read as 44.765.341).
+            # Read again, and a third time on disagreement, keeping each value that two reads agree on
+            time.sleep(0.4)
+            second = cls._read_frame(Frame_Handler.get_frame(grayscale=False))
+            if second != values:
+                time.sleep(0.4)
+                third = cls._read_frame(Frame_Handler.get_frame(grayscale=False))
+                values = {k: values[k] if values[k] in (second[k], third[k]) else second[k] if second[k] == third[k] else None for k in values}
         except (KeyboardInterrupt, SystemExit): raise
         except Exception as e:
             logger.error(f"Resource_Reader.read: {e}")
