@@ -2,7 +2,7 @@
 # 01.11 19:12–19:27). Ordu: 60 süper barbar, kuşatma, King · Queen · Warden · Royal Champion, 11 yarasa büyüsü.
 # Süreler saniye; [a, b] = her seferinde a ile b arasında rastgele; 0,6 gibi tek sayılar = olasılık.
 
-card_to_drop: [0.3, 0.7]   # karta bastıktan sonra sahaya dokunmadan önce (Emre ~0,4–1,1 sn)
+card_to_drop: [0.15, 0.35] # karta bastıktan sonra sahaya dokunmadan önce (Emre 20:55: daha hızlı)
 
 troops:
   card: super_barbarian
@@ -12,19 +12,19 @@ troops:
   hold_share: [0.9, 0.96]  # sürükleme kartın bitmesinden biraz önce biter; kalan 2–6 barbar tek tek (Emre de böyle)
   halves: 0.7              # 10 saldırının 7'sinde iki yarım (üst + alt), 3'ünde tek tur
   sweep_pause: [0.25, 0.6] # iki yarım arası
-  pan: false               # true: Emre'nin W / S'si gibi önce görüntüyü yukarı it, alt yarıyı sürükle, geri indir, üst yarıyı sürükle
+  pan: 0.4                 # saldırıların bu kadarında Emre'nin W / S'si gibi: görüntüyü yukarı it, alt yarıyı sürükle, geri indir, üst yarıyı (Emre 1C)
   pan_by: 0.3              # kaydırma, ekran yüksekliğinin payı
   hold_still: [0.35, 0.55] # parmak önce kıpırdamadan durur, sonra yürür (Emre 0,36–0,53 sn; hemen yürüyen sürükleme görüntüyü kaydırır)
 
 siege:
   card: siege
-  first: 0.8               # kahraman noktasında genelde ilk o
+  first: 1.0               # Champion'dan sonra ilk o, kahramanlar arkasına (Emre 20:55)
 
 heroes:
   lead: champion           # tek başına başka bir kenardan, yeteneği hemen
-  lead_first: 0.6          # 10 saldırının 6'sında barbarlardan önce
+  lead_first: 0.0          # Emre 20:55: barbarlar → Champion + yetenek → kuşatma → 3 kahraman arkasına → yarasa, beklemeden
   group: [king, queen, warden]   # aynı noktaya, sırası rastgele
-  gap: [0.4, 0.8]
+  gap: [0.25, 0.5]         # iki kart arası (Emre 20:55: daha hızlı)
   ability_now:             # inince hemen yetenek olasılığı
     champion: 1.0
     queen: 0.6

@@ -232,21 +232,23 @@ class Attacker:
         with open(Asset_Manager.resource_path(f"attacks/{name}.yaml"), encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-    def _leftover_troops(self, ring, troop_x, select_card):
+    def _leftover_troops(self, ring, troop_x, select_card, margins=(0.06, 0.09, 0.12), pause=0.25):
         """Troops a tap or a drag could not drop (red area): select the card again and drop them one by one further out.
         Whole visible edges, not only corners, further out each round, until the card is empty (at most 60 taps).
-        The bottom corner can stay hidden even after the view moved (18:47: 0 points, 30 troops left)"""
+        The bottom corner can stay hidden even after the view moved (18:47: 0 points, 30 troops left).
+        The card is looked at before every tap: once it is empty the game selects the siege card and a further tap
+        would drop the machine here. pause: the wait between taps on top of that look (Emre 20:55 "too slow")."""
         import time, random
         time.sleep(0.4)
         if self._card_empty(troop_x): return
         visible = [c for c in self.CORNER_ANGLES if c != "bottom"]
         select_card()
         n = 0
-        for margin in (0.06, 0.09, 0.12):
+        for margin in margins:
             extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=60, margin=margin)]
             random.shuffle(extra)
             for x, y in extra:
-                time.sleep(0.25)
+                time.sleep(pause)
                 if self._card_empty(troop_x) or n >= 60: break
                 self._tap(x, y)
                 n += 1
@@ -368,7 +370,7 @@ class Attacker:
         # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
         spots = []
         for side in random.sample(list(self.CORNER_ANGLES), 4):
-            p = self._deploy_points(ring, side, 1, spread=20, margin=0.055)
+            p = self._deploy_points(ring_out, side, 1, spread=20, margin=0.01)
             if p: spots.append((side, p[0]))
         if not spots:
             logger.error("Attack: no visible edge to deploy on")
@@ -380,7 +382,7 @@ class Attacker:
             # After the view moved a side can be hidden (the bottom under the troop bar after the pan back, 20:52: siege
             # and three heroes tapped on the old spot, now inside the village): then the next visible side
             for s in [side] + [s for s in ("left", "right", "top", "bottom") if s != side]:
-                p = self._deploy_points(ring, s, 1, spread=20, margin=0.055)
+                p = self._deploy_points(ring_out, s, 1, spread=20, margin=0.01)
                 if p:
                     if s != side: logger.info(f"{side} is out of sight now, using {s}")
                     return s, p[0]
@@ -406,15 +408,23 @@ class Attacker:
             logger.warning(f"{label} could not be deployed")
             return False
 
+        # Quick drops (Emre 20:55, "too slow"): card, spot, next card, without waiting for the health bar; whatever did
+        # not land is dropped again further out once everything else is down
+        dropped = []
+        def quick(name, spot):
+            tap_card(name)
+            self._tap(*spot, spread=0.008)
+            dropped.append((name, spot))
+            if not name.startswith("siege"): ability(name)
+            self._pause(heroes.get("gap", [0.25, 0.5]))
+
         lead = heroes.get("lead")
         battle_start = None
         def drop_lead():
             nonlocal battle_start
             if lead in cards and not self._card_deployed(cards[lead]):
-                tap_card(lead)
                 battle_start = battle_start or time.time()
-                if place(lead, lead_spot, lead): ability(lead)
-                self._pause(heroes.get("gap", [0.4, 0.8]))
+                quick(lead, lead_spot)
         lead_first = random.random() < heroes.get("lead_first", 0.6)
         if lead_first: drop_lead()
 
@@ -427,7 +437,7 @@ class Attacker:
         jitter = lambda: random.uniform(-12, 12)
         # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
         # comes back down and the top half is swept. Without it the bottom stays partly under the troop bar
-        use_pan = troops.get("pan", False)
+        use_pan = random.random() < float(troops.get("pan", 0)) # a share of the attacks (Emre 1C), true = every attack
         pans = [None, None]
         if use_pan or random.random() < troops.get("halves", 0.7):
             s1 = random.choice((0, 180))
@@ -456,7 +466,7 @@ class Attacker:
                 if empty.is_set(): break
                 if pans[i]: pan(pans[i])
                 fresh_ring(f"before sweep {i + 1}")
-                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep), seconds, stop=empty.is_set,
+                Input_Handler.drag_path(self._sweep_path(ring_out, start, sweep, margins=(0.0, 0.03)), seconds, stop=empty.is_set,
                                         hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
                 self._pause(troops.get("sweep_pause", [0.25, 0.6]))
         finally:
@@ -464,7 +474,8 @@ class Attacker:
         logger.info(f"Troops: {len(sweeps)} sweep(s), {hold:.1f}s held{', card ran out' if empty.is_set() else ''}")
         fresh_ring("after the sweeps")
         (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
-        self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]))
+        if not empty.is_set():
+            self._leftover_troops(ring_out, troop_x, lambda: tap_card(troops["card"]), margins=(0.0, 0.02, 0.04), pause=0.05)
 
         if not lead_first: drop_lead()
 
@@ -478,12 +489,7 @@ class Attacker:
         fresh_ring("before the heroes")
         hero_side, hero_spot = spot_again(hero_side, hero_spot)
         for name in group:
-            if self._card_deployed(cards[name]):
-                logger.info(f"{name} already on the field, its card is not touched")
-                continue
-            tap_card(name)
-            if place(name, hero_spot, name) and not name.startswith("siege"): ability(name)
-            self._pause(heroes.get("gap", [0.4, 0.8]))
+            quick(name, hero_spot)
 
         # Bat spells: quick taps on the heroes' spot (sometimes another side), drifting a little along the edge.
         # Only the last few taps look at the card: once it runs out the game selects the clan castle spell
@@ -498,6 +504,16 @@ class Attacker:
                 self._tap(spot[0] + dx * t, spot[1] + dy * t, spread=0.005)
                 self._pause(spells.get("gap", [0.12, 0.17]))
             logger.info(f"Spells: {spells['card']} on {side}")
+
+        # One look at the end: whatever did not land goes again, further out (its card is selected again first; a
+        # landed siege machine is never touched again, a second tap unloads it)
+        frame = Frame_Handler.get_frame(grayscale=False)
+        for name, spot in dropped:
+            if self._card_deployed(cards[name], frame) or (name.startswith("siege") and self._card_empty(cards[name])): continue
+            logger.info(f"{name} did not land on the quick drop, again")
+            tap_card(name)
+            if place(name, self._outward(ring_out, spot, 0.02), name) and not name.startswith("siege") and name not in [n for _, n in abilities]:
+                ability(name)
         self._deselect()
         return battle_start, abilities
 
