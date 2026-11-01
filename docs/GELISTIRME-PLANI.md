@@ -147,7 +147,7 @@ Tur sayısı · saldırı (ana/usta) · başlayan geliştirmeler (ana/usta) · k
 ## 2. oturum (01.11) — ne yapıldı
 
 **Emre'nin kararları:** 1A deneme kipinde canlı deneme (ustalar 0/5 doluydu) · 2A en ucuz bina + laboratuvar + evcil hayvanda · 3A "en ucuz" = maliyet ÷ depodaki miktar · 4A indirimli her şeyden önce · 5A duvar alt sınırı (aşağıda: hangi kaynakla ödeneceği bilinince "önce iksir, yetmezse altın" ile kesinleşti).
-Emre'nin hedefi: 4 usta hep geliştirmede, 1'i savaş + duvar için. **Bulgu:** duvar da saldırı da usta kullanmıyor; "Boşta bırakılacak usta" 0'da bırakıldı, karar Emre'de.
+Emre'nin hedefi: 4 usta hep geliştirmede, 1'i savaş + duvar için. **Bulgu:** duvar da saldırı da usta kullanmıyor; "Boşta bırakılacak usta" **0 kalır** (Emre 01.11: "default 0 kalsın").
 
 - **Menü tarama** (`upgrader.py` → `_open_menu`, `_scan_menu`, `_read_rows`): menü açılır, başlık ("Suggested upgrades" / pet'te "Assigned") en üste kaydırılır, sonra sayfa sayfa aşağı. Satır = sağdaki kaynak simgesi: x 0.981–0.991'de altın (R>200 G>150 B<90), iksir (R>140 G<110 B>150), kara (hepsi <70) en az 6 px dolu şerit; kara damladaki parlaklık şeridi ikiye bölüyor → 0.02 içinde birleştirilir. Maliyet x 0.840–0.979, simgenin ±0.016'sı: beyaz yazı = kaynak yetiyor (OCR ile okunur), kırmızı = yetmiyor (okunmaz). Ad satırı maliyetin 0.025 üstünde; ad şablonu yalnız satır başında (x < 0.79, pet 0.82) sayılır → "Barracks" "Dark Barracks"ı tutmaz. Yeşil ad = yeni bina, atlanır. 8 ekran görüntüsünde bütün maliyetler doğru okundu.
 - **Sayfa kayması:** ilk hâli (alt−0.075 → üst) sayfalar arasında satır kaçırıyordu (8 sayfa, en alttaki 800 altınlık Bomb hiç görülmedi); kaydırma üst+0.15'e kısaldı, sayfalar ~2 satır örtüşüyor (10 sayfa, ana köy taraması ~33 sn, lab ~13 sn).
