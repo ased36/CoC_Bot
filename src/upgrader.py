@@ -681,12 +681,14 @@ class Upgrader:
     # ============================================================
 
     def _wall_payment(self, cost):
-        """Pay with elixir first, then gold, only if the panel minimum still remains after paying."""
+        """Pay with the resource that has more to spare above its panel minimum (a full gold storage goes first), only if that minimum still remains."""
         last = Resource_Reader.last
+        spare = {}
         for resource, key in (("elixir", "min_elixir"), ("gold", "min_gold")):
             have = last.get(resource)
-            if have is not None and have - cost >= Settings_Handler.get("walls", key, 0): return resource
-        return None
+            if have is not None and have - cost >= Settings_Handler.get("walls", key, 0):
+                spare[resource] = have - Settings_Handler.get("walls", key, 0)
+        return max(spare, key=spare.get) if spare else None
 
     def _click_wall_button(self, resource):
         """Tap the gold or elixir Upgrade button under a selected wall, found by the icon next to its price."""
