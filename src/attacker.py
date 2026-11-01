@@ -335,15 +335,16 @@ class Attacker:
 
     @classmethod
     def _red_area_from(cls, before, after):
-        """The red area the game shows for ~2 s after a tap on it (measured 22:32): the whole no-deploy zone gets a tint
-        that lowers the Lab a* channel by ~5-10 over the village, with sharp stepped edges, at ~0.9-1.5 s after the tap.
-        Returns the ring of that zone ((center px), radius px per 2 degrees, as _deploy_ring) or None when it is not seen."""
+        """The red area the game shows right after a troop is refused (measured 22:32, 22:41): the whole no-deploy zone
+        gets a red tint (Lab a* up ~5-10 over the village, sharp stepped edges) that fades out within ~1.5 s.
+        before: a frame without the tint, after: a frame right after the refused tap. Returns the ring of that zone
+        ((center px), radius px per 2 degrees, as _deploy_ring) or None when it is not seen."""
         import cv2, numpy as np
         a = cv2.cvtColor(before, cv2.COLOR_RGB2LAB).astype(np.float32)[..., 1]
         b = cv2.cvtColor(after, cv2.COLOR_RGB2LAB).astype(np.float32)[..., 1]
         d = cv2.GaussianBlur(cv2.medianBlur(b - a, 5), (0, 0), 2)
         h, w = d.shape
-        m = (d < -2.5).astype(np.uint8)
+        m = (d > 2.5).astype(np.uint8)
         hud = np.zeros_like(m)
         for x1, y1, x2, y2 in cls.HUD_BOXES: hud[int(y1 * h):int(y2 * h), int(x1 * w):int(x2 * w)] = 1
         m[hud > 0] = 0
@@ -376,18 +377,16 @@ class Attacker:
         radius = np.array([np.median(wrap[i:i + 11]) for i in range(180)])
         return (cx * 1920 / w, cy * 1080 / h), radius * 1920 / w
 
-    def _reveal_red_area(self, shots=None):
+    def _reveal_red_area(self, before, shots=None):
         """The troop card is selected and the battle is on: one tap on the middle of the village (red area, nothing
-        drops), then the zone the game shows is read from the frame ~1.1 s later. Returns its ring or None."""
+        drops) and frames as fast as they come, while the tint is on. before: a frame without the tint (taken before the
+        troop that started the battle). Returns the zone's ring or None."""
         import time, cv2
-        before = Frame_Handler.get_frame(grayscale=False)
         guess = self._deploy_ring(before)
         cx, cy = (guess[0][0] / 1920, guess[0][1] / 1080) if guess else self.EMRE_CENTER
         self._tap(cx, cy, spread=0.004)
-        # The tint fades in: partial at 0.9 s, whole at 1.4 s (22:32); a frame takes ~0.45 s
-        time.sleep(1.2)
-        t0, ring = time.time(), None
-        while ring is None and time.time() - t0 < 1.0:
+        t0, ring, after = time.time(), None, before
+        while ring is None and time.time() - t0 < 1.2:
             after = Frame_Handler.get_frame(grayscale=False)
             ring = self._red_area_from(before, after)
         if shots is not None:
@@ -504,11 +503,12 @@ class Attacker:
         if troops.get("red_line", True):
             # One troop where the map is widest starts the battle (before it a tap only selects a building), then a tap
             # on the middle of the village makes the game show the red area
+            clean = Frame_Handler.get_frame(grayscale=False) # no tint yet
             if battle_start is None:
                 self._tap(*self._ring_point(ring_out, random.choice((0, 180)) + random.uniform(-6, 6), -0.05), spread=0.004)
                 battle_start = time.time()
                 time.sleep(random.uniform(0.3, 0.5))
-            red = self._reveal_red_area(shots)
+            red = self._reveal_red_area(clean, shots)
         hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
         jitter = lambda: random.uniform(-12, 12)
         # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
