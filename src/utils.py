@@ -394,9 +394,21 @@ def get_telegram_chat_id():
 
     raise Exception("Failed to get Telegram chat ID. Please send a message to your bot first.")
 
-def send_notification(text):
+_notify_last = {}
+
+def send_notification(text, photo=None, silent=False, key=None, every=0):
+    """Panel web app + Telegram (TELEGRAM_BOT_TOKEN in configs.py, never committed). Sent on a thread: a slow network
+    never holds the bot. photo: a picture file sent with text as its caption. silent: no sound on the phone (every
+    attack). key / every: the same kind of message at most once per every seconds (errors can repeat each round)."""
+    import time, threading
+    if key is not None:
+        if time.time() - _notify_last.get(key, 0) < every: return
+        _notify_last[key] = time.time()
+    threading.Thread(target=_send_notification, args=(text, photo, silent), daemon=True).start()
+
+def _send_notification(text, photo=None, silent=False):
     import requests
-    
+
     if WEB_APP_URL != "":
         try:
             requests.post(
@@ -409,12 +421,20 @@ def send_notification(text):
 
     if TELEGRAM_BOT_TOKEN != "":
         try:
-            telegram_text = f"[{INSTANCE_ID}]\n{text}"
-            requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                data={"chat_id": get_telegram_chat_id(),"text": telegram_text},
-                timeout=(1, 2)
-            )
+            data = {"chat_id": get_telegram_chat_id(), "disable_notification": "true" if silent else "false"}
+            if photo is not None and Path(photo).exists():
+                with open(photo, "rb") as f:
+                    requests.post(
+                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+                        data={**data, "caption": text[:1000]}, files={"photo": f},
+                        timeout=(5, 30)
+                    )
+            else:
+                requests.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                    data={**data, "text": text},
+                    timeout=(5, 10)
+                )
         except (KeyboardInterrupt, SystemExit): raise
         except: pass
 
@@ -666,11 +686,13 @@ def ensure_emulator(boot_timeout=120):
             try:
                 if ADB_Manager.adbutils_device.shell("getprop sys.boot_completed").strip() == "1":
                     logger.info(f"Emulator back after {int(time.time() - start)}s")
+                    send_notification(f"⚠️ BlueStacks kapanmıştı, yeniden açıldı ({int(time.time() - start)} sn)", key="emulator_back", every=600)
                     return True
             except (KeyboardInterrupt, SystemExit): raise
             except: pass
             time.sleep(2)
         logger.error("Emulator started but Android did not finish booting")
+        send_notification("❌ BlueStacks açılamadı (Android başlamadı), bir sonraki turda yeniden denenecek", key="emulator_fail", every=1800)
         return False
     except (KeyboardInterrupt, SystemExit): raise
     except Exception:

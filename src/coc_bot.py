@@ -25,6 +25,40 @@ class CoC_Bot:
         self.upgrader = Upgrader()
         self.attacker = Attacker()
         self.attacks_since_walls = None # None = walls first (a full storage wastes loot)
+        self.day = {"date": None, "attacks": 0, "gold": 0, "elixir": 0, "dark": 0} # today's attacks for Telegram
+        self.was_running = False
+
+    @staticmethod
+    def _short(v):
+        """1.234.567 -> 1,23 M; 45.600 -> 46 k (Telegram messages)."""
+        if v is None: return "?"
+        sign = "-" if v < 0 else "+"
+        v = abs(v)
+        return sign + (f"{v / 1e6:.2f} M".replace(".", ",") if v >= 1e6 else f"{v / 1e3:.0f} k" if v >= 1e3 else str(v))
+
+    def _day_rollover(self):
+        """At the first attack of a new day: yesterday's summary to Telegram, counters back to zero."""
+        from datetime import date
+        today = date.today().isoformat()
+        d = self.day
+        if d["date"] and d["date"] != today and d["attacks"]:
+            send_notification(f"📊 {d['date']} özeti: {d['attacks']} saldırı, {self._short(d['gold'])} altın, "
+                              f"{self._short(d['elixir'])} iksir, {self._short(d['dark'])} kara iksir")
+        if d["date"] != today:
+            self.day = {"date": today, "attacks": 0, "gold": 0, "elixir": 0, "dark": 0}
+
+    def _attack_message(self, before, seconds):
+        """After a home attack (back home): loot won (storage before / after) and the results screen as a picture.
+        Silent on the phone: one comes every ~2 minutes."""
+        after = Resource_Reader.read() or {}
+        gain = {k: (after.get(k) - before.get(k)) if None not in (after.get(k), before.get(k)) else None for k in ("gold", "elixir", "dark")}
+        self.day["attacks"] += 1
+        for k, v in gain.items():
+            if v is not None and v > 0: self.day[k] += v
+        store = lambda k: self._short(after.get(k)).lstrip("+")
+        text = (f"⚔️ Saldırı (bugün {self.day['attacks']}.): {self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
+                f" · {self._short(gain['dark'])} kara\nDepo: {store('gold')} / {store('elixir')} / {store('dark')} · tur {int(seconds)} sn")
+        send_notification(text, photo=self.attacker.last_result, silent=True)
 
     def scan(self, general):
         import time
@@ -79,6 +113,9 @@ class CoC_Bot:
                     if waiting_logged != mode:
                         logger.info("Paused, waiting" if mode == "paused" else "Waiting for Start")
                         update_status(mode)
+                        if self.was_running:
+                            send_notification("⏸ Bot duraklatıldı" if mode == "paused" else "⏹ Bot durduruldu (panelden)")
+                    self.was_running = False
                     waiting_logged = mode
                     time.sleep(5)
                     continue
@@ -102,6 +139,9 @@ class CoC_Bot:
                     continue
                 waiting_logged = None
 
+                if not self.was_running:
+                    send_notification("▶️ Bot başladı")
+                    self.was_running = True
                 round_start = time.time()
                 started, res = start_coc(detailed=True)
                 if started:
@@ -154,8 +194,13 @@ class CoC_Bot:
                     if not exclude_home_attacks and not stopped():
                         logger.info("Attacking home base")
                         report("attack", base="home")
+                        self._day_rollover()
+                        before, attack_start = dict(Resource_Reader.read() or Resource_Reader.last), time.time()
+                        self.attacker.last_result = None
                         self.attacker.run_home_base(restart=not skip_home_base_upgrades or not skip_builder_base_upgrades)
                         self.attacks_since_walls = (self.attacks_since_walls or 0) + 1
+                        if self.attacker.last_result is not None and in_home_base(): # an attack was played (not only searched)
+                            self._attack_message(before, time.time() - attack_start)
 
                     # Check builder base
                     builder_base_stopped = stopped()
@@ -187,8 +232,9 @@ class CoC_Bot:
                 time.sleep(delay)
 
             except (KeyboardInterrupt, SystemExit): raise
-            except Exception:
+            except Exception as e:
                 logger.exception("CoC_Bot.run:")
+                send_notification(f"❌ Turda hata: {type(e).__name__}: {str(e)[:200]} — 1 dk sonra yeni tur", key="round_error", every=900)
                 stop_coc()
                 update_status("error")
                 time.sleep(60) # the next round starts the emulator again if it closed (it used to wait the whole check interval)

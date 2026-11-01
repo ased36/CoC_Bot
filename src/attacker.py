@@ -10,6 +10,7 @@ class Attacker:
     def __init__(self):
         self.assets = Asset_Manager.attacker_assets
         self.misc_assets = Asset_Manager.misc_assets
+        self.last_result = None
 
     # ============================================================
     # 📱 Screen Interaction
@@ -792,6 +793,7 @@ class Attacker:
         style = self.load_style(style_name)
         shots = DEBUG_DIR / "attacks" / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         shots.mkdir(parents=True, exist_ok=True)
+        self.last_result = shots / "result_00.png" # the results screen, sent with the Telegram attack message
         def shot(name):
             cv2.imwrite(str(shots / f"{name}.png"), cv2.cvtColor(Frame_Handler.get_frame(grayscale=False), cv2.COLOR_RGB2BGR))
 

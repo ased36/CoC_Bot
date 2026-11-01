@@ -1413,7 +1413,7 @@ class Upgrader:
                 logger.info(f"Started upgrading {upgrade} ({kind})")
                 report("upgrade", kind=kind, name=upgrade)
         for upgrade in upgrades_started + lab_upgrades_started + pet_upgrades_started:
-            send_notification(f"Started upgrading {upgrade}")
+            send_notification(f"🔨 Geliştirme başladı: {upgrade}", silent=True)
     
     def run_builder_base(self, exclude_base=False, exclude_lab=False):
         import time
@@ -1460,4 +1460,4 @@ class Upgrader:
                 logger.info(f"Started upgrading {upgrade} ({kind})")
                 report("upgrade", kind=kind, name=upgrade)
         for upgrade in upgrades_started + lab_upgrades_started:
-            send_notification(f"Started upgrading {upgrade}")
+            send_notification(f"🔨 Geliştirme başladı: {upgrade}", silent=True)
