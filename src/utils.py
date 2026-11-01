@@ -914,7 +914,8 @@ class _Emulator_Manager:
 
     @classmethod
     def init(cls):
-        Exit_Handler.register(cls.stop)
+        # The emulator stays open when the bot exits (Emre 01.11 2A): powering Android down on exit made BlueStacks show
+        # "Unexpected shutdown", and the next start is quicker with it open
         cls.start() # an emulator that is already open stays as it is (a restart powers Android down, BlueStacks then shows "Unexpected shutdown")
 
     @classmethod
