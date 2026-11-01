@@ -24,6 +24,7 @@ class CoC_Bot:
     def __init__(self):
         self.upgrader = Upgrader()
         self.attacker = Attacker()
+        self.attacks_since_walls = None # None = walls first (a full storage wastes loot)
 
     def scan(self, general):
         import time
@@ -135,20 +136,18 @@ class CoC_Bot:
 
                     if not skip_home_base_upgrades and not stopped():
                         logger.info("Upgrading home base")
-                        # Walls before the attack (a full storage wastes loot) and again after it, with the loot
-                        self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets)
+                        # With attacks on, walls run once every N attacks (walls, N attacks, walls, ...), always before an attack
+                        walls_now = True
+                        if not exclude_home_attacks:
+                            every = max(1, int(Settings_Handler.get("walls", "every_attacks", 3) or 1))
+                            walls_now = self.attacks_since_walls is None or self.attacks_since_walls >= every
+                            if walls_now: self.attacks_since_walls = 0
+                        self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=walls_now)
                     if not exclude_home_attacks and not stopped():
                         logger.info("Attacking home base")
                         report("attack", base="home")
                         self.attacker.run_home_base(restart=not skip_home_base_upgrades or not skip_builder_base_upgrades)
-                        if Settings_Handler.get("walls", "enabled", False) and not stopped():
-                            try:
-                                to_home_base()
-                                Resource_Reader.read()
-                                self.upgrader.run_walls()
-                            except (KeyboardInterrupt, SystemExit): raise
-                            except Exception:
-                                logger.exception("Walls after the attack:")
+                        self.attacks_since_walls = (self.attacks_since_walls or 0) + 1
 
                     # Check builder base
                     builder_base_stopped = stopped()

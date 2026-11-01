@@ -97,6 +97,7 @@
                     <p class="hint">Kapalıyken bot hiç duvar yapmaz. Açıkken turun sonunda, binalardan artan kaynakla yapar. Duvar usta beklemez, ustalar doluyken de yapılır.</p>
                     <div class="row"><div class="label">Duvar geliştir</div><label class="switch"><input type="checkbox" data-path="walls.enabled"><span></span></label></div>
                     <div class="row"><div class="label">Tur başına en fazla duvar</div><input type="number" min="1" max="50" data-path="walls.max_per_round"></div>
+                    <div class="row"><div class="label">Kaç saldırıda bir duvar<small>Saldırı açıkken: duvar, sonra bu kadar saldırı, sonra yine duvar</small></div><input type="number" min="1" max="20" data-path="walls.every_attacks"></div>
                     <div class="row"><div class="label"><i class="rdot gold"></i>Kalacak en az altın</div><input type="text" inputmode="numeric" data-path="walls.min_gold" data-big></div>
                     <div class="row"><div class="label"><i class="rdot elixir"></i>Kalacak en az iksir</div><input type="text" inputmode="numeric" data-path="walls.min_elixir" data-big></div>
                     <div class="row stack"><div class="label">Hangi seviyeler<small>Seçili seviyedeki duvarlar bir üst seviyeye çıkarılır. Hiçbiri seçili değilse her seviye.</small></div><div class="lvl-pick" id="wall_levels"></div></div>
@@ -588,7 +589,7 @@
                 (t.pet_house_priority && (home.pet_priority || []).length ? `; önce sıradaki ${home.pet_priority.length} hayvan` : "")});
             const levels = (walls.levels || []).slice().sort((a, b) => a - b);
             items.push({on: walls.enabled, spend: true, name: "Duvar",
-                text: `her turun sonunda, en fazla ${walls.max_per_round} duvar, kalacak en az altın ${big(walls.min_gold)} / iksir ${big(walls.min_elixir)}, seviyeler: ${levels.length ? levels.join(", ") : "her seviye"}`});
+                text: `${t.home_attacks ? `her ${walls.every_attacks || 3} saldırıda bir` : "her turun sonunda"}, en fazla ${walls.max_per_round} duvar, kalacak en az altın ${big(walls.min_gold)} / iksir ${big(walls.min_elixir)}, seviyeler: ${levels.length ? levels.join(", ") : "her seviye"}`});
             items.push({on: t.builder_apprentice, spend: false, name: "Usta çırağı", text: "süren geliştirmeye atanır"});
             items.push({on: t.lab_assistant, spend: false, name: "Lab asistanı", text: "süren araştırmaya atanır"});
             items.push({on: t.home_attacks, spend: true, name: "Saldırı", text: "rakip arar ve saldırır"});
