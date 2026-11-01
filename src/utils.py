@@ -928,6 +928,8 @@ class _Emulator_Manager:
                 return proc.is_running()
             except psutil.NoSuchProcess:
                 return False
+        elif cls.PROCESS_NAMES:
+            return False # no emulator process by name: closed (a dead emulator can still answer "connected" on adb)
         elif cls.adb_address is not None:
             try:
                 ADB_Manager.connect_once(cls.adb_address)
