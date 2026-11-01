@@ -39,25 +39,25 @@ Alt şerit: Başlat / Durdur / Duraklat (5-15-30-özel) · altın · iksir · ka
 | Ayar | Seçenek | Varsayılan | |
 |---|---|---|---|
 | Binalar / Kahramanlar / Laboratuvar / Evcil / Usta çırağı / Lab asistanı | aç/kapa | açık | ✅ (var) |
-| **Seçim yöntemi** | Öncelik listesi · En ucuz · Rastgele · En kısa süre | Öncelik, listede yoksa en ucuz | Öncelik ✅ · En ucuz 🟨 (satırdaki maliyet okunacak) · En kısa süre 🟥 (her aday için pencere açılır) |
+| **Seçim yöntemi** | Öncelik listesi · En ucuz · Rastgele · En kısa süre | Öncelik, listede yoksa en ucuz | Öncelik ✅ · En ucuz ✅ 2. oturum ("Listede uygun yoksa: En ucuz / Rastgele") · En kısa süre 🟥 (her aday için pencere açılır) |
 | Öncelik listesi | panelde düzenlenir (satır = öncelik seviyesi) | configs'teki liste | ✅ |
-| Kaynak tercihi | Altınla olanlar önce · İksirle olanlar önce · Fark etmez | fark etmez | 🟨 (maliyet simgesinin rengi) |
-| Geliştirmeden sonra kalacak en az | altın / iksir / kara iksir | 0 | 🟨 (maliyet + kaynak okuma) |
+| Kaynak tercihi | Altınla olanlar önce · İksirle olanlar önce · Fark etmez | fark etmez | ✅ 2. oturum (simge rengi) |
+| Geliştirmeden sonra kalacak en az | altın / iksir / kara iksir | 0 | ✅ 2. oturum |
 | Boşta bırakılacak usta | sayı | 0 | ✅ (var: OPEN_HOME_BUILDERS) |
 | Tur başına en fazla geliştirme | sayı | 10 | ✅ (var) |
 | Belediye binası | aç/kapa | açık | ✅ |
 | Hariç tutulacak binalar | liste | boş | ✅ |
-| İndirimli (yeşil etiket) önce | aç/kapa | açık | 🟨 (kodu yazılmış ama kapalı, `green_tag` resmi var) |
+| İndirimli (yeşil etiket) önce | aç/kapa | açık | 🟨 kodu var ve açık (`green_tag` satırda aranır); **henüz indirimli satır görülmedi, denenmedi** → panelde düğme yok |
 
 ## 4. Duvarlar
 
 | Ayar | Seçenek | Varsayılan | |
 |---|---|---|---|
-| Otomatik duvar | aç/kapa | kapalı | 🟨 |
-| Kaynak | Altın · İksir · Önce iksir sonra altın | önce iksir | 🟨 |
-| Kalacak en az altın / iksir | sayı | 1 000 000 / 1 000 000 | 🟨 (1. oturumda kaba hali var: kaynak sınırın altındaysa duvar yok; maliyet düşülerek 2. oturumda) |
-| Tur başına en fazla duvar | sayı | 5 | 🟨 |
-| Duvara 1 usta ayır | aç/kapa | kapalı | ✅ |
+| Otomatik duvar | aç/kapa | kapalı | ✅ 2. oturum (tur sonunda ayrı geçiş, deneme kipinde denendi) |
+| Kaynak | Altın · İksir · Önce iksir sonra altın | önce iksir | ✅ 2. oturum yalnız "önce iksir sonra altın" (seçenek panelde yok) |
+| Kalacak en az altın / iksir | sayı | 1 000 000 / 1 000 000 | ✅ 2. oturum: maliyet düşülerek |
+| Tur başına en fazla duvar | sayı | 5 | ✅ 2. oturum |
+| Duvara 1 usta ayır | aç/kapa | kapalı | ❌ gereksiz: duvar usta istemiyor (01.11 canlı: ustalar 0/5 iken duvar onay penceresi açıldı, süre "None") |
 
 ## 5. Saldırı (ana köy) — şu an KAPALI (01.11, Emre isteği)
 
@@ -120,7 +120,7 @@ Tur sayısı · saldırı (ana/usta) · başlayan geliştirmeler (ana/usta) · k
 ## Oturum sırası
 
 1. Altyapı + panel + kaynak okuma + istatistik + Genel + Köy'ün ✅ satırları + öncelik listesi düzenleme — **yapıldı 01.11** (aşağıda "1. oturum")
-2. Menüde maliyet okuma → En ucuz, kaynak tercihi, kalacak en az, indirimli önce
+2. Menüde maliyet okuma → En ucuz, kaynak tercihi, kalacak en az, indirimli önce — **yapıldı 01.11** (aşağıda "2. oturum"); duvarın maliyetli hali de bu oturumda yapıldı
 3. Duvarlar
 4. Saldırı arama şartları + savaş sonu şartları (saldırı açılınca)
 5. Bakım, usta üssü saldırı ayarları, en kısa süre
@@ -143,6 +143,22 @@ Tur sayısı · saldırı (ana/usta) · başlayan geliştirmeler (ana/usta) · k
 - Eski panelde düğme **yanıyorsa görev kapalıydı**; 01.11 04:45'te 14 görevin hepsi kapalı kalmış, bot oyunu açıp hemen kapatıyordu. Yeni panelde yeşil = açık.
 - Ana köy saldırısında 01.11'de "Failed to confirm attack" görüldü (`confirm_attack` resmi tutmadı).
 - `attacker.py`: savaş sonu bekleme (`WAIT_FOR_BATTLE_END`) yazıldı, commit'lenmedi. 01.11 04:33 usta üssü denemesi: **"Return Home" 300 sn'de bulunamadı**, yedek yol (oyunu yeniden başlat) çalıştı. `_click_return_home` gri ton + prefilter'sız eşik 0,9 arıyor; savaş sonu ekran görüntüsüyle ölçülüp düzeltilecek (renkli + prefilter dene).
+
+## 2. oturum (01.11) — ne yapıldı
+
+**Emre'nin kararları:** 1A deneme kipinde canlı deneme (ustalar 0/5 doluydu) · 2A en ucuz bina + laboratuvar + evcil hayvanda · 3A "en ucuz" = maliyet ÷ depodaki miktar · 4A indirimli her şeyden önce · 5A duvar alt sınırı (aşağıda: hangi kaynakla ödeneceği bilinince "önce iksir, yetmezse altın" ile kesinleşti).
+Emre'nin hedefi: 4 usta hep geliştirmede, 1'i savaş + duvar için. **Bulgu:** duvar da saldırı da usta kullanmıyor; "Boşta bırakılacak usta" 0'da bırakıldı, karar Emre'de.
+
+- **Menü tarama** (`upgrader.py` → `_open_menu`, `_scan_menu`, `_read_rows`): menü açılır, başlık ("Suggested upgrades" / pet'te "Assigned") en üste kaydırılır, sonra sayfa sayfa aşağı. Satır = sağdaki kaynak simgesi: x 0.981–0.991'de altın (R>200 G>150 B<90), iksir (R>140 G<110 B>150), kara (hepsi <70) en az 6 px dolu şerit; kara damladaki parlaklık şeridi ikiye bölüyor → 0.02 içinde birleştirilir. Maliyet x 0.840–0.979, simgenin ±0.016'sı: beyaz yazı = kaynak yetiyor (OCR ile okunur), kırmızı = yetmiyor (okunmaz). Ad satırı maliyetin 0.025 üstünde; ad şablonu yalnız satır başında (x < 0.79, pet 0.82) sayılır → "Barracks" "Dark Barracks"ı tutmaz. Yeşil ad = yeni bina, atlanır. 8 ekran görüntüsünde bütün maliyetler doğru okundu.
+- **Sayfa kayması:** ilk hâli (alt−0.075 → üst) sayfalar arasında satır kaçırıyordu (8 sayfa, en alttaki 800 altınlık Bomb hiç görülmedi); kaydırma üst+0.15'e kısaldı, sayfalar ~2 satır örtüşüyor (10 sayfa, ana köy taraması ~33 sn, lab ~13 sn).
+- **Seçilen satıra gitme:** seçilen satır ekrandaki sayfada değilse menü kapatılıp açılır, aynı kaydırmalar tekrarlanır, satır maliyet + kaynakla yeniden bulunur.
+- **Seçim sırası** (`_choose_row`): indirimli → öncelik listesi seviyeleri (seviye içinde en ucuz) → "Listede uygun yoksa" (en ucuz / rastgele) → Belediye binası en son. Hepsinde kaynak tercihi önce, "kalacak en az" tutmayan satır atlanır. Crafting Station, hariç binalar, (kapalıysa) kahramanlar ve duvar bina seçiminden çıkar.
+- **Duvar** (`wall_upgrade`, `run_walls`): ana köy turunun en sonunda, bina/lab/pet'ten artan kaynakla; en ucuz duvar; önce iksir (iksir − maliyet ≥ en az iksir), olmazsa altın. Düğme fiyatın yanındaki simge renginden bulunur (eski `upgrade.png` şablonu tutmuyordu; ortadaki mavi düğme Wall Ring, ona basılmaz). Kaynak düşmezse sayılmaz ve durur.
+- **Usta üssü "boş usta okunamadı":** iksir arabası penceresi kapanırken 1 sn yetmiyordu → araba sonrası 1 sn bekleme, okuma süresi 5 sn.
+- **Panel Köy:** "Seçim" kartı (listede uygun yoksa, kaynak tercihi, kalacak en az altın / iksir / kara iksir), Duvar'a "tur başına en fazla duvar". Kayıt çevirileri eklendi.
+- **Deneme kipi:** `Upgrader.dry_run = True` seçer, menüde satırı açar, onaya basmaz (yalnız geliştirici denemesi, panelde yok).
+- **Canlı deneme (01.11 05:40–05:52, deneme kipi, hiçbir şey onaylanmadı, kaynaklar aynı kaldı):** binalar → öncelik 1. seviyeden Grand Warden 5 040 000 iksir; "kalacak en az iksir 3 000 000" ile Warden elendi, en ucuz Bomb 800 altın; lab → Freeze Spell 2 400 000 iksir; pet → kaynak yetmiyor, seçim yok; duvar → en ucuz 1 200 000, iksirle (en az iksir 7 M yapılınca altınla) onay penceresi doğru açıldı.
+- **Bekleyen:** indirimli (yeşil etiket) satır hiç görülmedi; Hammer Jam (01–15.11, 09:00'da başlıyor) menüyü nasıl gösteriyor (üstü çizili fiyat? etiket?) bakılacak, gerekirse ölçülüp panele düğme konacak. Gerçek (onaylı) geliştirme ilk boş ustada görülecek.
 
 ## Ek: ClashFarmer + MyBot'ta olup bizde olmayanlar (01.11 araştırması)
 

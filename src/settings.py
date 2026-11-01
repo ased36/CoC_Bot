@@ -60,6 +60,12 @@ def default_settings():
             "open_builders": getattr(configs, "OPEN_HOME_BUILDERS", 0),
             "town_hall": True,
             "excluded": [],
+            "fallback": "cheapest", # when nothing on the priority list fits: cheapest / random
+            "prefer_resource": "any", # any / gold / elixir
+            "keep_gold": 0, # never start an upgrade that leaves less than this
+            "keep_elixir": 0,
+            "keep_dark": 0,
+            "discount_first": True, # green tag rows before everything else
             "priority": copy.deepcopy(getattr(configs, "HOME_BASE_UPGRADE_PRIORITY", [])),
             "lab_priority": copy.deepcopy(getattr(configs, "HOME_LAB_UPGRADE_PRIORITY", [])),
             "pet_priority": copy.deepcopy(getattr(configs, "PET_HOUSE_UPGRADE_PRIORITY", [])),
@@ -73,6 +79,7 @@ def default_settings():
             "enabled": False,
             "min_gold": 1_000_000,
             "min_elixir": 1_000_000,
+            "max_per_round": 5,
         },
         "resources": {},
         "stats": dict(copy.deepcopy(EMPTY_STATS), since=time.time()),

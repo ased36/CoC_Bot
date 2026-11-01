@@ -1,5 +1,12 @@
 import re
 
+WORDS = {
+    "home": "binalar", "lab": "laboratuvar", "pet": "evcil hayvan",
+    "gold": "altın", "elixir": "iksir", "dark": "kara iksir",
+    "discount": "indirimli", "priority": "öncelik listesi", "cheapest": "en ucuz", "random": "rastgele", "town hall": "Belediye binası",
+}
+tr = lambda word: WORDS.get(word, word)
+
 # English log message -> Turkish panel text. First match wins; {0}, {1}... are regex groups.
 TRANSLATIONS = [
     (r"Starting CoC\.\.\.", "Oyun açılıyor…"),
@@ -26,9 +33,18 @@ TRANSLATIONS = [
     (r"Resources could not be read", "Kaynaklar okunamadı"),
     (r"Started upgrading (.+) \((home|home_lab|pet|builder|builder_lab)\)", "Geliştirme başladı: {0}"),
     (r"Upgraded wall", "Duvar geliştirildi"),
+    (r"Menu (\w+): (\d+) rows, (\d+) affordable, (\d+) unread, (\d+)s", lambda k, n, a, u, t: f"Menü ({tr(k)}): {n} satır okundu, {a} tanesine kaynak yetiyor" + (f", {u} maliyet okunamadı" if u != "0" else "") + f" ({t} sn)"),
+    (r"No upgrade fits \((\w+)\)", lambda k: f"Uygun geliştirme yok ({tr(k)})"),
+    (r"Chosen \(([\w ]+)\): (\w+) (\S+)( discounted)?", lambda r, res, c, d: f"Seçildi ({tr(r)}): {c} {tr(res)}" + (" — indirimli" if d else "")),
+    (r"Chosen upgrade not found again \((\w+) (\S+)\)", lambda res, c: f"Seçilen geliştirme ({c} {tr(res)}) menüde yeniden bulunamadı"),
+    (r"Skipped (.+): blocked in the panel", "{0} atlandı: panelde engelli"),
+    (r"Dry run, not confirming: wall with (\w+) (\S+)", lambda res, c: f"Deneme: duvar {c} {tr(res)} ile ödenecekti, onaylanmadı"),
+    (r"Dry run, not confirming: (.+)", "Deneme: {0} seçildi, onaylanmadı"),
+    (r"Wall (\w+) button not found", lambda res: f"Duvarın {tr(res)} düğmesi bulunamadı"),
+    (r"Encountered an error while attempting to upgrade walls", "Duvar geliştirmesinde hata"),
     (r"Walls skipped: disabled", "Duvar kapalı (Köy → Duvar), duvar yapılmıyor"),
     (r"Walls skipped: resources unknown", "Duvar atlandı: kaynaklar okunamadı"),
-    (r"Walls skipped: gold (\S+) min (\S+), elixir (\S+) min (\S+)", "Duvar atlandı: altın {0} (en az {1}), iksir {2} (en az {3})"),
+    (r"Walls skipped: gold (\S+) min (\S+), elixir (\S+) min (\S+)", "Uygun duvar yok: maliyet düşülünce altın {0} (en az {1}) ve iksir {2} (en az {3}) sınırın altına iniyor"),
     (r"Settings loaded", "Ayarlar okundu"),
     (r"Round finished in (\d+)s, next check at (\S+)", "Tur bitti ({0} sn), sonraki tur {1}"),
     (r"Outside working hours \((\S+)-(\S+)\), waiting", "Çalışma saatleri dışında ({0}–{1}), bekleniyor"),
@@ -50,7 +66,7 @@ def translate_message(msg):
     msg = msg.strip()
     for pattern, text in _COMPILED:
         m = pattern.match(msg)
-        if m: return text.format(*m.groups())
+        if m: return text(*m.groups()) if callable(text) else text.format(*m.groups())
     return msg
 
 def parse_lines(lines):

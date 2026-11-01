@@ -1294,12 +1294,17 @@ class OCR_Handler:
     @classmethod
     def read_digits(cls, section):
         """Read white in-game digits (resource bar, builder count) from an RGB section."""
+        return cls.read_mask(section.min(axis=2) > 200)
+
+    @classmethod
+    def read_mask(cls, text_mask):
+        """Read digits from a boolean mask of text pixels (True = text)."""
         import cv2, numpy as np
         if not hasattr(cls, 'reader'):
             import easyocr
             cls.reader = easyocr.Reader(['en'], gpu=True)
-        # Keep only the white text and upscale; easyocr drops narrow "1"s on the raw image
-        mask = 255 - (section.min(axis=2) > 200).astype(np.uint8) * 255
+        # Dark text on white, bordered and upscaled; easyocr drops narrow "1"s on the raw image
+        mask = 255 - text_mask.astype(np.uint8) * 255
         mask = cv2.copyMakeBorder(mask, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
         mask = cv2.resize(mask, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
         return "".join(cls.reader.readtext(mask, detail=0, allowlist="0123456789/ "))
