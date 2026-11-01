@@ -300,16 +300,20 @@ class Attacker:
         # Troops a tap could not drop (red area): select the card again and drop them one by one further out
         time.sleep(0.4)
         if not self._card_empty(troop_x):
-            visible = [c for c in corners if c != "bottom"] or ["left", "right"]
-            extra = [p for c in visible for p in self._deploy_points(ring, c, 8, margin=0.06)]
-            random.shuffle(extra)
+            # Whole visible edges, not only corners, further out each round, until the card is empty (at most 60 taps).
+            # The bottom corner can stay hidden even after the view moved (18:47: 0 points, 30 troops left)
+            visible = [c for c in self.CORNER_ANGLES if c != "bottom"]
             tap_card(troops["card"])
             n = 0
-            for x, y in extra:
-                time.sleep(0.25)
-                if self._card_empty(troop_x): break
-                self._tap(x, y)
-                n += 1
+            for margin in (0.06, 0.09, 0.12):
+                extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=60, margin=margin)]
+                random.shuffle(extra)
+                for x, y in extra:
+                    time.sleep(0.25)
+                    if self._card_empty(troop_x) or n >= 60: break
+                    self._tap(x, y)
+                    n += 1
+                if self._card_empty(troop_x) or n >= 60: break
             logger.info(f"Leftover troops: {n} more taps, card {'empty' if self._card_empty(troop_x) else 'still not empty'}")
         self._deselect()
 
