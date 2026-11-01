@@ -687,6 +687,12 @@ class Upgrader:
             return int(digits)
         return None
 
+    @staticmethod
+    def _wall_debug(message):
+        # Silent failures used to end the wall pass without a trace: say why and keep the screen
+        logger.warning(message)
+        Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "wall_fail.png")
+
     @require_exit(x=0.99, y=0.01)
     def wall_upgrade(self):
         """Upgrade the cheapest wall that leaves the panel minimums. Returns the resource paid, or None."""
@@ -694,7 +700,9 @@ class Upgrader:
 
         try:
             bounds = self._open_menu("home")
-            if bounds is None: return None
+            if bounds is None:
+                self._wall_debug("Walls: the upgrade menu did not open")
+                return None
             rows, page = self._scan_menu("home", bounds, ["Wall"])
             walls = [r for r in rows if "wall" in r["names"] and r["affordable"] and r["cost"] is not None]
             if not walls:
@@ -713,7 +721,9 @@ class Upgrader:
             row = None
             for r in sorted(walls, key=lambda r: r["cost"]):
                 if levels and known.get(r["cost"]) is not None and known[r["cost"]] not in levels: continue
-                if not self._goto_row("home", bounds, r, page): return None
+                if not self._goto_row("home", bounds, r, page):
+                    self._wall_debug(f"Walls: could not go back to the wall row ({r['cost']:,})".replace(",", "."))
+                    return None
                 page = r["page"]
                 if levels:
                     level = None
@@ -739,7 +749,9 @@ class Upgrader:
                 cost = f"{row['cost']:,}".replace(",", ".")
                 logger.info(f"Dry run, not confirming: wall with {resource} {cost}")
                 return None
-            if not self._click_home_confirm(): return None
+            if not self._click_home_confirm():
+                self._wall_debug("Walls: confirm button not found")
+                return None
             time.sleep(0.5)
             return resource
         except (KeyboardInterrupt, SystemExit): raise
@@ -759,7 +771,9 @@ class Upgrader:
             time.sleep(0.5)
             after = Resource_Reader.read() or {}
             # Walls finish instantly, so a wall counts only if the resource actually went down
-            if (after.get(resource) or 0) >= (before.get(resource) or 0): break
+            if (after.get(resource) or 0) >= (before.get(resource) or 0):
+                logger.warning(f"Walls: paid with {resource} but it did not go down ({before.get(resource)} -> {after.get(resource)})")
+                break
             logger.info("Upgraded wall")
             report("wall")
 
