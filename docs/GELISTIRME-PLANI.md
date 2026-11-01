@@ -247,3 +247,4 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 - **2:** saldırı değişmez — klan askerleri kuşatma makinesinin içinde gidiyor, makine patlayınca iniyor (yani kale zaten kullanılıyor, her saldırıdan sonra boşalıyor).
 - **3A:** pastayı Emre kendisi etkinleştirir (1 saat); bot yalnız etkin olduğu sürede ücretsiz doldurur, pastayı kendisi harcamaz.
 - **Sırada:** bot kapalıyken ölçüm — ordu ekranı, klan kalesi bölümü, "Request" düğmesi, pasta etkinken doldurma düğmesi (hiçbirine basılmaz). Aynı ölçümde duvar seviyesi (`duvar_olc.py`). Sonra kod + Emre onayıyla canlı tur.
+- **Pasta saati (Emre 1A):** pasta etkinken turlar arası bekleme yok (saldır → kaleyi bedava doldur → yeniden saldır); pasta bitince normal bekleme. Emre 1 inşaatçıyı hep boşta tutacak (panel "Boşta bırakılacak usta" = 1).
