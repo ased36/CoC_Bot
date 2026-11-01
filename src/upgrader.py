@@ -827,8 +827,11 @@ class Upgrader:
         for _ in range((n - 1) % 10):
             Input_Handler.click(x, y)
             time.sleep(0.3)
-        time.sleep(0.4)
-        count = self._selected_wall_count()
+        count = None
+        for _ in range(3): # OCR misses the title now and then
+            time.sleep(0.4)
+            count = self._selected_wall_count()
+            if count is not None: break
         for _ in range(12): # never pay for more than was asked
             if count is None or count <= n: break
             Input_Handler.click(x - 0.216, y)

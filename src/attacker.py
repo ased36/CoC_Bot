@@ -246,6 +246,7 @@ class Attacker:
             time.sleep(random.uniform(0.08, 0.2))
 
         corners = random.sample(list(self.CORNER_ANGLES), troops.get("corners", 4))
+        battle_start = time.time() # the end timer counts from the first drop (deploying takes ~25 s)
 
         # Spells first, on random spots inside the village
         spells = style.get("spells")
@@ -366,12 +367,13 @@ class Attacker:
                     abilities.remove((due, name))
             if self._click_button("return_home", timeout=0.3):
                 break
-            loot, _ = self._read_loot()
-            if None not in loot.values() and loot != last_loot: last_loot, last_change = loot, time.time()
             end_after = Settings_Handler.get("attack", "end_after", 60) or 0
-            timed_out = end_after > 0 and time.time() - start >= end_after
+            timed_out = end_after > 0 and time.time() - battle_start >= end_after
+            if not timed_out: # reading the loot takes ~3 s, not needed once the time is up
+                loot, _ = self._read_loot()
+                if None not in loot.values() and loot != last_loot: last_loot, last_change = loot, time.time()
             if (time.time() - last_change >= end.get("idle_seconds", 20) or timed_out) and not abilities:
-                if timed_out: logger.info(f"{end_after}s after the deploy, ending the battle")
+                if timed_out: logger.info(f"{end_after}s after the first drop, ending the battle")
                 else: logger.info(f"Loot unchanged for {end.get('idle_seconds', 20)}s, ending the battle")
                 if self._click_button("surrender", timeout=2) or self._click_button("end_battle", timeout=2):
                     time.sleep(1)

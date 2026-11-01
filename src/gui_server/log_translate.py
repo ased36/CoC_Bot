@@ -49,7 +49,7 @@ TRANSLATIONS = [
     (r"Dry run, not confirming: (\d+) wall\(s\) with (\S+), (\S+) each", "Deneme: {0} duvar, {1} ile, tanesi {2} — onaylanmadı"),
     (r"Upgraded wall", "Duvar geliştirildi"),
     (r"(\S+): ability used right after the drop", "{0}: atılır atılmaz yeteneği kullanıldı"),
-    (r"(\d+)s after the deploy, ending the battle", "Askerler indikten {0} sn sonra savaş bitiriliyor"),
+    (r"(\d+)s after the first drop, ending the battle", "Saldırı başladıktan {0} sn sonra savaş bitiriliyor"),
     (r"Walls skipped: not enough gold or elixir for a wall", "Duvar atlandı: altın ya da iksir bir duvara yetmiyor"),
     (r"Walls after the attack:", "Saldırıdan sonra duvar adımında hata"),
     (r"Menu (\w+): (\d+) rows, (\d+) affordable, (\d+) unread, (\d+)s", lambda k, n, a, u, t: f"Menü ({tr(k)}): {n} satır okundu, {a} tanesine kaynak yetiyor" + (f", {u} maliyet okunamadı" if u != "0" else "") + f" ({t} sn)"),
