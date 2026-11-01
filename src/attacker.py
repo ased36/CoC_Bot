@@ -95,8 +95,9 @@ class Attacker:
             radius[i] = lo
         return (cx, cy), radius
 
-    def _deploy_points(self, ring, corner, n, spread=35, margin=0.035):
-        """n screen points just outside the red line around a corner (name, or an angle in degrees), spread over both of its edges."""
+    def _deploy_points(self, ring, corner, n, spread=35, margin=0.035, jitter=0.015):
+        """n screen points just outside the red line around a corner (name, or an angle in degrees), spread over both of its edges.
+        margin + 0..jitter (parts of the screen width) outside the line."""
         import numpy as np
         (cx, cy), radius = ring
         h, w = 1080, 1920 # ring is measured on 1920x1080 frames
@@ -110,7 +111,7 @@ class Attacker:
                 # Where the hull ends at a HUD box or the screen edge the real line is hidden further out: no safe point there
                 if self._in_hud(ex, ey) or any(self._in_hud(ex + dx, ey + dy) for dx, dy in ((0.015, 0), (-0.015, 0), (0, 0.045), (0, -0.03))): continue
                 if ey < 0.045 or not 0.02 <= ex <= 0.98: continue # cut by the screen edge (after the view moved)
-                r = edge + margin * w + np.random.uniform(0, 0.015) * w
+                r = edge + margin * w + np.random.uniform(0, jitter) * w
                 x, y = (cx + r * np.cos(np.radians(a))) / w, (cy + r * np.sin(np.radians(a))) / h
                 if 0.02 <= x <= 0.98 and 0.03 <= y and not self._in_hud(x, y): points.append((x, y))
                 if len(points) == n: return points
@@ -232,7 +233,7 @@ class Attacker:
         with open(Asset_Manager.resource_path(f"attacks/{name}.yaml"), encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-    def _leftover_troops(self, ring, troop_x, select_card, margins=(0.06, 0.09, 0.12), pause=0.25, around=None, spread=60):
+    def _leftover_troops(self, ring, troop_x, select_card, margins=(0.06, 0.09, 0.12), pause=0.25, around=None, spread=60, jitter=0.015):
         """Troops a tap or a drag could not drop (red area): select the card again and drop them one by one further out.
         Whole visible edges, not only corners, further out each round, until the card is empty (at most 60 taps).
         The bottom corner can stay hidden even after the view moved (18:47: 0 points, 30 troops left).
@@ -245,7 +246,7 @@ class Attacker:
         select_card()
         n = 0
         for margin in margins:
-            extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=spread, margin=margin)]
+            extra = [p for c in visible for p in self._deploy_points(ring, c, 10, spread=spread, margin=margin, jitter=jitter)]
             random.shuffle(extra)
             for x, y in extra:
                 time.sleep(pause)
@@ -257,6 +258,12 @@ class Attacker:
 
     # Where a held finger may go: inside the screen, above the troop bar
     SAFE_BOX = (0.03, 0.06, 0.97, 0.78)
+
+    # How far outside the red area the game showed (parts of the screen width): hero / siege spot, leftover rounds.
+    # The grass between the line and the map's edge is ~1-2 % on a big village; at 3-7 % out the leftover taps and
+    # heroes went into the forest (01.11 23:27, 23:32, 23:35). MyBot drops 3 game pixels out (~0.4 %)
+    RED_SPOT = {"margin": 0.008, "jitter": 0.005}
+    RED_LEFTOVER = (0.006, 0.011, 0.016)
 
     def _ring_point(self, ring, angle, margin):
         """Screen point at angle (0 right, 90 bottom, 180 left, 270 top) margin (part of the screen width) outside the red line."""
@@ -498,7 +505,7 @@ class Attacker:
                 # Middle of a side, the side nearest the old one first (corners can be off the map, 23:03)
                 first = {"right": 315, "left": 225, "top": random.choice((225, 315)), "bottom": 45}.get(side, 315)
                 for a in [first] + [a for a in (315, 225, 45, 135) if a != first]:
-                    p = self._deploy_points(red, a, 1, spread=15, margin=0.03)
+                    p = self._deploy_points(red, a, 1, spread=15, **self.RED_SPOT)
                     if p: return side, p[0]
                 return side, old
             for s in [side] + [s for s in ("left", "right", "top", "bottom") if s != side]:
@@ -519,12 +526,21 @@ class Attacker:
                 abilities.append((time.time() + random.uniform(*heroes.get("ability_after", {}).get(name, [8, 12])), name))
 
         def place(name, spot, label):
-            """The card is selected: drop it on the spot, a little off every time, further out when the red line refuses it."""
-            for push in (0, -0.025, 0.03): # in first: past the outer band is off the map (21:10)
-                self._tap(*self._outward(ring, spot, push), spread=0.008)
+            """The card is selected: drop it on the spot, a little off every time, further out when the red line refuses it.
+            By the red line: a little in, a little out, then the middle of another side (the band between the line
+            and the map's edge is only ~1-2 % of the screen on a big village, 23:27: three tries further out, all off the map)."""
+            if red:
+                tries = [self._outward(red, spot, push) for push in (0, -0.004, 0.006)]
+                others = [p[0] for a in random.sample([315, 225, 45, 135], 4)
+                          for p in [self._deploy_points(red, a, 1, spread=15, **self.RED_SPOT)] if p]
+                tries += [p for p in others if abs(p[0] - spot[0]) + abs(p[1] - spot[1]) > 0.2][:1]
+            else:
+                tries = [self._outward(ring, spot, push) for push in (0, -0.025, 0.03)] # in first: past the outer band is off the map (21:10)
+            for point in tries:
+                self._tap(*point, spread=0.004 if red else 0.008)
                 if self._wait_deployed(cards[name], timeout=2.5): return True
                 if self._card_empty(cards[name]): return True # used up (a siege machine already gone)
-                logger.info(f"{label} did not land, trying further out")
+                logger.info(f"{label} did not land, trying again")
             logger.warning(f"{label} could not be deployed")
             return False
 
@@ -623,7 +639,7 @@ class Attacker:
         (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
         if not empty.is_set():
             if red:
-                self._leftover_troops(red, troop_x, lambda: tap_card(troops["card"]), margins=(0.03, 0.05, 0.07), pause=0.05, around=[225, 315, 45, 135], spread=25)
+                self._leftover_troops(red, troop_x, lambda: tap_card(troops["card"]), margins=self.RED_LEFTOVER, pause=0.05, around=[225, 315, 45, 135], spread=25, jitter=0.004)
             else:
                 self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
 
