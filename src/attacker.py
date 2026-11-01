@@ -346,7 +346,12 @@ class Attacker:
                 if not place(cards[name], hero_corner, name):
                     self._deselect()
                     continue
-            abilities.append((time.time() + random.uniform(*heroes.get("ability_after", [8, 12])), name))
+            if name in heroes.get("ability_now", []):
+                time.sleep(random.uniform(0.3, 0.6)) # Royal Champion: ability right away
+                self._tap(cards[name], self.CARD_Y, spread=0.006)
+                logger.info(f"{name}: ability used right after the drop")
+            else:
+                abilities.append((time.time() + random.uniform(*heroes.get("ability_after", [8, 12])), name))
             self._pause(heroes.get("gap", [0.25, 0.7]))
         self._deselect()
         shot("deployed")
