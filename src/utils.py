@@ -653,14 +653,41 @@ def to_home_base(ref_cache=False):
             time.sleep(2)
             return
 
+def ensure_emulator(boot_timeout=120):
+    """BlueStacks sometimes closes by itself (NVIDIA driver crash): start it again so an unwatched bot keeps going."""
+    import time
+    if not configs.AUTO_START_EMULATOR or Emulator_Manager.check(): return True
+    logger.warning("Emulator is not running, starting it again")
+    try:
+        Emulator_Manager.start()
+        if not ADB_Manager.connect(): return False
+        start = time.time()
+        while time.time() - start < boot_timeout:
+            try:
+                if ADB_Manager.adbutils_device.shell("getprop sys.boot_completed").strip() == "1":
+                    logger.info(f"Emulator back after {int(time.time() - start)}s")
+                    return True
+            except (KeyboardInterrupt, SystemExit): raise
+            except: pass
+            time.sleep(2)
+        logger.error("Emulator started but Android did not finish booting")
+        return False
+    except (KeyboardInterrupt, SystemExit): raise
+    except Exception:
+        logger.exception("ensure_emulator:")
+        return False
+
 def start_coc(timeout=60, detailed=False):
     import time
-    
+
     try:
         Emulator_Manager.wake()
         if not running():
             if not detailed: return False
             else: return False, "paused"
+        if not ensure_emulator():
+            if not detailed: return False
+            else: return False, "error"
         to_system_home()
         logger.info("Starting CoC...")
 

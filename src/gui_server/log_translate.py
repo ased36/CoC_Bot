@@ -67,6 +67,20 @@ TRANSLATIONS = [
     (r"Stopped from panel, skipping the rest of the round", "Panelden durduruldu, turun kalanı atlanıyor"),
     (r"CoC_Bot\.run:", "Turda beklenmeyen hata"),
     (r"start_coc:", "Oyun açılırken hata"),
+    (r"Emulator is not running, starting it again", "BlueStacks kapanmış, yeniden açılıyor"),
+    (r"Emulator back after (\d+)s", "BlueStacks yeniden açıldı ({0} sn)"),
+    (r"Emulator started but Android did not finish booting", "BlueStacks açıldı ama Android yüklenmedi"),
+    (r"ensure_emulator:", "BlueStacks yeniden açılırken hata"),
+    (r"Attack (\S+): cards (.*)", "Saldırı ({0}): kartlar {1}"),
+    (r"Bottom corner: view moved up, (\d+) points", "Alt köşe: görüntü yukarı kaydırıldı, {0} nokta"),
+    (r"Leftover troops: (\d+) more taps, card empty", "Elde kalan askerler {0} dokunuşla bırakıldı"),
+    (r"Leftover troops: (\d+) more taps, card still not empty", "Elde kalan askerler: {0} dokunuş, kart hâlâ boş değil"),
+    (r"Siege already on the field, its card is not touched", "Kuşatma zaten sahada, kartına dokunulmadı"),
+    (r"(\S+) did not land, trying further out", "{0} inmedi, daha dışarıdan yeniden"),
+    (r"(\S+) could not be deployed", "{0} indirilemedi"),
+    (r"Loot unchanged for (\d+)s, ending the battle", "Ganimet {0} sn değişmedi, savaş bitiriliyor"),
+    (r"Battle over, back home", "Savaş bitti, köye dönüldü"),
+    (r"Return Home not found, restarting CoC instead", "Return Home bulunamadı, oyun yeniden açılıyor"),
 ]
 _COMPILED = [(re.compile(rf"^{p}$"), t) for p, t in TRANSLATIONS]
 
