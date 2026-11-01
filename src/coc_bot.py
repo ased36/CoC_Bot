@@ -135,8 +135,8 @@ class CoC_Bot:
 
                     if not skip_home_base_upgrades and not stopped():
                         logger.info("Upgrading home base")
-                        # Attacking: walls wait until after the attack, so they are paid with its loot
-                        self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=exclude_home_attacks)
+                        # Walls before the attack (a full storage wastes loot) and again after it, with the loot
+                        self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets)
                     if not exclude_home_attacks and not stopped():
                         logger.info("Attacking home base")
                         report("attack", base="home")

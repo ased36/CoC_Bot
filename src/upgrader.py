@@ -859,6 +859,11 @@ class Upgrader:
             logger.info("Walls skipped: disabled")
             return
         left = Settings_Handler.get("walls", "max_per_round", 5)
+        # Cheapest wall seen so far: when neither resource can pay it, skip the menu (it takes ~30 s to look through)
+        known = [c for c in getattr(self, "_wall_levels", {})]
+        if known and self._wall_payment(min(known)) is None:
+            logger.info("Walls skipped: not enough gold or elixir for a wall")
+            return
         while left > 0:
             before = Resource_Reader.last
             result = self.wall_upgrade(left)

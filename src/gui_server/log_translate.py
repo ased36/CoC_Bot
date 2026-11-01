@@ -48,6 +48,7 @@ TRANSLATIONS = [
     (r"Walls: selected wall count unclear \((\S+), wanted (\d+)\)", "Duvar: seçilen duvar sayısı okunamadı ({0}, istenen {1}), geliştirilmedi"),
     (r"Dry run, not confirming: (\d+) wall\(s\) with (\S+), (\S+) each", "Deneme: {0} duvar, {1} ile, tanesi {2} — onaylanmadı"),
     (r"Upgraded wall", "Duvar geliştirildi"),
+    (r"Walls skipped: not enough gold or elixir for a wall", "Duvar atlandı: altın ya da iksir bir duvara yetmiyor"),
     (r"Walls after the attack:", "Saldırıdan sonra duvar adımında hata"),
     (r"Menu (\w+): (\d+) rows, (\d+) affordable, (\d+) unread, (\d+)s", lambda k, n, a, u, t: f"Menü ({tr(k)}): {n} satır okundu, {a} tanesine kaynak yetiyor" + (f", {u} maliyet okunamadı" if u != "0" else "") + f" ({t} sn)"),
     (r"No upgrade fits \((\w+)\)", lambda k: f"Uygun geliştirme yok ({tr(k)})"),
