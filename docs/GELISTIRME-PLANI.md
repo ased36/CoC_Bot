@@ -357,3 +357,17 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 
 - Bot kapalı (deneme betikleriyle çalışıldı). Sırada: Emre `Botu-Baslat.bat` → Başlat ile botun kendi turu, birkaç saldırı izlenecek. Açık: kırmızı alanın okunmadığı köylerde eski yol (köylerin ~yarısı).
 - **23:25 botun kendi turu (Emre Başlat, 8f2cd66):** kırmızı alan okundu, 4 kenar 7,9 sn, kalan yalnız 4 dokunuş, Champion + Queen yeteneği hemen, tomruk + kahramanlar indi, yarasa üstte; ganimet 67 k altında ~30. sn'de teslim. **1 yıldız %82**, köyün altını 1,91 M → 30 k, iksiri 1,99 M → 30 k.
+
+## DEVİR 01.11 23:35 — yeni sohbet: "bunun üstüne ne ekleyelim" (Emre)
+
+- Durum: yayma stili botun kendi turunda çalışıyor (8f2cd66 / 8ad5f33). Emre memnun ("harika oldu"). Bot açık, duvar Emre'nin panel ayarıyla.
+- Yeni sohbetin işi: Claude araştırır, seçenekleri numaralı/şıklı önerir, Emre seçer; plansız kod yok.
+- Araştırma başlıkları (bu belgedeki "ClashFarmer + MyBot'ta olup bizde olmayanlar" listesi + bugün açık kalanlar):
+  1. Saldırı: kırmızı alanın okunmadığı köyler (~yarısı) için ikinci yol; teslim penceresinde Okay bazen bulunamıyor; ara sıra "Village did not load".
+  2. Klan kalesi doldurma (Emre 1A kararı 15:15, ölçüm yarım: kale boşken istek penceresi, pasta).
+  3. Ordu: savaş sonrası ordu dolu mu kontrolü / bekleme (şu an Emre elle dolduruyor; boş orduyla saldırı denenmedi).
+  4. Mola / saat ızgarası, günlük saldırı sınırı (insan gibi görünme, hesap güvenliği).
+  5. Bildirim: Telegram/telefon (tur özeti, hata, BlueStacks çökmesi).
+  6. Hazine / maden arabası / engel toplama, Hammer Jam indirimli geliştirmeler.
+  7. Usta üssü saldırısı (şu an kapalı).
+  8. BlueStacks NVIDIA çökmeleri (Emre 2A: dokunma — yeniden sorulmaz, yalnız bilgi).
