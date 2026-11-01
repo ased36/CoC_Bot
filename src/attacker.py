@@ -162,14 +162,20 @@ class Attacker:
         self.card_scale = max(self.CARD_SCALES, key=fit)
         found = {}
         for name, tpl in tpls.items():
-            t = scaled(tpl, self.card_scale)
-            res = cv2.matchTemplate(bar, t, cv2.TM_CCOEFF_NORMED)
-            xs = np.nonzero(res.max(axis=0) >= 0.85)[0]
-            if len(xs): found[name] = (xs.min() + t.shape[1] / 2) / frame.shape[1]
+            # The selected card is drawn one size bigger (02.11 01:42: the troop card 0.76 at the bar's size, 0.93 one up)
+            for s in (self.card_scale, self.card_scale + 0.05, self.card_scale - 0.05):
+                t = scaled(tpl, s)
+                res = cv2.matchTemplate(bar, t, cv2.TM_CCOEFF_NORMED)
+                xs = np.nonzero(res.max(axis=0) >= 0.85)[0]
+                if len(xs):
+                    found[name] = (xs.min() + t.shape[1] / 2) / frame.shape[1]
+                    break
         # The siege card changes its picture (machine, "!"), but it always sits between the troops and the first hero
-        troop, hero = found.get("super_barbarian"), found.get("king")
-        if not any(n.startswith("siege") for n in found) and troop and hero and hero - troop > 0.1:
-            found["siege"] = (troop + hero) / 2
+        # (any hero: one being upgraded is not in the bar at all, 02.11: king, queen and champion missing)
+        troop = found.get("super_barbarian")
+        heroes = [x for n, x in found.items() if n in ("king", "queen", "warden", "champion", "minion_prince") and troop and x > troop]
+        if not any(n.startswith("siege") for n in found) and heroes and min(heroes) - troop > 0.1:
+            found["siege"] = (troop + min(heroes)) / 2
         return found
 
     def _card_empty(self, x):
@@ -932,10 +938,14 @@ class Attacker:
 
     def _leave_search(self, timeout=20):
         import time
-        # No troops deployed yet, so End Battle goes straight home and costs nothing
+        # No troops deployed yet, so End Battle goes straight home and costs nothing. 02.11 01:43 the button read
+        # Surrender instead: then Surrender and its Okay
         if not self._click_end_battle(timeout=5):
-            logger.error("End Battle not found on the search screen")
-            return False
+            if not self._click_surrender(timeout=2):
+                logger.error("End Battle not found on the search screen")
+                return False
+            time.sleep(1)
+            self._click_okay(timeout=3)
         start_time = time.time()
         while time.time() - start_time < timeout:
             if in_home_base():

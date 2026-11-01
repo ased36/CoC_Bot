@@ -24,7 +24,7 @@ siege:
 heroes:
   lead: champion           # tek başına başka bir kenardan, yeteneği hemen
   lead_first: 0.0          # Emre 20:55: barbarlar → Champion + yetenek → kuşatma → 3 kahraman arkasına → yarasa, beklemeden
-  group: [king, queen, warden]   # aynı noktaya, sırası rastgele
+  group: [king, queen, warden, minion_prince]   # aynı noktaya, sırası rastgele; yükselmedeki kahraman çubukta yok, atlanır (02.11)
   gap: [0.25, 0.5]         # iki kart arası (Emre 20:55: daha hızlı)
   ability_now:             # inince hemen yetenek olasılığı
     champion: 1.0
@@ -33,6 +33,7 @@ heroes:
     king: [4, 25]
     queen: [6, 30]
     warden: [10, 30]
+    minion_prince: [6, 20]
     champion: [1, 3]
 
 spells:
