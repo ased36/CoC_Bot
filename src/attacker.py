@@ -105,7 +105,11 @@ class Attacker:
         for width in (spread, spread + 20, spread + 35):
             for _ in range(n * 10):
                 a = self.CORNER_ANGLES[corner] + np.random.uniform(-width, width)
-                r = radius[int(round(a / 2)) % 180] + margin * w + np.random.uniform(0, 0.01) * w
+                edge = radius[int(round(a / 2)) % 180]
+                ex, ey = (cx + edge * np.cos(np.radians(a))) / w, (cy + edge * np.sin(np.radians(a))) / h
+                # Where the hull ends at a HUD box or the screen edge the real line is hidden further out: no safe point there
+                if self._in_hud(ex, ey) or any(self._in_hud(ex + dx, ey + dy) for dx, dy in ((0.015, 0), (-0.015, 0), (0, 0.045), (0, -0.03))): continue
+                r = edge + margin * w + np.random.uniform(0, 0.01) * w
                 x, y = (cx + r * np.cos(np.radians(a))) / w, (cy + r * np.sin(np.radians(a))) / h
                 if 0.02 <= x <= 0.98 and 0.03 <= y and not self._in_hud(x, y): points.append((x, y))
                 if len(points) == n: return points
@@ -228,9 +232,18 @@ class Attacker:
 
         # Troops: per_corner on each corner, one tap each, a few pixels off every time.
         # No extra taps for leftovers: once a card runs out the game selects the next card (siege, clan spell) by itself
+        # Points are planned first: what a corner cannot take safely (hidden edge) moves to the other corners
+        per_corner = troops.get("per_corner", 15)
+        plan = {c: self._deploy_points(ring, c, per_corner) for c in corners}
+        short = sum(per_corner - len(p) for p in plan.values())
+        for c in [c for c in corners if len(plan[c]) == per_corner]:
+            if short <= 0: break
+            extra = self._deploy_points(ring, c, min(short, per_corner))
+            plan[c] += extra
+            short -= len(extra)
         tap_card(troops["card"])
         for corner in corners:
-            for x, y in self._deploy_points(ring, corner, troops.get("per_corner", 15)):
+            for x, y in plan[corner]:
                 self._tap(x, y)
                 self._pause(troops.get("tap_gap", [0.06, 0.18]))
             self._pause(troops.get("corner_pause", [0.3, 0.9]))
