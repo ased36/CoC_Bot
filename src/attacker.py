@@ -153,6 +153,24 @@ class Attacker:
         section = Frame_Handler.get_frame_section(x - 0.01, 0.89, x + 0.01, 0.91, grayscale=False).astype(int)
         return (abs(section[..., 0] - section[..., 1]).max() < 8) and (abs(section[..., 1] - section[..., 2]).max() < 8)
 
+    def _click_button(self, name, timeout=3, scales=(0.6, 0.7, 0.8, 0.9, 1.0, 1.1)):
+        """Tap a button image found at any of a few sizes (the button pictures were taken at other UI sizes)."""
+        import time, cv2
+        templates = [cv2.resize(self.assets[name], None, fx=s, fy=s, interpolation=cv2.INTER_AREA) for s in scales]
+        start = time.time()
+        while time.time() - start < timeout:
+            for x, y in Frame_Handler.batch_locate(templates, grayscale=False, thresh=0.85):
+                if x is not None:
+                    self._tap(x, y, spread=0.003)
+                    return True
+            time.sleep(0.3)
+        return False
+
+    @staticmethod
+    def _deselect():
+        # Tap the empty left end of the troop bar: a stray tap on the field later then drops nothing
+        Input_Handler.click(0.01, 0.905)
+
     @staticmethod
     def _pause(span):
         import time, random
@@ -202,24 +220,24 @@ class Attacker:
                 if self._card_empty(cards[spells["card"]]): break
                 self._tap(x, y, spread=0.01)
                 self._pause(spells.get("gap", [0.15, 0.45]))
+            self._deselect()
 
-        # Troops: per_corner on each corner, one tap each, a few pixels off every time
+        # Troops: per_corner on each corner, one tap each, a few pixels off every time.
+        # No extra taps for leftovers: once a card runs out the game selects the next card (siege, clan spell) by itself
         tap_card(troops["card"])
         for corner in corners:
             for x, y in self._deploy_points(ring, corner, troops.get("per_corner", 15)):
                 self._tap(x, y)
                 self._pause(troops.get("tap_gap", [0.06, 0.18]))
             self._pause(troops.get("corner_pause", [0.3, 0.9]))
-        # Whatever is left (a tap that missed the field) goes in on a random corner
-        for x, y in self._deploy_points(ring, random.choice(corners), 20):
-            if self._card_empty(cards[troops["card"]]): break
-            self._tap(x, y)
-            self._pause(troops.get("tap_gap", [0.06, 0.18]))
+        self._deselect()
 
         siege = style.get("siege")
-        if siege and siege.get("card") in cards:
-            tap_card(siege["card"])
+        siege_card = next((c for c in sorted(cards) if siege and c.startswith(siege.get("card", "-"))), None)
+        if siege_card:
+            tap_card(siege_card)
             for x, y in self._deploy_points(ring, random.choice(corners), siege.get("count", 1)): self._tap(x, y)
+            self._deselect()
 
         # Heroes from one corner, behind the troops; abilities later, each on its own random delay
         heroes = style.get("heroes", {})
@@ -231,6 +249,7 @@ class Attacker:
             self._tap(x, y)
             abilities.append((time.time() + random.uniform(*heroes.get("ability_after", [8, 12])), name))
             self._pause(heroes.get("gap", [0.25, 0.7]))
+        self._deselect()
         shot("deployed")
 
         # Battle: abilities on time, end when the loot stops moving, then Return Home
@@ -241,22 +260,34 @@ class Attacker:
                 if time.time() >= due:
                     self._tap(cards[name], self.CARD_Y, spread=0.006)
                     abilities.remove((due, name))
-            if self._click_return_home(timeout=0.5):
+            if self._click_button("return_home", timeout=0.3):
                 break
             loot, _ = self._read_loot()
             if None not in loot.values() and loot != last_loot: last_loot, last_change = loot, time.time()
             if time.time() - last_change >= end.get("idle_seconds", 20) and not abilities:
                 logger.info(f"Loot unchanged for {end.get('idle_seconds', 20)}s, ending the battle")
-                self._click_end_battle(timeout=3) or self._click_surrender(timeout=3)
-                time.sleep(1)
-                self._click_okay(timeout=3)
+                if self._click_button("surrender", timeout=2) or self._click_button("end_battle", timeout=2):
+                    time.sleep(1)
+                    shot("end_dialog")
+                    if not self._click_button("okay", timeout=3):
+                        logger.warning("Okay not found on the end battle dialog, waiting for the battle to end")
                 break
             n += 1
             if n % 3 == 0: shot(f"battle_{n:03d}")
             time.sleep(1.5)
-        shot("end")
-        if self._wait_battle_end("home_base", timeout=30):
-            return True
+
+        # Results screen: Return Home (screenshots kept until its picture is measured on this UI)
+        start = time.time()
+        while time.time() - start < 60:
+            shot(f"result_{int(time.time() - start):02d}")
+            if self._click_button("return_home", timeout=1):
+                time.sleep(3)
+                if in_home_base():
+                    TEMP_CACHE["location"] = "home_base"
+                    logger.info("Battle over, back home")
+                    return True
+            time.sleep(1)
+        logger.warning("Return Home not found, restarting CoC instead")
         if restart: start_coc()
         else: stop_coc()
         return False
