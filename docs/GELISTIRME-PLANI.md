@@ -461,3 +461,12 @@ Sorun çıkarsa önce o düzeltilir, sonra adım 2.
 - **Telegram resmi ❌ → c993319:** savaş kendiliğinden bitince savaş döngüsü Return Home'a basıyordu, resim bastıktan sonra (bulutlar) çekiliyordu. Artık döngü yalnız bakar; sonuç bölümü resmi çeker, sonra basar. `result_00.png` doğru ekran (Victory, ganimet, Return Home).
 - **2dc8479 (Emre: "boşta inşaatçı yoksa bakmasın, dost hayvan doluysa bakmasın"):** bina / kahraman zaten ana ekrandaki usta sayacıyla atlanıyordu; her turda açılan üç menü azaldı: evcil meşgul → 6 sa (başlatınca 12 sa, başlatacak yok 1 sa), çırak / lab asistanı atandı → 12 sa, atanacak yok → 2 sa. Önbellek `look_again`. Sahte modüllerle denendi (2. turda yalnız usta sayacı).
 - **Emre'nin yeni isteği (plan soruldu, kod yok):** usta durumu önbilgisi — devam eden geliştirmeler + kalan süre, inşaatçı iksiri etkin mi, bitiş saatleri; panelde bir yer + Telegram'a ara ara "köy adı, 6 usta dolu, şu sürede bitecek". Usta menüsünde süreler ve iksir görünümü ölçülmeli (onaylı, bot duraklatılmışken).
+
+## 02.11 — Usta önbilgisi kararları (Emre 1A 2A 3A 4A 5A)
+
+- **1A:** Telegram: usta boşalınca / yeni geliştirme başlayınca + günde iki özet (09:00, 21:00).
+- **2A:** köy adı = profil adı.
+- **3A:** panel Durum'da "Ustalar" kartı: her usta ne geliştiriyor, kalan süre, bitiş saati; iksir etkinse rozet.
+- **4A:** usta menüsü 2 saatte bir + her geliştirme başlatınca okunur; arada bitişler hesapla.
+- **5A:** ölçüm şimdi, bot duraklatılmışken, Emre oynamıyorken: build çubuğu, usta menüsü, evcil hayvan evi (yalnız açıp kapatma). Betik scratchpad `usta_olc.py` (kayıt "Paused, waiting" değilse çalışmaz). İksirli görünüm Emre'nin bir dahaki iksirinde bot kaydeder.
+- **Ek bulgu:** Mighty Yak 04:23 ve 04:29'da "Started upgrading" ama kara iksir düşmedi (43 733 → 44 985, 48 096) → evcil "başladı" yanlış; evcil ekranı ölçümde görülecek. Kara iksir 03:57–04:22 arasında bot beklerken 89 633 → 43 733 (Emre'ye soruldu).
