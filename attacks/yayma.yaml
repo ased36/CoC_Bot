@@ -15,12 +15,12 @@ card_to_drop: [0.15, 0.35] # karta bastıktan sonra sahaya dokunmadan önce (Emr
 
 troops:
   card: super_barbarian
-  mode: emre               # Emre 02.11: kendi kaydettiği 4 tam tur (assets/emre_strokes.json, kayıt 23:33), her seferinde başka biri,
+  mode: emre               # Emre 02.11: kayıtlı 7 tam tur + 9 iki yarım (assets/emre_strokes.json), her seferinde başka biri,
                            # aynalanmış / döndürülmüş, kırmızı çizgiye oturtulmuş; "drag" = eski dört kenar sürüklemesi
   margin: [0.01, 0.016]    # emre: yay kırmızı çizginin bu kadar dışından (ekran genişliği payı) + Emre'nin el titremesi
   wobble: [0.3, 0.6]       # emre: el titremesinin ne kadarı
   plan_share: [1.0, 1.15]  # emre: yayların süresi 60 asker ÷ 7,3 × bu (kart erken biterse parmak kalkar)
-  start_cycle: [180, 0, 270] # emre: Emre 02.11 tam tur fikri — başlangıç sırayla sol, sağ, üst (±12°), yön bir saat yönü bir ters
+  plan_mix: {round: 0.7, halves: 0.3} # emre: tam tur (Emre 02.11 kaydı) / iki yarım (01.11 kaydı) payı; başlangıç sol/sağ/üst/alt karışık sırayla, yön rastgele; kahramanlar her seferinde başka tarafa
   steer: {out: 0.004, in: 0.004, max_out: 0.015, max_in: 0.008, every: 0.3} # emre: uyarı varken dışarı, asker inmiyorken içeri
   count: 60
   per_second: 7.3          # basılı tutunca inen asker (kayıttan ölçüldü: 1,5 sn'de ~11)

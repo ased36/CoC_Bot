@@ -80,11 +80,16 @@ def main(folders):
                 st["gap"] = round(s["t0"] - last[1], 2)
             plans[-1]["strokes"].append(st)
             last = (s["t0"], s["t0"] + st["dur"])
+    # round: one stroke all the way round (Emre's idea, 02.11 23:33); halves: two strokes (01.11). A plan that covers
+    # less than 300 degrees in all leaves a side empty and is dropped
+    def cover(st): return max(st["da"]) - min(st["da"])
+    for p in plans: p["kind"] = "round" if len(p["strokes"]) == 1 and cover(p["strokes"][0]) >= 300 else "halves"
+    plans = [p for p in plans if sum(cover(st) for st in p["strokes"]) >= 300]
     out = Path(__file__).resolve().parents[1] / "assets" / "emre_strokes.json"
     json.dump({"made": "kayıt " + ", ".join(Path(f).name for f in folders), "center": [0.48, 0.47], "plans": plans},
               open(out, "w", encoding="utf-8"), separators=(",", ":"))
     for p in plans:
-        print(p["src"], " + ".join(f"{s['dur']}s {s['a0']:.0f}°{s['da'][-1]:+.0f}" for s in p["strokes"]))
+        print(p["src"], p["kind"], " + ".join(f"{s['dur']}s {s['a0']:.0f}°{s['da'][-1]:+.0f}" for s in p["strokes"]))
     print(len(plans), "plans ->", out)
 
 

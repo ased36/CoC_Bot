@@ -388,32 +388,36 @@ class Attacker:
         return (cx + r * np.cos(np.radians(angle))) / 1920, (cy + r * np.sin(np.radians(angle))) / 1080
 
     def _lay_plan(self, troops, ring):
-        """One of Emre's recorded attacks (1-2 strokes) made new for this attack: not one of the last four, mirrored
-        or flipped at random, turned up to 15 degrees, its moving part sped up or slowed down so the troops last about
-        as long as his did (the still start is kept: it is what makes the finger drop), the hand's wobble scaled.
-        Returns (strokes [(gap, [(angle, margin, t)])], what was chosen). A whole-round stroke needs the bottom of the
-        village in sight; where it hides under the troop bar a two-stroke plan is taken (the view moves between them)."""
+        """One of Emre's recorded attacks made new for this attack (Emre 02.11: "different every time, so it does not
+        show"): a whole round (his 23:33 idea) or two halves (01.11) by troops.plan_mix, not one of the last few of its
+        kind; the start side from a shuffled round of left / right / top / bottom (never the same side twice running),
+        +-12 degrees; the way round at random; its moving part sped up or slowed down so the troops last about as long
+        as his did (the still start is kept: it is what makes the finger drop), the hand's wobble scaled.
+        Returns (strokes [(gap, [(angle, margin, t)])], what was chosen)."""
         import random
         plans = self._emre_plans()
+        mix = troops.get("plan_mix") or {"round": 0.7, "halves": 0.3}
+        kinds = [k for k in mix if any(p.get("kind", "halves") == k for p in plans)] or [None]
+        kind = random.choices(kinds, [mix.get(k, 1) for k in kinds])[0] if kinds != [None] else None
+        pool = [k for k, p in enumerate(plans) if kind is None or p.get("kind", "halves") == kind]
         recent = getattr(self, "_recent_plans", [])
-        for _ in range(8):
-            i = random.choice([k for k in range(len(plans)) if k not in recent] or list(range(len(plans))))
-            strokes = plans[i]["strokes"]
-            if len(strokes) > 1 or self._hidden_share(self._render(ring, [(a, 0.01, 0) for a in range(0, 360, 10)]))[0] < 0.15: break
-        self._recent_plans = (recent + [i])[-min(4, len(plans) - 1):]
-        turn = random.choice(("same", "mirror", "flip", "turned"))
-        rot = random.uniform(-15, 15)
-        def angle(a): return {"same": a, "mirror": 180 - a, "flip": -a, "turned": a + 180}[turn] + rot
-        cycle = troops.get("start_cycle")
-        if cycle:
-            # Emre 02.11 (his idea, recorded 23:33-23:42): one whole round, the start side in turn (left, right, top) and
-            # the way round in turn (clockwise, then the other way); angles grow clockwise on screen (y points down)
-            n = getattr(self, "_start_n", random.randrange(len(cycle)))
-            self._start_n = n + 1
-            clockwise = n % 2 == 0
-            turn = "same" if (strokes[0]["da"][-1] > 0) == clockwise else "flip"
-            rot = 0.0
-            rot = cycle[n % len(cycle)] + random.uniform(-12, 12) - angle(strokes[0]["a0"])
+        i = random.choice([k for k in pool if k not in recent] or pool)
+        self._recent_plans = (recent + [i])[-6:]
+        strokes = plans[i]["strokes"]
+        # Start sides: a shuffled round of the four, a new shuffle once used up, the first of it not the last one used
+        sides = {"left": 180, "right": 0, "top": 270, "bottom": 90}
+        queue = getattr(self, "_start_queue", [])
+        if not queue:
+            last = getattr(self, "_start_last", None)
+            queue = random.sample(list(sides), 4)
+            if queue[0] == last: queue.append(queue.pop(0))
+        side = queue.pop(0)
+        self._start_queue, self._start_last = queue, side
+        clockwise = random.random() < 0.5 # angles grow clockwise on screen (y points down)
+        turn = "same" if (strokes[0]["da"][-1] > 0) == clockwise else "flip"
+        rot = 0.0
+        def angle(a): return (a if turn == "same" else -a) + rot
+        rot = sides[side] + random.uniform(-12, 12) - angle(strokes[0]["a0"])
         moving = sum(s["dur"] - s["still"] for s in strokes)
         target = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("plan_share", [1.0, 1.15]))
         scale = min(max(target / moving, 0.8), 1.3)
@@ -427,7 +431,7 @@ class Attacker:
                     da, w = 0.0, s["wob"][0]
                 pts.append((angle(s["a0"] + da), base + w * wob, t if t < s["still"] else s["still"] + (t - s["still"]) / scale))
             out.append((s["gap"] / scale, pts))
-        return out, f"plan {i + 1} ({plans[i]['src']}), {len(strokes)} stroke(s), {turn} {rot:+.0f}°, pace x{1 / scale:.2f}"
+        return out, f"plan {i + 1} ({plans[i].get('kind', 'halves')}, {plans[i]['src']}), from the {side}, {'clockwise' if clockwise else 'anticlockwise'}, pace x{1 / scale:.2f}"
 
     def _render(self, ring, stroke, push=0.0):
         """[(x, y, t)] of a stroke [(angle, margin, t)] on this ring (the red line, or Emre's band when it was not seen)."""
@@ -865,12 +869,32 @@ class Attacker:
                     if red: self._leftover_troops(red, troop_x, lambda: tap_card(troops["card"]), margins=self.RED_LEFTOVER, pause=0.05, around=[225, 315, 45, 135], spread=25, jitter=0.004)
                     else: self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
                 return
-            # Emre 2A: the heroes on one of the spots where troops landed, the champion on another one far from it
+            # Heroes (Emre 02.11: "heroes left this time, right / top / bottom the next"): a side of their own, not the
+            # last attack's, just outside the red line; the champion on another side. A hero that does not land there
+            # goes once more to the stroke's start, where troops surely came out (place)
             fresh_ring("after the sweeps")
             seen = [p for p in sure if visible(p)] or [p for p in landed if visible(p)] or landed
-            hero_side, hero_spot = "landed", random.choice(seen)
-            far = [p for p in seen if gap(p, hero_spot) > 0.25 ** 2]
-            lead_side, lead_spot = "landed", random.choice(far) if far else max(seen, key=lambda p: gap(p, hero_spot))
+            sides = {"left": 180, "right": 0, "top": 270, "bottom": 90}
+            last = getattr(self, "_hero_last", None)
+            order = random.sample([s for s in sides if s != last], 3) + ([last] if last else [])
+            def side_spot(name):
+                if not red: return None
+                p = self._deploy_points(red, sides[name], 1, spread=20, **self.RED_SPOT)
+                return p[0] if p and visible(p[0]) else None
+            picks = [(n, p) for n in order for p in [side_spot(n)] if p]
+            if picks:
+                (name, hero_spot), hero_side = picks[0], "landed"
+                self._hero_last = name
+            else:
+                name, hero_side, hero_spot = "start", "landed", random.choice(seen)
+            others = [(n, p) for n, p in picks[1:]]
+            if others:
+                lead_name, lead_spot = random.choice(others)
+            else:
+                far = [p for p in seen if gap(p, hero_spot) > 0.25 ** 2]
+                lead_name, lead_spot = "start", random.choice(far) if far else random.choice(seen)
+            lead_side = "landed"
+            logger.info(f"Heroes on the {name} (last time {last or '-'}), champion on the {lead_name}")
 
         def step_troops(p):
             # Troops: hold and sweep (~7 troops a second while held). Two halves (top then bottom, or the other way, from the
