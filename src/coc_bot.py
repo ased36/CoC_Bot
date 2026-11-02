@@ -94,6 +94,8 @@ class CoC_Bot:
     def _close_for_rest():
         """A person closes the game for a break or the night (left open, the game asks "anyone there?" anyway)."""
         try:
+            # BlueStacks crashed while waiting (02.11 04:09): nothing to close, and asking ADB would start it again for the night
+            if Emulator_Manager.PROCESS_NAMES and not Emulator_Manager.check(): return
             if ADB_Manager.adbutils_device.shell("pidof com.supercell.clashofclans").strip():
                 stop_coc(sleep=configs.SUSPEND_EMULATOR_ON_IDLE)
         except (KeyboardInterrupt, SystemExit): raise
