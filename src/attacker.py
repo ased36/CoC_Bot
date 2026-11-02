@@ -1002,8 +1002,19 @@ class Attacker:
                 group.insert(0 if random.random() < siege.get("first", 0.8) else random.randint(1, len(group)), siege_card)
             fresh_ring("before the heroes")
             hero_side, hero_spot = spot_again(hero_side, hero_spot)
-            for name in group:
+            for k, name in enumerate(group):
                 quick(name, hero_spot)
+                # The first card shows whether the spot takes them (03.11 00:05: siege, king, queen did not land on a spot
+                # at the water's edge); if not the whole group moves to where troops surely came out, like a hand would
+                if k == 0 and not self._wait_deployed(cards[name], timeout=1.5):
+                    alt = [p for p in sure if visible(p) and gap(p, hero_spot) > 0.05 ** 2]
+                    if not alt and red: alt = [self._outward(red, hero_spot, -0.004)]
+                    if alt:
+                        logger.info(f"{name} did not land on the heroes' spot, the group moves")
+                        hero_spot = alt[0]
+                        tap_card(name)
+                        self._tap(*hero_spot, spread=0.006)
+                        dropped[-1] = (name, hero_spot)
 
         def step_spells(p):
             # Bat spells: quick taps on the heroes' spot (sometimes another side), drifting a little along the edge.
