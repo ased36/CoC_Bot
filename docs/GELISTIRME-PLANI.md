@@ -477,3 +477,8 @@ Sorun çıkarsa önce o düzeltilir, sonra adım 2.
 - **Stil adımları:** `_deploy_spread`'in ikinci yarısı adım fonksiyonları (lead, troops, heroes, spells, retry) + yeni wait / drop / cast / ability; `steps` yoksa eski sıra (`DEFAULT_STEPS`). `yayma.yaml` `steps:` ile. **Doğrulama:** eski kod (commit öncesi kopya) ile yeni kod aynı tohumla sahte savaşta 960 koşu (kırmızı alan var/yok, kart bitti/bitmedi, kenar/yarım, lead_first 0/0,5/1, eksik kahraman) → dokunuş / sürükleme / bekleme izi birebir aynı; sıra değişince fark yakalanıyor. Denetim (`check_style`) aramadan önce: bilinmeyen adım, resmi olmayan kart, yanlış `at`, `wait` biçimi, `troops` yok → saldırı yok + Telegram. `drop` ile inen kart `heroes`'ta atlanır (ikinci basış yetenek olurdu). Kılavuz `docs/STIL-YAZMA.md`. Yeni kart resmini ilk saldırıda kendiliğinden alma YOK (resim elle eklenir).
 - **Bekleyen (ölçüm, Emre onayıyla):** usta önbilgisi (usta menüsü + evcil ekranı, `usta_olc.py`), ordu tarifi (5A profil), klan kalesi (4A). Kahraman sırası denemesi (Emre: sonra; Kahramanlar açık + boşta usta 0 gerekir).
 - Bot yeniden açılınca yüklenecekler: profil, menü azaltma, Telegram resmi, evcil düzeltmesi, stil adımları.
+
+## 02.11 05:00 — Telegram /ozet (Emre isteği, canlıda denenmedi)
+
+- Bot ayrı iş parçacığında Telegram'ı dinler (getUpdates uzun yoklama); yalnız kayıtlı sohbet (`telegram_chat_id`) cevaplanır, bot kapalıyken gelenler atlanır. `/ozet` (ya da "özet"): profil, durum (turda / sonraki tur / mola / günlük sınır / ızgara / duraklatıldı), bugünkü saldırı ve ganimet, mola sayacı, depo, boş usta. `/yardim` komut listesi; komut menüsü `setMyCommands` ile. Durum `update_status`'tan (`TEMP_CACHE["status"]`). Sahte Telegram ile denendi.
+- Saldırı mesajında ":" sonrası boşluk düzeldi.

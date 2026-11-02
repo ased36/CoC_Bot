@@ -121,9 +121,60 @@ class CoC_Bot:
         store = lambda k: self._short(after.get(k)).lstrip("+")
         cap = f"/{d['cap']}" if d.get("cap") else ""
         profile = f" · {p}" if (p := (Settings_Handler.current or {}).get("profile")) else ""
-        text = (f"⚔️ Saldırı{profile} (bugün {d['attacks']}{cap}.):{self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
+        text = (f"⚔️ Saldırı{profile} (bugün {d['attacks']}{cap}.): {self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
                 f" · {self._short(gain['dark'])} kara\nDepo: {store('gold')} / {store('elixir')} / {store('dark')} · tur {int(seconds)} sn")
         send_notification(text, photo=self.attacker.last_result, silent=True)
+
+    def _summary(self):
+        """The Telegram /ozet answer: profile, what the bot is doing, today's attacks and loot, storage, builders."""
+        import time
+        from datetime import datetime, date
+        hm = lambda t: datetime.fromtimestamp(t).strftime("%H:%M")
+        d = self.day if self.day.get("date") == date.today().isoformat() else {"attacks": 0, "gold": 0, "elixir": 0, "dark": 0}
+        status = TEMP_CACHE.get("status")
+        rest_until = d.get("rest_until", 0) or 0
+        doing = {"now": "turda (geliştirme / saldırı)", "paused": "duraklatıldı", "idle": "durdu, Başlat bekleniyor",
+                 "hours": "çalışma saatleri dışında (ızgara)", "error": "son turda hata, 1 dk sonra yeniden",
+                 "rest": f"molada, devam {hm(rest_until)}", "daily": f"günlük sınır doldu, devam {hm(rest_until)}"}.get(status)
+        if isinstance(status, (int, float)): doing = f"tur bitti, sonraki {hm(status)}"
+        r = Resource_Reader.last or {}
+        store = lambda k: self._short(r.get(k)).lstrip("+")
+        profile = (Settings_Handler.current or {}).get("profile")
+        lines = [f"📋 {profile + ' · ' if profile else ''}{hm(time.time())}",
+                 f"Durum: {doing or 'bilinmiyor'}",
+                 f"Bugün: {d['attacks']}{'/' + str(d['cap']) if d.get('cap') else ''} saldırı · {self._short(d['gold'])} altın · "
+                 f"{self._short(d['elixir'])} iksir · {self._short(d['dark'])} kara"]
+        if d.get("session_target"): lines.append(f"Mola: {d.get('session', 0)}/{d['session_target']} saldırıdan sonra")
+        if r: lines.append(f"Depo: {store('gold')} / {store('elixir')} / {store('dark')} · boş usta {r.get('builders_free', '?')}/{r.get('builders_total', '?')}")
+        return "\n".join(lines)
+
+    def _telegram_commands(self):
+        """Emre 02.11: /ozet in Telegram gets the summary at once. Long polling on its own thread; only the chat the bot
+        already writes to is answered, messages sent while the bot was closed are skipped."""
+        import time, requests
+        if not TELEGRAM_BOT_TOKEN: return
+        api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+        offset = None
+        try:
+            requests.post(f"{api}/setMyCommands", json={"commands": [{"command": "ozet", "description": "Anlık özet"}]}, timeout=(5, 10))
+            old = requests.get(f"{api}/getUpdates", params={"offset": -1, "timeout": 0}, timeout=(5, 10)).json().get("result", [])
+            if old: offset = old[-1]["update_id"] + 1
+        except (KeyboardInterrupt, SystemExit): raise
+        except Exception: pass
+        while True:
+            try:
+                res = requests.get(f"{api}/getUpdates", params={"offset": offset, "timeout": 50, "allowed_updates": '["message"]'}, timeout=(5, 65)).json()
+                for u in res.get("result", []):
+                    offset = u["update_id"] + 1
+                    msg = u.get("message") or {}
+                    if str(msg.get("chat", {}).get("id")) != str(Cache_Manager.get("telegram_chat_id")): continue
+                    words = (msg.get("text") or "").strip().lower().split()
+                    cmd = words[0].split("@")[0] if words else ""
+                    if cmd in ("/ozet", "/özet", "ozet", "özet"): send_notification(self._summary())
+                    elif cmd in ("/start", "/help", "/yardim", "/yardım"): send_notification("Komutlar:\n/ozet — anlık özet")
+            except (KeyboardInterrupt, SystemExit): raise
+            except Exception:
+                time.sleep(30) # no network: try again later
 
     def scan(self, general):
         import time
@@ -163,9 +214,10 @@ class CoC_Bot:
         report("search_done")
 
     def run(self):
-        import time
+        import time, threading
         from datetime import datetime
 
+        threading.Thread(target=self._telegram_commands, daemon=True).start()
         waiting_logged = None
         while True:
             try:

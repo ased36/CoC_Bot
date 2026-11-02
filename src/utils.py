@@ -440,7 +440,8 @@ def _send_notification(text, photo=None, silent=False):
 
 def update_status(status):
     import requests
-    
+
+    TEMP_CACHE["status"] = status # for the Telegram /ozet answer
     if WEB_APP_URL != "":
         try:
             requests.post(
