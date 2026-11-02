@@ -404,3 +404,27 @@ Alt şeritte her sekmede: **Start Bot · Search Only · Close Bot**. Bot Start'a
 - **Emre:** duvar kapalı kalsın (2A), ordu 60.
 - **Panel (f65ad44, Emre 1A 2A 3A 4A):** Geliştirme alt sekmeleri Kahramanlar · Binalar · Laboratuvar · Evcil · Duvar · Kurallar · Usta üssü; Saldırı alt sekmeleri Arama · Dağıtım · Savaş sonu · İnsan gibi (mola + ızgara Genel'den taşındı); açık işin sekmesinde yeşil nokta; satır açıklamaları "?" içinde; yazı ve satır aralığı küçüldü. MyBot'un Kahramanlar alt sekmesinden: **kahraman sırası** (`home.hero_priority`), **önce kahramanlar** (`home.heroes_first`, indirimden de önce), **kahramanlara ayrılan usta** (`home.hero_builders`: boş usta bu sayıya inince yalnız kahraman); Binalar kapalı + Kahramanlar açıkken yalnız kahraman. Saldırı → Dağıtım / Savaş sonu değerleri `attack_style` ayarında, `yayma.yaml`'ın üstüne yazılır (barbar sayısı, kenar başına, kırmızı alan, Champion önce %, yarasa, "ganimet şunun altına inince çık", ganimet değişmezse sn). Seçim mantığı sahte satırlarla denendi; panel ayrı "deneme" kopyasıyla 1280 / 500 ekran görüntüsü. **Kahraman geliştirmesi canlıda denenmedi** (ustalar 0/6).
 - **Emre'nin yeni fikirleri (konuşulacak):** profil 1 / profil 2 (adlı, kendi ayarları ve ordusu); saldırı mantığını md'den üretilen dosyaya taşımak.
+
+## 02.11 — Emre'nin kararları: profil 1A, stil dosyası 2A, sıra 3A (kod yok)
+
+- **1A profiller:** panelin üstünde profil seçici, profiller adlı (ör. "Ganimet", "Kupa"). Her profilin bütün ayarları ayrı (geliştirme, arama, dağıtım, saldırı stili); `stats` / `resources` ortak kalır. "Yeni profil" o anki profilin kopyasıyla başlar; geçiş tek tık, bot bir sonraki turda o profille devam eder. Saate göre otomatik geçiş (1C) sonraya.
+  - Profil başka orduyla saldıracaksa oyundaki ordu da değişmeli: Ordu ekranındaki **kayıtlı ordu tarifleri** canlıda bir kez ölçülecek (yalnız ekranı açıp bakmak, satın alma yok, Emre'nin onayıyla, Emre oynamıyorken). Ölçülmeden profil yalnız ayarları değiştirir.
+- **2A stil dosyası:** saldırı "adımlar" listesiyle yazılan stil dosyası; adım türleri: kenara sürükle, tek noktaya bırak, kahraman noktası, köyün içine büyü, bekle, yetenek. Kısa kılavuz `docs/STIL-YAZMA.md`: Emre başka sohbette saldırısını anlatır, o sohbet kılavuza bakıp `attacks/<ad>.yaml` üretir, profilde o stil seçilir. Stil savaştan **önce** denetlenir (bilinmeyen adım / kart → saldırıya girmez, hata bildirir); savaş ortasında çökmez. Yeni asker / büyü kartının resmi ilk saldırıda ekrandan alınır (yarasa, Queen gibi). Mevcut `yayma.yaml` aynı biçime çevrilir, davranışı değişmez.
+- **3A sıra:** (1) bugünkü değişikliklerin canlı denemesi → (2) profil → (3) stil dosyası. Denenmemiş iş üst üste yığılmasın.
+
+## DEVİR 02.11 (yeni sohbet buradan başlar)
+
+Son commit'ler: f65ad44 (panel alt sekmeleri + kahraman sırası), 3ad32a1 / bu kayıt (plan). Emre botu yeniden açınca yeni panel yüklenir.
+
+**Adım 1 — canlı deneme (kod yazmadan, kayıttan / Telegram'dan bak):**
+1. Telegram saldırı resmi **sonuç ekranı** mı (kazanılan ganimet görünüyor mu)? (6d59401)
+2. Mola: 15–25 saldırıda bir 20–40 dk, oyun kapanıyor mu, Telegram'a "Mola…" geliyor mu? Günlük sınır 30–45, ertesi gün 00:05–00:30 devam. Izgara 02:00–09:00 kapalı.
+3. Kahraman geliştirmesi: ilk boş ustada `home.hero_priority` sırasıyla kahraman seçiliyor mu (kayıtta "heroes first" / seçilen satır). Şu an ustalar 0/6.
+4. Yeni panel çalışan botta düzgün mü (alt sekmeler, "?" ipuçları, Dağıtım / Savaş sonu değerleri saldırıya yansıyor mu: kayıtta x60, kenar başına 13–15, yarasa 11).
+Sorun çıkarsa önce o düzeltilir, sonra adım 2.
+
+**Adım 2 — profil (1A):** önce plan (dosya yapısı: `data/<id>.json` içinde `profiles` + `active_profile` mı, ayrı dosyalar mı; panel üst çubuk seçici; bot her turda etkin profili okur), Emre'ye göster, sonra kod. Ordu tarifi ölçümü onay ister.
+
+**Adım 3 — stil dosyası (2A):** adım biçimi + denetleyici + `docs/STIL-YAZMA.md`; `yayma.yaml` yeni biçime, kuru çizimle aynı noktalar çıktığı doğrulanır.
+
+**Açık kalan:** 4A klan kalesi (ölçüm, onaylı; elmas düğmesine asla basılmaz).
