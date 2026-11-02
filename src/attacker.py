@@ -857,8 +857,10 @@ class Attacker:
                         sweep([(part[0][1], part[0][2], 0.0)] + [(x, y, 0.4 + t - t0) for t, x, y in part], 0.4, steering=False)
                         landing()
                 taps = 0
-                while landed and taps < 20 and not self._card_empty(troop_x):
-                    x, y = random.choice(landed)
+                # Mostly on the sure spots: a landing spot read from the count is up to one look late (00:05: 20 taps for 2)
+                pool = [p for p in sure if visible(p)] * 3 + landed
+                while pool and taps < 20 and not self._card_empty(troop_x):
+                    x, y = random.choice(pool)
                     self._tap(x, y, spread=0.006)
                     taps += 1
                     time.sleep(random.uniform(0.05, 0.12))
