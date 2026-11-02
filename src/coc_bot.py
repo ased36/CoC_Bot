@@ -300,14 +300,29 @@ class CoC_Bot:
         st = Cache_Manager.get("status") or {}
         done = set(Cache_Manager.get("status_done") or [])
         new = []
+        # Emre 03.11 ("it keeps saying it, check first"): an end that passed is only a candidate; the message goes once a
+        # status read made after it no longer lists the row (a timer misread short then says nothing)
+        pending = dict(Cache_Manager.get("status_pending") or {})
+        changed = False
         for kind, what in (("builders", "usta boşaldı"), ("lab", "laboratuvar boşaldı")):
-            for b in st.get(kind) or []:
+            rows = st.get(kind) or []
+            for b in rows:
                 key = f"{kind}|{b['name']}|{int(b['end'])}"
-                if key not in done and b["end"] + b.get("prec", 0) <= now:
-                    done.add(key)
-                    new.append(f"✅ <b>{html.escape(b['name'])}</b> bitti, {what}")
-        if new:
+                if key not in done and key not in pending and b["end"] + b.get("prec", 0) <= now:
+                    pending[key], changed = now, True
+            for key, seen in list(pending.items()):
+                k, name, _ = key.split("|", 2)
+                if k != kind or st.get("t", 0) <= seen: continue # no read since the end passed
+                del pending[key]
+                done.add(key)
+                changed = True
+                # Still listed with time left: the earlier end was a misread, nothing finished
+                if not any(r["name"] == name and r["end"] > now for r in rows):
+                    new.append(f"✅ <b>{html.escape(name)}</b> bitti, {what}")
+        if changed:
+            Cache_Manager["status_pending"] = pending
             Cache_Manager["status_done"] = sorted(done)[-60:]
+        if new:
             send_notification("\n".join(new), html=True)
         hour = datetime.now().hour
         if hour in (9, 21) and Cache_Manager.get("summary_slot") != (slot := f"{date.today()} {hour}"):
