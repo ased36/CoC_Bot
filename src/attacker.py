@@ -473,12 +473,14 @@ class Attacker:
                         else: state["first"] = c
                         state["count"], state["t"] = c, now
                     state["warn"] = self._red_warning(frame)
-                    if shots is not None and n < 40:
+                    looks = state.get("looks", 0) + 1
+                    state["looks"] = looks
+                    if shots is not None and n < 40 and looks % 3 == 1: # writing a picture takes ~0.15 s of a look
                         cv2.imwrite(str(shots / f"hold_{int((now - t0) * 1000):05d}.png"), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
                         n += 1
                 except Exception:
                     return
-                time.sleep(0.03)
+                time.sleep(0.02)
         threading.Thread(target=run, daemon=True).start()
         return state, done
 
@@ -751,7 +753,7 @@ class Attacker:
             steer = {"push": 0.0, "t": 0.0}
             view_up, pans, held = False, 0, 0.0
 
-            def sweep(points, still, steering=True):
+            def sweep(points, still, steering=True, ready=None):
                 # One held stroke; the push is decided every `every` seconds from what the other thread saw. A stretch of
                 # the finger's own way (leftovers) is already pushed: it is gone again as it was
                 nonlocal held
@@ -771,8 +773,9 @@ class Attacker:
                     x, y = self._outward(red or ring_out, (x, y), steer["push"])
                     trail.append((now, x, y))
                     return x, y
-                Input_Handler.drag_timed(points, stop=lambda: state["empty"], adjust=adjust)
+                ok = Input_Handler.drag_timed(points, stop=lambda: state["empty"], adjust=adjust, ready=ready, ready_wait=0.8)
                 held += time.time() - start
+                return ok
 
             try:
                 for k, (pause, stroke) in enumerate(plan):
@@ -791,7 +794,20 @@ class Attacker:
                         pts = self._render(red or ring_out, [(a + turn, m, t) for a, m, t in stroke])
                         if not self._in_hud(*pts[0][:2]) and 0.03 <= pts[0][0] <= 0.97 and 0.06 <= pts[0][1] <= 0.78: break
                     still = next((t for a, m, t in stroke if a != stroke[0][0]), 0.4)
-                    sweep(pts, still)
+                    # The finger moves on only once a troop came out where it pressed (02.11 23:22: a press off the map /
+                    # in the red area dropped nothing and the moving finger dragged the view). Else it lifts and presses
+                    # again a little out (the warning is up: red area) or in (no warning: off the map), like a hand would
+                    for tries in range(4):
+                        pressed, seen = time.time(), len(state["drops"])
+                        def dropped(): return len(state["drops"]) > seen or state["empty"]
+                        if sweep(pts, still, ready=dropped): break
+                        step = 0.012 if state["warn"] else -0.008
+                        logger.info(f"Stroke {k + 1}: nothing dropped at the press ({'red area' if state['warn'] else 'off the map?'}), pressing again {'out' if step > 0 else 'in'}")
+                        stroke = [(a, m + step, t) for a, m, t in stroke]
+                        pts = self._render(red or ring_out, stroke)
+                        time.sleep(random.uniform(0.15, 0.3))
+                    else:
+                        logger.warning(f"Stroke {k + 1}: no troop came out on 4 presses")
                 first_count = state.get("first")
                 swept = len(state["drops"])
 

@@ -1815,11 +1815,14 @@ class Input_Handler:
             builder.publish(conn)
 
     @classmethod
-    def drag_timed(cls, points, stop=None, adjust=None, pointer=0):
+    def drag_timed(cls, points, stop=None, adjust=None, pointer=0, ready=None, ready_wait=0.8):
         """Hold one finger down and move it through points [(x, y, t)] (fractions, seconds from the press), at the
         recorded pace: Emre's strokes keep their own speed, stops and the still start (02.11, 1A). adjust(x, y) -> (x, y)
         is asked at every step (~60 ms) and may move the finger off the path (pushed out of the red area, pulled in off
-        the map's edge). Lifts early once stop() is true."""
+        the map's edge). Lifts early once stop() is true.
+        ready() -> bool: asked when the still start ends; the finger waits on the spot up to ready_wait s more for it
+        and lifts without moving when it stays false (02.11 23:22: a press where nothing drops makes the moving finger
+        drag the view; troops did not drop and the view went 57 px off). Returns False then, else True."""
         import time, numpy as np
         from pyminitouch import CommandBuilder
         pts = np.array(points, dtype=float)
@@ -1832,6 +1835,7 @@ class Input_Handler:
         builder.publish(conn)
         start = time.time()
         last = (xs[0], ys[0])
+        checked = ready is None
         try:
             for i in range(1, len(grid)):
                 if stop is not None and stop(): break
@@ -1839,12 +1843,18 @@ class Input_Handler:
                 if wait > 0: time.sleep(wait)
                 # A still finger stays exactly still (a moving one would move the view instead of dropping)
                 if (xs[i], ys[i]) == last: continue
+                if not checked:
+                    checked, t0 = True, time.time()
+                    while not ready() and time.time() - t0 < ready_wait: time.sleep(0.05)
+                    if not ready(): return False
+                    start += time.time() - t0
                 last = (xs[i], ys[i])
                 builder.move(pointer, *cls._to_raw(*place(xs[i], ys[i])), 100)
                 builder.publish(conn)
         finally:
             builder.up(pointer)
             builder.publish(conn)
+        return True
 
     @classmethod
     def swipe_up(cls, y1=1.0, y2=0.0, x=1.0, **kwargs):
