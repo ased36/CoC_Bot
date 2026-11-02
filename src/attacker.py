@@ -400,10 +400,20 @@ class Attacker:
             i = random.choice([k for k in range(len(plans)) if k not in recent] or list(range(len(plans))))
             strokes = plans[i]["strokes"]
             if len(strokes) > 1 or self._hidden_share(self._render(ring, [(a, 0.01, 0) for a in range(0, 360, 10)]))[0] < 0.15: break
-        self._recent_plans = (recent + [i])[-4:]
+        self._recent_plans = (recent + [i])[-min(4, len(plans) - 1):]
         turn = random.choice(("same", "mirror", "flip", "turned"))
         rot = random.uniform(-15, 15)
         def angle(a): return {"same": a, "mirror": 180 - a, "flip": -a, "turned": a + 180}[turn] + rot
+        cycle = troops.get("start_cycle")
+        if cycle:
+            # Emre 02.11 (his idea, recorded 23:33-23:42): one whole round, the start side in turn (left, right, top) and
+            # the way round in turn (clockwise, then the other way); angles grow clockwise on screen (y points down)
+            n = getattr(self, "_start_n", random.randrange(len(cycle)))
+            self._start_n = n + 1
+            clockwise = n % 2 == 0
+            turn = "same" if (strokes[0]["da"][-1] > 0) == clockwise else "flip"
+            rot = 0.0
+            rot = cycle[n % len(cycle)] + random.uniform(-12, 12) - angle(strokes[0]["a0"])
         moving = sum(s["dur"] - s["still"] for s in strokes)
         target = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("plan_share", [1.0, 1.15]))
         scale = min(max(target / moving, 0.8), 1.3)
@@ -788,7 +798,7 @@ class Attacker:
                     pts = self._render(red or ring_out, stroke)
                     low, high = self._hidden_share(pts)
                     # Emre's W / S (20:38): the view up before a stroke along the bottom, back down before one along the top
-                    if pans < 2 and ((low > 0.15 and not view_up) or (high > 0.15 and view_up)):
+                    if len(plan) > 1 and pans < 2 and ((low > 0.15 and not view_up) or (high > 0.15 and view_up)):
                         Input_Handler.swipe(0.52, 0.51, 0.52 + random.uniform(-0.01, 0.01), 0.51 + (by if view_up else -by), duration=300, hold_end_time=200, inter_points=6)
                         time.sleep(random.uniform(0.4, 0.6))
                         view_up, pans = not view_up, pans + 1
