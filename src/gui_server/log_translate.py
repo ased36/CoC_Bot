@@ -20,6 +20,8 @@ TRANSLATIONS = [
     (r"Walls skipped: paused after an unpaid pass", "Duvar bekliyor: son duvar turu ödenmedi"),
     (r"Status out of date \((\d+) rows running, (\d+) builders busy(, an end passed)?\), next look at (.+)", lambda a, b, p, t: f"Usta listesi eskimiş (listede {a} süren iş, köyde {b} usta meşgul{', bir bitiş geçti' if p else ''}), yeniden okunuyor"),
     (r"Status (builders|lab): wrong menu on screen \((.*)\), kept the last read", lambda k, t: f"{'Usta' if k == 'builders' else 'Lab'} durumu: ekranda başka menü vardı ({t}), eski okuma tutuldu"),
+    (r"Village read: (\d+) rows, (\d+) without a level, next look at (.+)", "Köy okundu: usta menüsünde {0} satır ({1} satırın seviyesi okunamadı), sonraki okuma {2}"),
+    (r"Village read: (nothing|the menu did not open), next look at (.+)", lambda w, t: f"Köy okunamadı ({'menü açılmadı' if w.startswith('the') else 'satır yok'}), yeniden {t}"),
     (r"Last look before stopping", "Durdurmadan önce son okuma (ustalar, lab, iksirler, depo)"),
     (r"Last look skipped: (.+)", "Son okuma yapılmadı: {0}"),
     (r"Walls read: nothing, next look at (.+)", "Duvar satırı okunamadı (sonraki okuma {0})"),
