@@ -808,7 +808,10 @@ class Attacker:
                     pts = self._render(red or ring_out, stroke)
                     low, high = self._hidden_share(pts)
                     # Emre's W / S (20:38): the view up before a stroke along the bottom, back down before one along the top
-                    if len(plan) > 1 and pans < 2 and ((low > 0.15 and not view_up) or (high > 0.15 and view_up)):
+                    # Only when the stroke starts on the side the view moves toward: 03.11 00:24 a stroke from the top went
+                    # along the bottom too, the view went up and its start was under the timer, 8 presses in the red area
+                    start_y = pts[0][1]
+                    if len(plan) > 1 and pans < 2 and ((low > 0.15 and not view_up and start_y > 0.45) or (high > 0.15 and view_up and start_y < 0.45)):
                         Input_Handler.swipe(0.52, 0.51, 0.52 + random.uniform(-0.01, 0.01), 0.51 + (by if view_up else -by), duration=300, hold_end_time=200, inter_points=6)
                         time.sleep(random.uniform(0.4, 0.6))
                         view_up, pans = not view_up, pans + 1
