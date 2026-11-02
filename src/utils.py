@@ -194,9 +194,11 @@ def online(timeout=1):
 
 def running():
     import requests
-    
+
+    # The panel is called on 127.0.0.1, never "localhost": Windows tries ::1 first and the panel listens on IPv4 only,
+    # so every call waited 2 s (02.11: 2.04 s vs 0.00 s; idle rounds lost ~15 s to it)
     if WEB_APP_URL != "": url = f"{WEB_APP_URL}/instances/{INSTANCE_ID}/running"
-    elif (gui_port := TEMP_CACHE.get("gui_port")) is not None: url = f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/running"
+    elif (gui_port := TEMP_CACHE.get("gui_port")) is not None: url = f"http://127.0.0.1:{gui_port}/instances/{INSTANCE_ID}/running"
     else: return True
     try:
         response = requests.get(
@@ -457,7 +459,7 @@ def update_status(status):
     if (gui_port := TEMP_CACHE.get("gui_port")) is not None:
         try:
             requests.post(
-                f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/status",
+                f"http://127.0.0.1:{gui_port}/instances/{INSTANCE_ID}/status",
                 json={"status": status},
                 timeout=(1, 2)
             )
@@ -471,7 +473,7 @@ def bot_mode():
 
     if (gui_port := TEMP_CACHE.get("gui_port")) is None: return "run" if running() else "paused"
     try:
-        res = requests.get(f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/mode", timeout=(1, 2))
+        res = requests.get(f"http://127.0.0.1:{gui_port}/instances/{INSTANCE_ID}/mode", timeout=(1, 2))
         if res.status_code == 200: return res.json().get("mode", "idle")
     except (KeyboardInterrupt, SystemExit): raise
     except Exception as e:
@@ -485,7 +487,7 @@ def report(type, **data):
     if (gui_port := TEMP_CACHE.get("gui_port")) is None: return False
     try:
         res = requests.post(
-            f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/report",
+            f"http://127.0.0.1:{gui_port}/instances/{INSTANCE_ID}/report",
             json={"type": type, **data},
             timeout=(1, 3)
         )
@@ -512,7 +514,7 @@ class Settings_Handler:
         data = None
         if (gui_port := TEMP_CACHE.get("gui_port")) is not None:
             try:
-                res = requests.get(f"http://localhost:{gui_port}/instances/{INSTANCE_ID}/settings", timeout=(1, 5))
+                res = requests.get(f"http://127.0.0.1:{gui_port}/instances/{INSTANCE_ID}/settings", timeout=(1, 5))
                 if res.status_code == 200: data = res.json()
             except (KeyboardInterrupt, SystemExit): raise
             except Exception as e:
@@ -1345,7 +1347,7 @@ class Task_Handler:
                 return cls.cached_exclusions
         elif configs.LOCAL_GUI and TEMP_CACHE.get("gui_port") is not None:
             res = requests.get(
-                f"http://localhost:{TEMP_CACHE['gui_port']}/instances/{INSTANCE_ID}/exclude",
+                f"http://127.0.0.1:{TEMP_CACHE['gui_port']}/instances/{INSTANCE_ID}/exclude",
                 timeout=(10, 20)
             )
             if res.status_code == 200:

@@ -137,6 +137,7 @@ class Attacker:
     # The troop bar cards change size: with empty slots shown (19:15, 8 cards + 3 slots) they are ~0.8 of the
     # pictures in assets/attacker/cards. Card middle and health bar move with the size (measured at 1.0 and 0.8)
     CARD_SCALES = (0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05)
+    SPELL_CARDS = ("bat", "lightning") # spell pictures the clan castle can bring too (a second card: cc_<name>)
     card_scale = 1.0
 
     @property
@@ -169,6 +170,10 @@ class Attacker:
                 xs = np.nonzero(res.max(axis=0) >= 0.85)[0]
                 if len(xs):
                     found[name] = (xs.min() + t.shape[1] / 2) / frame.shape[1]
+                    # The clan castle's spells are a second card of the same picture with a shield on it, further right
+                    # (02.11 16:26: our bats x11 at x 740, the clan's x3 at 873, both match 0.95). Emre: use them too
+                    if name in self.SPELL_CARDS and (far := xs[xs > xs.min() + t.shape[1] * 0.6]).size:
+                        found[f"cc_{name}"] = (far.min() + t.shape[1] / 2) / frame.shape[1]
                     break
         # The siege card changes its picture (machine, "!"), but it always sits between the troops and the first hero
         # (any hero: one being upgraded is not in the bar at all, 02.11: king, queen and champion missing)
@@ -476,10 +481,13 @@ class Attacker:
 
     @staticmethod
     def _view_shift(a, b):
-        """How far the view moved between two frames (dx, dy in pixels), from the field above the troop bar."""
+        """How far the view moved between two frames (dx, dy in pixels), from the field above the troop bar. A match the
+        correlation is not sure of counts as no move: 02.11 16:26 a black frame gave exactly +960, +432 (half the picture,
+        response 0) and the sweeps went off the screen, 59 of 60 troops stayed in hand. Real frames answer 0.94-0.99."""
         import cv2, numpy as np
         def prep(f): return cv2.resize(cv2.cvtColor(f[:int(f.shape[0] * 0.78)], cv2.COLOR_RGB2GRAY), None, fx=0.25, fy=0.25).astype(np.float32)
-        (dx, dy), _ = cv2.phaseCorrelate(prep(a), prep(b))
+        (dx, dy), response = cv2.phaseCorrelate(prep(a), prep(b))
+        if response < 0.3: return 0.0, 0.0
         return dx * 4, dy * 4
 
     def _deploy_spread(self, style, ring, cards, shots):
@@ -504,6 +512,7 @@ class Attacker:
         def fresh_ring(label):
             nonlocal ring, ring_out, red
             frame = Frame_Handler.get_frame(grayscale=False)
+            if frame.std() < 5: return # a black / empty frame from the emulator: nothing to compare, keep the last good one
             dx, dy = self._view_shift(last["frame"], frame)
             last["frame"] = frame
             if abs(dx) > 15 or abs(dy) > 15:
@@ -709,6 +718,17 @@ class Attacker:
                     self._tap(spot[0] + dx * t, spot[1] + dy * t, spread=0.005)
                     self._pause(spells.get("gap", [0.12, 0.17]))
                 logger.info(f"Spells: {spells['card']} on {side}")
+                # Then the clan castle's spells of any kind we know, on the same spot (Emre 02.11: they were never used);
+                # their count is not read, so taps go on until the card turns gray, at most 4 (the clan castle holds no
+                # more; a tap past the end would drop the card the game selects next)
+                for name in sorted(c for c in cards if c.startswith("cc_")):
+                    tap_card(name)
+                    taps = 0
+                    while taps < 4 and not self._card_empty(cards[name]):
+                        self._tap(spot[0] + dx, spot[1] + dy, spread=0.008)
+                        self._pause(spells.get("gap", [0.12, 0.17]))
+                        taps += 1
+                    logger.info(f"Clan castle {name[3:]}: {taps} taps")
 
         def step_retry(p):
             # One look at the end: whatever did not land goes again, further out (its card is selected again first; a
