@@ -55,7 +55,7 @@ class Upgrader:
         order = "DHMS"
         s = text.upper().replace("O", "0").replace("I", "1").replace("L", "1").replace("Z", "2").replace("B", "8")
         s = re.sub(r"S(?=[\dDHM])", "5", s)
-        tokens = s.split()
+        tokens = ["11M" if t == "MM" else t for t in s.split()] # "11M": the two thin 1s read as one M (02.11 05:13 "4H MM")
         if not 1 <= len(tokens) <= 2: return None
         parts = []
         for tok in tokens:
@@ -87,6 +87,9 @@ class Upgrader:
         reads.append(section)
         texts = [" ".join(OCR_Handler.reader.readtext(cv2.resize(r, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC), detail=0,
                                                        allowlist="0123456789dhmsDHMS ")) for r in reads]
+        # The picture once more with I and l allowed: thin 1s come out as I ("4H IIm" = 4H 11M), parse_time makes them 1
+        texts.append(" ".join(OCR_Handler.reader.readtext(cv2.resize(section, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC), detail=0,
+                                                          allowlist="0123456789dhmsDHMSIl ")))
         valid = [v for v in map(self.parse_time, texts) if v is not None]
         return collections.Counter(valid).most_common(1)[0][0] if valid else None
 
@@ -114,6 +117,38 @@ class Upgrader:
             out.append((name, left[0], left[1]))
         return out
 
+    # A running potion shows its time left in a dark box with the bottle at its right, left of the open menu (02.11: builder
+    # potion = blue bottle with a hammer, "53m 49s" at 05:13; research potion = purple bottle, "8m 8s" at 04:58)
+    POTION_BOX = (1120, 540, 1420, 650) # x1, y1, x2, y2 on 1920x1080
+    POTION_SPEED = {"builders": 10, "lab": 24} # builder potion 10x (Emre; 05:13-05:16 measured ~10), research potion 24x
+
+    def _read_potion(self, frame):
+        """(kind "builders" / "lab", seconds left) of the potion box on screen, or None."""
+        import re
+        OCR_Handler.load()
+        x1, y1, x2, y2 = self.POTION_BOX
+        for box, text, _ in OCR_Handler.reader.readtext(frame[y1:y2, x1:x2], detail=1, allowlist="0123456789dhmsDHMSIl "):
+            if not re.search(r"[MmSs]\s*$", text.strip()): continue # a potion counts minutes and seconds
+            bx1, by1 = int(box[0][0]) + x1, int(box[0][1]) + y1
+            bx2, by2 = int(box[2][0]) + x1, int(box[2][1]) + y1
+            left = self._read_time(frame[max(0, by1 - 4):by2 + 4, max(0, bx1 - 4):bx2 + 4]) or self.parse_time(text)
+            if not left: continue
+            bottle = frame[by1:by2, bx2:min(frame.shape[1], bx2 + 90)].reshape(-1, 3).astype(int)
+            r, g, b = bottle[:, 0], bottle[:, 1], bottle[:, 2]
+            blue = ((b > 170) & (b - r > 60) & (g > 120)).sum() # builder potion ~ (82, 172, 195)
+            purple = ((r > 100) & (b > 70) & (g < 60) & (r - g > 60)).sum() # research potion ~ (143, 5, 100)
+            if max(blue, purple) < 30: continue # no bottle next to it: not a potion box
+            return ("builders" if blue >= purple else "lab"), left[0]
+        return None
+
+    @staticmethod
+    def boosted_left(left, potion_left, speed):
+        """Real time to the end: while the potion runs every minute does speed minutes of work (Emre 02.11: 10 hours of
+        work with a builder potion end in 1 hour), the rest at normal speed."""
+        if potion_left <= 0: return left
+        if left <= potion_left * speed: return left / speed
+        return potion_left + left - potion_left * speed
+
     @require_exit(x=0.99, y=0.01)
     def _status_menu(self, kind):
         import time
@@ -123,24 +158,32 @@ class Upgrader:
         time.sleep(1.0)
         frame = Frame_Handler.get_frame(grayscale=False)
         Frame_Handler.save_frame(frame, f"menu_{kind}_top.png")
-        return self._read_ongoing(frame)
+        return self._read_ongoing(frame), self._read_potion(frame)
 
     def read_status(self):
         """Builders and laboratory: what is being upgraded and when it ends, into the disk cache (Telegram /ozet, the
-        panel's Ustalar card). An end is the earliest the time shown allows; "prec" is how much later it can be."""
+        panel's Ustalar card). "left" is the work the menu shows; "end" is when it really ends, with a running potion
+        (builder 10x, research 24x) counted in; "prec" is how much later it can be (the time shown is rounded down)."""
         import time
         status = dict(Cache_Manager.get("status") or {})
         status["t"] = now = time.time()
         for kind in ("builders", "lab"):
             try:
-                rows = self._status_menu(kind)
+                read = self._status_menu(kind)
             except (KeyboardInterrupt, SystemExit): raise
             except Exception:
                 logger.exception(f"Upgrader.read_status({kind}):")
                 continue
-            if rows is None: continue
-            status[kind] = [{"name": n, "end": now + s, "prec": p} for n, s, p in rows]
-            logger.info(f"Status {kind}: " + (", ".join(f"{n} {self.fmt_left(s)}" for n, s, _ in rows) or "nothing running"))
+            if read is None: continue
+            rows, potion = read
+            # The box shows the potion of the open menu; a bottle of the other kind is not this menu's
+            potion_left = potion[1] if potion and potion[0] == kind else 0
+            speed = self.POTION_SPEED[kind]
+            status[f"{kind}_potion"] = {"end": now + potion_left, "speed": speed} if potion_left else None
+            status[kind] = [{"name": n, "left": s, "end": now + self.boosted_left(s, potion_left, speed),
+                             "prec": p / speed if potion_left and s <= potion_left * speed else p} for n, s, p in rows]
+            boost = f" (potion {self.fmt_left(potion_left)} left, x{speed})" if potion_left else ""
+            logger.info(f"Status {kind}{boost}: " + (", ".join(f"{n} {self.fmt_left(s)}" for n, s, _ in rows) or "nothing running"))
         Cache_Manager["status"] = status
         report("status", status=status)
         return status

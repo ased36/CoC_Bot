@@ -161,21 +161,36 @@ class CoC_Bot:
             gems = f"{r['gems']:,}".replace(",", ".") if isinstance(r.get("gems"), int) else "?"
             lines += ["", "🏦 <b>Depo</b>", f"🟡 {store('gold')}   🟣 {store('elixir')}   ⚫ {store('dark')}   💎 {gems}"]
         st = Cache_Manager.get("status") or {}
-        def section(kind, title, total):
+        fmt = self.upgrader.fmt_left
+        def mmss(s): return f"{int(s) // 3600}h {int(s) % 3600 // 60}m" if s >= 3600 else f"{int(s) // 60}m {int(s) % 60}s"
+        def section(kind, title, total, potion_name):
             rows = st.get(kind)
             if rows is None: return
             running = sorted((b for b in rows if b["end"] + b.get("prec", 0) > now), key=lambda b: b["end"])
             done = [b for b in rows if b["end"] + b.get("prec", 0) <= now]
             busy = f" · {len(running)}/{total} dolu" if total else ""
             lines.extend(["", f"{title}{busy}"])
+            # A running potion (Emre 02.11): its time left, its speed, and every end below counted with it
+            potion = st.get(f"{kind}_potion") or {}
+            p_left = potion.get("end", 0) - now
+            if p_left > 0:
+                speed = potion.get("speed", 10)
+                lines.append(f"⚡ <b>{potion_name}</b> · {mmss(p_left)} kaldı · <b>{speed} kat hız</b> · {self._when(potion['end'])}'e kadar")
+                lines.append(f"<i>   İksir sürerken 1 dk = {speed} dk iş: {speed} saatlik iş 1 saatte biter. Bitişler buna göre.</i>")
             for b in running:
                 left = max(0, b["end"] - now)
                 dot = "🟢" if left <= 3600 else "🟡" if left <= 6 * 3600 else "🟠" if left <= 86400 else "🔴"
-                lines.append(f"{dot} {esc(b['name'])} · {self.upgrader.fmt_left(left)} · {self._when(b['end'] + b.get('prec', 0) / 2)}")
+                line = f"{dot} {esc(b['name'])} · {fmt(left)} · {self._when(b['end'] + b.get('prec', 0) / 2)}"
+                if p_left > 0 and "left" in b:
+                    # The work still to do now, as the menu would show it: potion speed since the reading, then normal
+                    e, p0 = now - st["t"], potion["end"] - st["t"]
+                    work = max(0, b["left"] - speed * min(e, p0) - max(0, e - p0))
+                    line += f" ⚡ <i>(iksirsiz {fmt(work)})</i>"
+                lines.append(line)
             lines.extend(f"✅ {esc(b['name'])} bitti" for b in done)
             if total and len(running) < total: lines.append(f"🔨 {total - len(running)} boş")
-        section("builders", "👷 <b>Ustalar</b>", r.get("builders_total"))
-        section("lab", "🔬 <b>Laboratuvar</b>", None)
+        section("builders", "👷 <b>Ustalar</b>", r.get("builders_total"), "İnşaatçı iksiri")
+        section("lab", "🔬 <b>Laboratuvar</b>", None, "Araştırma iksiri")
         if "pet_busy" in st: lines += ["", "🐾 <b>Evcil hayvan</b> · " + ("meşgul" if st["pet_busy"] else "boş")]
         if st.get("t"): lines += ["", f"<i>Usta / lab okuma {hm(st['t'])} · 🟢 ≤1 sa 🟡 ≤6 sa 🟠 ≤1 gün 🔴 daha uzun</i>"]
         return "\n".join(lines)
@@ -206,7 +221,7 @@ class CoC_Bot:
     def _telegram_commands(self):
         """Emre 02.11: /ozet in Telegram gets the summary at once. Long polling on its own thread; only the chat the bot
         already writes to is answered, messages sent while the bot was closed are skipped."""
-        import time, requests
+        import time, re, unicodedata, requests
         if not TELEGRAM_BOT_TOKEN: return
         api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
         offset = None
@@ -223,7 +238,9 @@ class CoC_Bot:
                     offset = u["update_id"] + 1
                     msg = u.get("message") or {}
                     if str(msg.get("chat", {}).get("id")) != str(Cache_Manager.get("telegram_chat_id")): continue
-                    words = (msg.get("text") or "").strip().lower().split()
+                    # "Özet", "özet." or an ö typed as o + two dots (phone keyboards) all count
+                    text = unicodedata.normalize("NFC", msg.get("text") or "").replace("İ", "i").lower()
+                    words = re.sub(r"[^\w/@ ]", " ", text).split()
                     cmd = words[0].split("@")[0] if words else ""
                     if cmd in ("/ozet", "/özet", "ozet", "özet"): send_notification(self._summary(), html=True)
                     elif cmd in ("/start", "/help", "/yardim", "/yardım"): send_notification("Komutlar:\n/ozet — anlık özet")

@@ -912,7 +912,9 @@
             const up = (state && state.upgrades) || {}, el = $("#upgrades"), t = now();
             if (!up.t) { el.innerHTML = `<li class="muted"><span>Henüz okunmadı (bot ilk turda okur)</span></li>`; return; }
             const rows = [];
-            [["builders", "👷 Usta"], ["lab", "🔬 Lab"]].forEach(([kind, label]) => {
+            [["builders", "👷 Usta", "İnşaatçı iksiri"], ["lab", "🔬 Lab", "Araştırma iksiri"]].forEach(([kind, label, potion]) => {
+                const p = up[`${kind}_potion`];
+                if (p && p.end > t) rows.push(`<li><span class="t">⚡ İksir</span><span><b>${potion}</b> · ${fmtLeft(p.end - t)} kaldı · ${p.speed} kat hız <span class="muted">· bitişler buna göre</span></span></li>`);
                 (up[kind] || []).slice().sort((a, b) => a.end - b.end).forEach(b => {
                     const end = b.end + (b.prec || 0), left = b.end - t;
                     const dot = end <= t ? "✅" : left <= 3600 ? "🟢" : left <= 21600 ? "🟡" : left <= 86400 ? "🟠" : "🔴";

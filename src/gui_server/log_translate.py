@@ -44,6 +44,8 @@ TRANSLATIONS = [
     (r"Resources: gold=(\S+) elixir=(\S+) dark=(\S+) gems=(\S+) builders=(\S+)", "Kaynaklar — altın {0} · iksir {1} · kara iksir {2} · mücevher {3} · boş usta {4}"),
     (r"Resources could not be read", "Kaynaklar okunamadı"),
     (r"Started upgrading (.+) \((home|home_lab|pet|builder|builder_lab)\)", "Geliştirme başladı: {0}"),
+    (r"Status builders \(potion (.+) left, x(\d+)\): (.+)", "Ustalar (inşaatçı iksiri {0} kaldı, {1} kat): {2}"),
+    (r"Status lab \(potion (.+) left, x(\d+)\): (.+)", "Laboratuvar (araştırma iksiri {0} kaldı, {1} kat): {2}"),
     (r"Status builders: (.+)", "Ustalar: {0}"),
     (r"Status lab: (.+)", "Laboratuvar: {0}"),
     (r"Status read, next look at (.+)", "Usta / lab durumu okundu, sonraki okuma {0}"),
