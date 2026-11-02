@@ -155,9 +155,5 @@ ADB_ABS_DIR = "" # absolute path to dir with adb executable, leave empty to use 
 BLUESTACKS_BIN_PATH = "" # absolute path to Bluestacks executable, leave empty to use system defaults
 MUMU_BIN_PATH = "" # absolute path to MuMuManager.exe, leave empty to use system defaults
 
-# Official Clash of Clans API (developer.clashofclans.com): village data for Telegram /koy /tavsiye /ekipman.
-# The key is bound to the IP it was made for; when the home IP changes, make a new key there.
-COC_API_TOKEN = ""
-COC_PLAYER_TAG = "" # (e.g. #Q9CL980P2)
 # Anthropic API key for Telegram /sor (console.anthropic.com)
 ANTHROPIC_API_KEY = ""
