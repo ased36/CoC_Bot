@@ -219,13 +219,14 @@ def handle_settings(id):
     return instance.settings
 
 def attack_styles():
-    """attacks/*.yaml the scripted attack can play (the drag format; super-barbar.yaml is the old one)."""
+    """attacks/*.yaml the scripted attack can play (step styles and the drag format; super-barbar.yaml is the old one)."""
     import yaml
     folder = (Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else path.parent.parent) / "attacks"
     names = []
     for f in sorted(folder.glob("*.yaml")):
         try:
-            if (yaml.safe_load(f.read_text(encoding="utf-8")) or {}).get("troops", {}).get("mode") == "drag": names.append(f.stem)
+            style = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+            if style.get("steps") or style.get("troops", {}).get("mode") == "drag": names.append(f.stem)
         except Exception:
             pass
     return names

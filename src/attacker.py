@@ -582,132 +582,242 @@ class Attacker:
 
         lead = heroes.get("lead")
         battle_start = None
+        lead_done = False
         def drop_lead():
-            nonlocal battle_start
+            nonlocal battle_start, lead_done
+            lead_done = True
             if lead in cards and not self._card_deployed(cards[lead]):
                 battle_start = battle_start or time.time()
                 quick(lead, lead_spot)
-        lead_first = random.random() < heroes.get("lead_first", 0.6)
-        if lead_first: drop_lead()
 
-        # Troops: hold and sweep (~7 troops a second while held). Two halves (top then bottom, or the other way, from the
-        # left or the right) or one whole round. The hold ends a little before the card would run out; a second thread
-        # lifts the finger earlier if the army is smaller (the next card would be selected); the rest go one by one
-        troop_x = cards[troops["card"]]
-        tap_card(troops["card"])
-        if troops.get("red_line", True):
-            # One troop where the map is widest starts the battle (before it a tap only selects a building), then a tap
-            # on the middle of the village makes the game show the red area
-            clean = Frame_Handler.get_frame(grayscale=False) # no tint yet
-            started = battle_start is not None or self._start_battle(ring, ring_out)
-            if started:
-                battle_start = battle_start or time.time()
-                red = self._reveal_red_area(clean, shots)
+        # ---------- Steps (Emre 2A, docs/STIL-YAZMA.md): the style's "steps" run in order ----------
+        def step_lead(p):
+            # The champion on its own side. first: true = in heroes.lead_first of the attacks (panel); a later "lead"
+            # step only drops it when no earlier one did
+            if lead_done: return
+            chance = heroes.get("lead_first", 0.6) if p.get("first") else p.get("chance")
+            if chance is not None and not random.random() < float(chance): return
+            drop_lead()
+
+        def step_troops(p):
+            # Troops: hold and sweep (~7 troops a second while held). Two halves (top then bottom, or the other way, from the
+            # left or the right) or one whole round. The hold ends a little before the card would run out; a second thread
+            # lifts the finger earlier if the army is smaller (the next card would be selected); the rest go one by one
+            nonlocal red, battle_start, hero_side, hero_spot, lead_side, lead_spot
+            troop_x = cards[troops["card"]]
+            tap_card(troops["card"])
+            if troops.get("red_line", True):
+                # One troop where the map is widest starts the battle (before it a tap only selects a building), then a tap
+                # on the middle of the village makes the game show the red area
+                clean = Frame_Handler.get_frame(grayscale=False) # no tint yet
+                started = battle_start is not None or self._start_battle(ring, ring_out)
+                if started:
+                    battle_start = battle_start or time.time()
+                    red = self._reveal_red_area(clean, shots)
+                else:
+                    logger.info("Battle did not start with one troop, using the recorded paths")
+            hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
+            jitter = lambda: random.uniform(-12, 12)
+            # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
+            # comes back down and the top half is swept. Without it the bottom stays partly under the troop bar
+            use_pan = random.random() < float(troops.get("pan", 0)) # a share of the attacks (Emre 1C), true = every attack
+            pans = [None, None]
+            per_side = troops.get("per_side")
+            if per_side:
+                # Emre 22:53: each of the village's four sides gets 13-15 troops in its own short sweep, the top two first,
+                # then the view is pushed up (W) and the bottom two (the bottom stayed under the troop bar and got nothing)
+                rate = troops.get("per_second", 7.3)
+                counts = [random.randint(*per_side) for _ in range(3)]
+                counts.append(max(troops.get("count", 60) - sum(counts), 8))
+                centers = random.sample([225, 315], 2) + random.sample([45, 135], 2)
+                sweeps = []
+                for c in centers:
+                    # The middle of each side, where the band is widest: a big village reaches the map's corners and a
+                    # corner to corner sweep dropped little there (23:02: 60 -> 45 in four sweeps)
+                    d, width = random.choice((1, -1)), random.uniform(45, 60)
+                    sweeps.append((c - d * width / 2 + random.uniform(-4, 4), d * width))
+                times = [k / rate for k in counts]
+                pans = [None, None, -troops.get("pan_by", 0.3), None]
+            elif use_pan or random.random() < troops.get("halves", 0.7):
+                s1 = random.choice((0, 180))
+                top_first = False if use_pan else random.random() < 0.5
+                # top half from the left: 180 -> 360 over 270; from the right: 0 -> -180. Bottom half the other way round
+                def half(s, top): return s + jitter(), (180 if (s == 180) == top else -180) + jitter()
+                first = half(s1, top_first)
+                sweeps = [first, half(180 - s1, not top_first)]
+                share = random.uniform(0.45, 0.55)
+                times = [hold * share, hold * (1 - share)]
+                if use_pan:
+                    by = troops.get("pan_by", 0.3)
+                    pans = [-by, by]
             else:
-                logger.info("Battle did not start with one troop, using the recorded paths")
-        hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
-        jitter = lambda: random.uniform(-12, 12)
-        # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
-        # comes back down and the top half is swept. Without it the bottom stays partly under the troop bar
-        use_pan = random.random() < float(troops.get("pan", 0)) # a share of the attacks (Emre 1C), true = every attack
-        pans = [None, None]
-        per_side = troops.get("per_side")
-        if per_side:
-            # Emre 22:53: each of the village's four sides gets 13-15 troops in its own short sweep, the top two first,
-            # then the view is pushed up (W) and the bottom two (the bottom stayed under the troop bar and got nothing)
-            rate = troops.get("per_second", 7.3)
-            counts = [random.randint(*per_side) for _ in range(3)]
-            counts.append(max(troops.get("count", 60) - sum(counts), 8))
-            centers = random.sample([225, 315], 2) + random.sample([45, 135], 2)
-            sweeps = []
-            for c in centers:
-                # The middle of each side, where the band is widest: a big village reaches the map's corners and a
-                # corner to corner sweep dropped little there (23:02: 60 -> 45 in four sweeps)
-                d, width = random.choice((1, -1)), random.uniform(45, 60)
-                sweeps.append((c - d * width / 2 + random.uniform(-4, 4), d * width))
-            times = [k / rate for k in counts]
-            pans = [None, None, -troops.get("pan_by", 0.3), None]
-        elif use_pan or random.random() < troops.get("halves", 0.7):
-            s1 = random.choice((0, 180))
-            top_first = False if use_pan else random.random() < 0.5
-            # top half from the left: 180 -> 360 over 270; from the right: 0 -> -180. Bottom half the other way round
-            def half(s, top): return s + jitter(), (180 if (s == 180) == top else -180) + jitter()
-            first = half(s1, top_first)
-            sweeps = [first, half(180 - s1, not top_first)]
-            share = random.uniform(0.45, 0.55)
-            times = [hold * share, hold * (1 - share)]
-            if use_pan:
-                by = troops.get("pan_by", 0.3)
-                pans = [-by, by]
-        else:
-            sweeps = [(random.choice((0, 180, 270)) + jitter(), random.choice((360, -360)))]
-            times = [hold]
-        def pan(dy):
-            # Like BlueStacks' W / S: a quick swipe from the middle; a finger that moves at once moves the view, even with a
-            # card selected. The rings follow from the shift measured afterwards
-            Input_Handler.swipe(0.52, 0.51, 0.52 + random.uniform(-0.01, 0.01), 0.51 + dy, duration=300, hold_end_time=200, inter_points=6)
-            time.sleep(random.uniform(0.4, 0.6))
-        empty, done = self._watch_empty(troop_x, shots)
-        battle_start = battle_start or time.time()
-        try:
-            for i, ((start, sweep), seconds) in enumerate(zip(sweeps, times)):
-                if empty.is_set(): break
-                if pans[i]: pan(pans[i])
-                fresh_ring(f"before sweep {i + 1}")
-                path = self._sweep_path(red, start, sweep, lead_in=0.0, margins=(0.015, 0.035)) if red else self._sweep_path(ring_out, start, sweep, lead_in=-0.03, margins=(0.0, 0.03))
-                Input_Handler.drag_path(path, seconds, stop=empty.is_set,
-                                        hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
-                self._pause(troops.get("sweep_pause", [0.25, 0.6]))
-        finally:
-            done.set()
-        logger.info(f"Troops: {len(sweeps)} sweep(s), {hold:.1f}s held{', card ran out' if empty.is_set() else ''}")
-        fresh_ring("after the sweeps")
-        (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
-        if not empty.is_set():
-            if red:
-                self._leftover_troops(red, troop_x, lambda: tap_card(troops["card"]), margins=self.RED_LEFTOVER, pause=0.05, around=[225, 315, 45, 135], spread=25, jitter=0.004)
-            else:
-                self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
+                sweeps = [(random.choice((0, 180, 270)) + jitter(), random.choice((360, -360)))]
+                times = [hold]
+            def pan(dy):
+                # Like BlueStacks' W / S: a quick swipe from the middle; a finger that moves at once moves the view, even with a
+                # card selected. The rings follow from the shift measured afterwards
+                Input_Handler.swipe(0.52, 0.51, 0.52 + random.uniform(-0.01, 0.01), 0.51 + dy, duration=300, hold_end_time=200, inter_points=6)
+                time.sleep(random.uniform(0.4, 0.6))
+            empty, done = self._watch_empty(troop_x, shots)
+            battle_start = battle_start or time.time()
+            try:
+                for i, ((start, sweep), seconds) in enumerate(zip(sweeps, times)):
+                    if empty.is_set(): break
+                    if pans[i]: pan(pans[i])
+                    fresh_ring(f"before sweep {i + 1}")
+                    path = self._sweep_path(red, start, sweep, lead_in=0.0, margins=(0.015, 0.035)) if red else self._sweep_path(ring_out, start, sweep, lead_in=-0.03, margins=(0.0, 0.03))
+                    Input_Handler.drag_path(path, seconds, stop=empty.is_set,
+                                            hold_start=random.uniform(*troops.get("hold_still", [0.35, 0.55])))
+                    self._pause(troops.get("sweep_pause", [0.25, 0.6]))
+            finally:
+                done.set()
+            logger.info(f"Troops: {len(sweeps)} sweep(s), {hold:.1f}s held{', card ran out' if empty.is_set() else ''}")
+            fresh_ring("after the sweeps")
+            (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
+            if not empty.is_set():
+                if red:
+                    self._leftover_troops(red, troop_x, lambda: tap_card(troops["card"]), margins=self.RED_LEFTOVER, pause=0.05, around=[225, 315, 45, 135], spread=25, jitter=0.004)
+                else:
+                    self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
 
-        if not lead_first: drop_lead()
+        def step_heroes(p):
+            # Siege machine (usually first) and the other heroes on the heroes' spot. The siege card is tapped once only:
+            # a second tap unloads it early
+            nonlocal hero_side, hero_spot
+            # A card a "drop" step already put down is not tapped again (a second tap is the hero's ability)
+            group = [h for h in heroes.get("group", []) if h in cards and h not in [n for n, _ in dropped]]
+            random.shuffle(group)
+            siege_card = next((c for c in sorted(cards) if siege and c.startswith(siege.get("card", "-"))), None)
+            if siege_card:
+                group.insert(0 if random.random() < siege.get("first", 0.8) else random.randint(1, len(group)), siege_card)
+            fresh_ring("before the heroes")
+            hero_side, hero_spot = spot_again(hero_side, hero_spot)
+            for name in group:
+                quick(name, hero_spot)
 
-        # Siege machine (usually first) and the other heroes on the heroes' spot. The siege card is tapped once only:
-        # a second tap unloads it early
-        group = [h for h in heroes.get("group", []) if h in cards]
-        random.shuffle(group)
-        siege_card = next((c for c in sorted(cards) if siege and c.startswith(siege.get("card", "-"))), None)
-        if siege_card:
-            group.insert(0 if random.random() < siege.get("first", 0.8) else random.randint(1, len(group)), siege_card)
-        fresh_ring("before the heroes")
-        hero_side, hero_spot = spot_again(hero_side, hero_spot)
-        for name in group:
-            quick(name, hero_spot)
+        def step_spells(p):
+            # Bat spells: quick taps on the heroes' spot (sometimes another side), drifting a little along the edge.
+            # Only the last few taps look at the card: once it runs out the game selects the clan castle spell
+            if spells.get("card") in cards:
+                side, spot = (hero_side, hero_spot) if random.random() < spells.get("on_heroes", 0.85) or len(spots) < 2 else random.choice(spots[1:])
+                count, x_spell = spells.get("count", 11), cards[spells["card"]]
+                dx, dy = random.uniform(-0.03, 0.03), random.uniform(-0.03, 0.03)
+                tap_card(spells["card"])
+                for i in range(count + 3):
+                    if i >= count - 2 and self._card_empty(x_spell): break
+                    t = i / max(count - 1, 1)
+                    self._tap(spot[0] + dx * t, spot[1] + dy * t, spread=0.005)
+                    self._pause(spells.get("gap", [0.12, 0.17]))
+                logger.info(f"Spells: {spells['card']} on {side}")
 
-        # Bat spells: quick taps on the heroes' spot (sometimes another side), drifting a little along the edge.
-        # Only the last few taps look at the card: once it runs out the game selects the clan castle spell
-        if spells.get("card") in cards:
-            side, spot = (hero_side, hero_spot) if random.random() < spells.get("on_heroes", 0.85) or len(spots) < 2 else random.choice(spots[1:])
-            count, x_spell = spells.get("count", 11), cards[spells["card"]]
-            dx, dy = random.uniform(-0.03, 0.03), random.uniform(-0.03, 0.03)
-            tap_card(spells["card"])
-            for i in range(count + 3):
-                if i >= count - 2 and self._card_empty(x_spell): break
-                t = i / max(count - 1, 1)
-                self._tap(spot[0] + dx * t, spot[1] + dy * t, spread=0.005)
-                self._pause(spells.get("gap", [0.12, 0.17]))
-            logger.info(f"Spells: {spells['card']} on {side}")
+        def step_retry(p):
+            # One look at the end: whatever did not land goes again, further out (its card is selected again first; a
+            # landed siege machine is never touched again, a second tap unloads it)
+            frame = Frame_Handler.get_frame(grayscale=False)
+            for name, spot in dropped:
+                if self._card_deployed(cards[name], frame) or (name.startswith("siege") and self._card_empty(cards[name])): continue
+                logger.info(f"{name} did not land on the quick drop, again")
+                tap_card(name)
+                if place(name, spot, name) and not name.startswith("siege") and name not in [n for _, n in abilities]:
+                    ability(name)
 
-        # One look at the end: whatever did not land goes again, further out (its card is selected again first; a
-        # landed siege machine is never touched again, a second tap unloads it)
-        frame = Frame_Handler.get_frame(grayscale=False)
-        for name, spot in dropped:
-            if self._card_deployed(cards[name], frame) or (name.startswith("siege") and self._card_empty(cards[name])): continue
-            logger.info(f"{name} did not land on the quick drop, again")
-            tap_card(name)
-            if place(name, spot, name) and not name.startswith("siege") and name not in [n for _, n in abilities]:
-                ability(name)
+        def step_wait(p):
+            self._pause(p.get("seconds", [1, 2]))
+
+        def spot_for(at):
+            # heroes / lead = those two spots; right / left / top / bottom = a point on that side's edge
+            if at in (None, "heroes"): return hero_spot
+            if at == "lead": return lead_spot
+            p = self._deploy_points(red, at, 1, spread=20, **self.RED_SPOT) if red else self._deploy_points(ring_out, at, 1, spread=20, margin=0.01)
+            return p[0] if p else hero_spot
+
+        def step_drop(p):
+            # One card on one spot (a hero, the siege machine, a troop card for a single troop)
+            if p["card"] not in cards or p["card"] in [n for n, _ in dropped]:
+                logger.info(f"{p['card']} not in the bar or already down, skipped")
+                return
+            fresh_ring(f"before {p['card']}")
+            quick(p["card"], spot_for(p.get("at")))
+
+        def step_cast(p):
+            # A spell into the village: taps around the middle of the line, within spread (share of the radius)
+            import math
+            if p["card"] not in cards:
+                logger.info(f"{p['card']} not in the bar, skipped")
+                return
+            fresh_ring(f"before {p['card']}")
+            (cx, cy), radius = red or ring
+            r = float(sum(radius)) / len(radius) * float(p.get("spread", 0.4))
+            tap_card(p["card"])
+            for _ in range(int(p.get("count", 1))):
+                a, d = random.uniform(0, 2 * math.pi), r * random.random() ** 0.5
+                self._tap((cx + d * math.cos(a)) / 1920, (cy + d * math.sin(a)) / 1080, spread=0.004)
+                self._pause(p.get("gap", [0.15, 0.3]))
+            logger.info(f"Spells: {p['card']} x{int(p.get('count', 1))} into the village")
+
+        def step_ability(p):
+            # A hero's ability now (instead of its random delay)
+            name = p["card"]
+            if name in cards and self._card_deployed(cards[name]):
+                self._tap(cards[name], self.CARD_Y, spread=0.006)
+                abilities[:] = [a for a in abilities if a[1] != name]
+                logger.info(f"{name}: ability used (step)")
+
+        run = {"lead": step_lead, "troops": step_troops, "heroes": step_heroes, "spells": step_spells, "retry": step_retry,
+               "wait": step_wait, "drop": step_drop, "cast": step_cast, "ability": step_ability}
+        for kind, p in self.style_steps(style):
+            run[kind](p)
         self._deselect()
         return battle_start, abilities
+
+    # The order of Emre's spread attack, for a style without "steps" (yayma.yaml before 02.11)
+    DEFAULT_STEPS = [{"lead": {"first": True}}, "troops", "lead", "heroes", "spells", "retry"]
+    STEP_KINDS = ("lead", "troops", "heroes", "spells", "retry", "wait", "drop", "cast", "ability")
+
+    @classmethod
+    def style_steps(cls, style):
+        """[(kind, params)]: a step is a name ("troops") or one key with its values ({"wait": [1, 2]}, {"drop": {...}})."""
+        out = []
+        for step in style.get("steps") or cls.DEFAULT_STEPS:
+            kind, p = (step, {}) if isinstance(step, str) else next(iter(step.items()))
+            if kind == "wait" and not isinstance(p, dict): p = {"seconds": p}
+            if kind == "ability" and isinstance(p, str): p = {"card": p}
+            out.append((kind, {} if p is None else p))
+        return out
+
+    def check_style(self, style):
+        """Errors that keep a style out of the battle (2A: checked before the search, never half way through)."""
+        cards = set(self._card_templates()) | {"siege"}
+        errors = []
+        steps = style.get("steps")
+        if steps is not None and not isinstance(steps, list): return ["steps is not a list"]
+        for i, step in enumerate(steps or []):
+            if not (isinstance(step, str) or (isinstance(step, dict) and len(step) == 1)):
+                errors.append(f"step {i + 1}: a name or one key with its values")
+        if errors: return errors
+        kinds = []
+        for i, (kind, p) in enumerate(self.style_steps(style)):
+            kinds.append(kind)
+            where = f"step {i + 1} ({kind})"
+            if kind not in self.STEP_KINDS:
+                errors.append(f"{where}: unknown step, known: {', '.join(self.STEP_KINDS)}")
+            elif not isinstance(p, dict):
+                errors.append(f"{where}: values must be key: value")
+            elif kind in ("drop", "cast", "ability") and p.get("card") not in cards:
+                errors.append(f"{where}: card {p.get('card')!r} has no picture in assets/attacker/cards")
+            elif kind == "drop" and p.get("at") not in (None, "heroes", "lead", *self.CORNER_ANGLES):
+                errors.append(f"{where}: at must be heroes, lead, right, left, top or bottom")
+            elif kind == "wait" and not (isinstance(p.get("seconds"), list) and len(p["seconds"]) == 2):
+                errors.append(f"{where}: seconds as [a, b]")
+        if "troops" not in kinds: errors.append("no troops step (it starts the battle and reads the red area)")
+        named = {"troops": (style.get("troops") or {}).get("card"), "spells": (style.get("spells") or {}).get("card"),
+                 "lead": (style.get("heroes") or {}).get("lead")}
+        for kind, card in named.items():
+            if kind in kinds and card not in cards:
+                errors.append(f"{kind}: card {card!r} has no picture in assets/attacker/cards")
+        if "heroes" in kinds:
+            errors += [f"heroes: card {h!r} has no picture in assets/attacker/cards" for h in (style.get("heroes") or {}).get("group", []) if h not in cards]
+        return errors
 
     def _deploy_corners(self, style, ring, cards, tap_card):
         """Corner style (attacks/super-barbar.yaml): per_corner taps on each corner, then siege and heroes. Returns (first drop time, abilities)."""
@@ -841,7 +951,7 @@ class Attacker:
             self._tap(cards[name], self.CARD_Y, spread=0.006)
             time.sleep(random.uniform(0.08, 0.2))
 
-        if troops.get("mode") == "drag": # Emre's spread attack (attacks/yayma.yaml)
+        if troops.get("mode") == "drag" or style.get("steps"): # Emre's spread attack and the step styles (attacks/yayma.yaml)
             battle_start, abilities = self._deploy_spread(style, ring, cards, shots)
         else:
             battle_start, abilities = self._deploy_corners(style, ring, cards, tap_card)
@@ -1350,13 +1460,23 @@ class Attacker:
                 logger.error("Not in home base. Aborting home attack.")
                 return
             
+            # The profile's style (panel Saldırı -> Dağıtım, 3A); a file that is gone falls back to yayma. It is checked
+            # before the search (2A): a style with an unknown step or card does not attack, nothing is half deployed
+            style = Settings_Handler.get("attack_style", "style", "yayma") or "yayma"
+            if not Path(Asset_Manager.resource_path(f"attacks/{style}.yaml")).exists():
+                logger.warning(f"Attack style {style} not found, using yayma")
+                style = "yayma"
+            try:
+                errors = self.check_style(self._panel_style(self.load_style(style)))
+            except Exception as e:
+                errors = [f"{type(e).__name__}: {e}"]
+            if errors:
+                logger.error(f"Attack style {style} has errors, not attacking: {'; '.join(errors)}")
+                send_notification(f"❌ Saldırı stili {style} hatalı, saldırı yapılmıyor:\n" + "\n".join(errors[:8]), key="style_error", every=3600)
+                return
+
             # Find a village worth attacking, then attack it
             if self.search(Settings_Handler.get_section("attack")) is not None:
-                # The profile's style (panel Saldırı -> Dağıtım, 3A); a file that is gone falls back to yayma
-                style = Settings_Handler.get("attack_style", "style", "yayma") or "yayma"
-                if not Path(Asset_Manager.resource_path(f"attacks/{style}.yaml")).exists():
-                    logger.warning(f"Attack style {style} not found, using yayma")
-                    style = "yayma"
                 self.scripted_attack(style, restart=restart)
             elif not in_home_base():
                 start_coc() # reset in case stuck on find a match screen
