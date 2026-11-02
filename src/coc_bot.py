@@ -135,6 +135,48 @@ class CoC_Bot:
         return d.strftime("%d.%m %H:%M")
 
     @staticmethod
+    def _th_text(arg=None):
+        """Telegram /th (Emre 02.11): without a level the walls of every Town Hall and this village's walls; "/th 16" the
+        max levels at that Town Hall. From assets/th_max.json, made from the game's data by scripts/th_max.py."""
+        import json, html
+        data = json.loads(Path(Asset_Manager.resource_path("assets/th_max.json")).read_text(encoding="utf-8"))
+        ths = data["th"]
+        if arg and arg.isdigit() and arg in ths:
+            t = ths[arg]
+            lines = [f"🏛 <b>TH{arg} en yüksek seviyeler</b> (adet × seviye)"]
+            for group, title in (("buildings", "Binalar"), ("traps", "Tuzaklar"), ("heroes", "Kahramanlar"), ("pets", "Evcil"), ("guardians", "Muhafızlar")):
+                rows = t.get(group) or {}
+                if not rows: continue
+                cell = lambda v: f"{v[0]}×{v[1]}" if isinstance(v, list) else str(v)
+                lines += ["", f"<b>{title}</b>", ", ".join(f"{html.escape(n, quote=False)} {cell(v)}" for n, v in sorted(rows.items()))]
+            lines.append(f"\n<i>Oyun verisi, {data['made']}</i>")
+            return "\n".join(lines)
+        lines = ["🧱 <b>Duvar: TH başına adet ve en yüksek seviye</b>"]
+        lines += [f"TH{n}: {ths[n]['buildings']['Wall'][0]} duvar · Sv{ths[n]['buildings']['Wall'][1]}" for n in sorted(ths, key=int) if int(n) >= 9 and "Wall" in ths[n]["buildings"]]
+        w = Cache_Manager.get("walls") or {}
+        if w.get("levels"): lines += ["", "Köyünde (son okuma): " + " · ".join(f"Sv{k}: {v}" for k, v in sorted(w["levels"].items(), key=lambda kv: int(kv[0])))]
+        lines.append("\n<i>Bir TH'nin bütün max seviyeleri: /th 16</i>")
+        return "\n".join(lines)
+
+    def _last_look(self):
+        """Emre 02.11: Stop keeps one last look at the village (builders, laboratory, potions, storage) for /ozet while the
+        bot waits. Only on the open village screen (the round has just ended there); menus are opened and closed, nothing
+        is tapped inside them."""
+        import time
+        Cache_Manager["stopped_at"] = None
+        try:
+            if Emulator_Manager.PROCESS_NAMES and not Emulator_Manager.check(): return logger.info("Last look skipped: emulator closed")
+            if not ADB_Manager.adbutils_device.shell("pidof com.supercell.clashofclans").strip(): return logger.info("Last look skipped: game closed")
+            if not in_home_base(): return logger.info("Last look skipped: not on the home village")
+            logger.info("Last look before stopping")
+            TEMP_CACHE["location"] = "home_base"
+            Resource_Reader.read()
+            if time.time() - (Cache_Manager.get("status") or {}).get("t", 0) > 600: self.upgrader.read_status()
+            Cache_Manager["stopped_at"] = time.time() # /ozet: "the rows below were read when stopping"
+        except (KeyboardInterrupt, SystemExit): raise
+        except Exception: logger.exception("CoC_Bot._last_look:")
+
+    @staticmethod
     def _walls_lines():
         """Emre 02.11 (2A): "🧱 Duvar · bugün 14" and the levels from the start of the day to now, "Sv13: 200 → 186". The
         walls at the top level are not in the builders menu: they are the panel's total minus the rows read."""
@@ -173,7 +215,11 @@ class CoC_Bot:
                  "hours": "🌙 Çalışma saatleri dışında", "error": "⚠️ Son turda hata, 1 dk sonra yeniden",
                  "rest": f"☕ Molada, devam {hm(rest_until)}", "daily": f"📵 Günlük sınır doldu, devam {self._when(rest_until)}"}.get(status)
         if isinstance(status, (int, float)): doing = f"🟢 Çalışıyor, sonraki tur {hm(status)}"
-        r = Resource_Reader.last or {}
+        stopped_at = Cache_Manager.get("stopped_at")
+        if status in ("idle", "paused") and stopped_at:
+            doing += f" ({hm(stopped_at)}; aşağıdakiler durdurulurken okundu)"
+        # A value the last read missed (02.11 16:20 elixir "?") is the last good one
+        r = Resource_Reader.good_values()
         store = lambda k: self._short(r.get(k)).lstrip("+")
         profile = (Settings_Handler.current or {}).get("profile")
         cap = f"/{d['cap']}" if d.get("cap") else ""
@@ -185,6 +231,10 @@ class CoC_Bot:
             lines += ["", "🏦 <b>Depo</b>", f"🟡 {store('gold')}   🟣 {store('elixir')}   ⚫ {store('dark')}   💎 {gems}"]
         if walls := self._walls_lines(): lines += [""] + walls
         st = Cache_Manager.get("status") or {}
+        # 02.11 16:20 the 05:13 reading was shown as if it were now ("Royal Champion bitti" while it was upgrading again):
+        # an old reading says so, and the builder count comes from the live counter on the village screen
+        old = st.get("t") and now - st["t"] > 2 * 3600
+        if old: lines += ["", f"⚠️ <b>Usta / lab listesi {self._when(st['t'])} okuması</b> ({int((now - st['t']) // 3600)} saat önce); bot bir sonraki turda okuyunca güncellenir"]
         fmt = self.upgrader.fmt_left
         def mmss(s): return f"{int(s) // 3600}h {int(s) % 3600 // 60}m" if s >= 3600 else f"{int(s) // 60}m {int(s) % 60}s"
         def section(kind, title, total, potion_name):
@@ -192,7 +242,9 @@ class CoC_Bot:
             if rows is None: return
             running = sorted((b for b in rows if b["end"] + b.get("prec", 0) > now), key=lambda b: b["end"])
             done = [b for b in rows if b["end"] + b.get("prec", 0) <= now]
-            busy = f" · {len(running)}/{total} dolu" if total else ""
+            free = r.get("builders_free") if kind == "builders" else None
+            busy_n = total - free if total and free is not None else len(running)
+            busy = f" · {busy_n}/{total} dolu" if total else ""
             lines.extend(["", f"{title}{busy}"])
             # A running potion (Emre 02.11): its time left, its speed, and every end below counted with it
             potion = st.get(f"{kind}_potion") or {}
@@ -211,8 +263,8 @@ class CoC_Bot:
                     work = max(0, b["left"] - speed * min(e, p0) - max(0, e - p0))
                     line += f" ⚡ <i>(iksirsiz {fmt(work)})</i>"
                 lines.append(line)
-            lines.extend(f"✅ {esc(b['name'])} bitti" for b in done)
-            if total and len(running) < total: lines.append(f"🔨 {total - len(running)} boş")
+            lines.extend((f"❔ {esc(b['name'])} bitmiş olmalı (yeniden okunmadı)" if old else f"✅ {esc(b['name'])} bitti") for b in done)
+            if total and busy_n < total: lines.append(f"🔨 {total - busy_n} boş")
         section("builders", "👷 <b>Ustalar</b>", r.get("builders_total"), "İnşaatçı iksiri")
         section("lab", "🔬 <b>Laboratuvar</b>", None, "Araştırma iksiri")
         if "pet_busy" in st: lines += ["", "🐾 <b>Evcil hayvan</b> · " + ("meşgul" if st["pet_busy"] else "boş")]
@@ -250,7 +302,7 @@ class CoC_Bot:
         api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
         offset = None
         try:
-            requests.post(f"{api}/setMyCommands", json={"commands": [{"command": "ozet", "description": "Anlık özet"}]}, timeout=(5, 10))
+            requests.post(f"{api}/setMyCommands", json={"commands": [{"command": "ozet", "description": "Anlık özet"}, {"command": "th", "description": "TH max seviyeleri (/th 16)"}]}, timeout=(5, 10))
             old = requests.get(f"{api}/getUpdates", params={"offset": -1, "timeout": 0}, timeout=(5, 10)).json().get("result", [])
             if old: offset = old[-1]["update_id"] + 1
         except (KeyboardInterrupt, SystemExit): raise
@@ -267,7 +319,8 @@ class CoC_Bot:
                     words = re.sub(r"[^\w/@ ]", " ", text).split()
                     cmd = words[0].split("@")[0] if words else ""
                     if cmd in ("/ozet", "/özet", "ozet", "özet"): send_notification(self._summary(), html=True)
-                    elif cmd in ("/start", "/help", "/yardim", "/yardım"): send_notification("Komutlar:\n/ozet — anlık özet")
+                    elif cmd in ("/th", "th"): send_notification(self._th_text(words[1] if len(words) > 1 else None), html=True)
+                    elif cmd in ("/start", "/help", "/yardim", "/yardım"): send_notification("Komutlar:\n/ozet — anlık özet\n/th — duvar tablosu, /th 16 — TH16 max seviyeleri")
             except (KeyboardInterrupt, SystemExit): raise
             except Exception:
                 time.sleep(30) # no network: try again later
@@ -330,7 +383,9 @@ class CoC_Bot:
                         logger.info("Paused, waiting" if mode == "paused" else "Waiting for Start")
                         update_status(mode)
                         if self.was_running:
-                            send_notification("⏸ Bot duraklatıldı" if mode == "paused" else "⏹ Bot durduruldu (panelden)")
+                            self._last_look()
+                            send_notification(("⏸ Bot duraklatıldı" if mode == "paused" else "⏹ Bot durduruldu (panelden)")
+                                              + " · son okuma bitti, oyuna geçebilirsin; /ozet bunu gösterir")
                     self.was_running = False
                     waiting_logged = mode
                     time.sleep(5)
@@ -376,6 +431,7 @@ class CoC_Bot:
                 if not self.was_running:
                     send_notification("▶️ Bot başladı")
                     self.was_running = True
+                    Cache_Manager["stopped_at"] = None
                 if (profile := all_settings.get("profile")) and profile != self.last_profile:
                     logger.info(f"Profile: {profile}")
                     if self.last_profile is not None: send_notification(f"🔀 Profil: {profile}", silent=True)

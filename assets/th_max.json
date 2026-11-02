@@ -1,0 +1,2560 @@
+{
+ "source": "ClashKingInc/ClashKingAssets static_data",
+ "made": "2026-11-02",
+ "th": {
+  "1": {
+   "buildings": {
+    "Army Camp": [
+     1,
+     1
+    ],
+    "Elixir Collector": [
+     1,
+     1
+    ],
+    "Elixir Storage": [
+     1,
+     1
+    ],
+    "Gold Mine": [
+     1,
+     1
+    ],
+    "Gold Storage": [
+     1,
+     1
+    ],
+    "Barracks": [
+     1,
+     1
+    ],
+    "Cannon": [
+     1,
+     1
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     1,
+     1
+    ],
+    "Spring Trap": [
+     1,
+     1
+    ],
+    "Air Bomb": [
+     1,
+     1
+    ],
+    "Giant Bomb": [
+     1,
+     1
+    ],
+    "Seeking Air Mine": [
+     1,
+     1
+    ],
+    "Skeleton Trap": [
+     1,
+     1
+    ]
+   },
+   "heroes": {},
+   "pets": {},
+   "guardians": {}
+  },
+  "2": {
+   "buildings": {
+    "Army Camp": [
+     1,
+     2
+    ],
+    "Elixir Collector": [
+     2,
+     4
+    ],
+    "Elixir Storage": [
+     1,
+     3
+    ],
+    "Gold Mine": [
+     2,
+     4
+    ],
+    "Gold Storage": [
+     1,
+     3
+    ],
+    "Barracks": [
+     1,
+     4
+    ],
+    "Cannon": [
+     2,
+     3
+    ],
+    "Archer Tower": [
+     1,
+     2
+    ],
+    "Wall": [
+     25,
+     2
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     1,
+     1
+    ],
+    "Spring Trap": [
+     1,
+     1
+    ],
+    "Air Bomb": [
+     1,
+     1
+    ],
+    "Giant Bomb": [
+     1,
+     1
+    ],
+    "Seeking Air Mine": [
+     1,
+     1
+    ],
+    "Skeleton Trap": [
+     1,
+     1
+    ]
+   },
+   "heroes": {},
+   "pets": {},
+   "guardians": {}
+  },
+  "3": {
+   "buildings": {
+    "Army Camp": [
+     2,
+     3
+    ],
+    "Elixir Collector": [
+     3,
+     6
+    ],
+    "Elixir Storage": [
+     2,
+     6
+    ],
+    "Gold Mine": [
+     3,
+     6
+    ],
+    "Gold Storage": [
+     2,
+     6
+    ],
+    "Barracks": [
+     1,
+     5
+    ],
+    "Laboratory": [
+     1,
+     1
+    ],
+    "Cannon": [
+     2,
+     4
+    ],
+    "Archer Tower": [
+     1,
+     3
+    ],
+    "Wall": [
+     50,
+     3
+    ],
+    "Mortar": [
+     1,
+     1
+    ],
+    "Clan Castle": [
+     1,
+     1
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     2,
+     2
+    ],
+    "Spring Trap": [
+     1,
+     1
+    ],
+    "Air Bomb": [
+     1,
+     1
+    ],
+    "Giant Bomb": [
+     1,
+     1
+    ],
+    "Seeking Air Mine": [
+     1,
+     1
+    ],
+    "Skeleton Trap": [
+     1,
+     1
+    ]
+   },
+   "heroes": {},
+   "pets": {},
+   "guardians": {}
+  },
+  "4": {
+   "buildings": {
+    "Army Camp": [
+     2,
+     4
+    ],
+    "Elixir Collector": [
+     4,
+     8
+    ],
+    "Elixir Storage": [
+     2,
+     8
+    ],
+    "Gold Mine": [
+     4,
+     8
+    ],
+    "Gold Storage": [
+     2,
+     8
+    ],
+    "Barracks": [
+     1,
+     6
+    ],
+    "Laboratory": [
+     1,
+     2
+    ],
+    "Cannon": [
+     2,
+     5
+    ],
+    "Archer Tower": [
+     2,
+     4
+    ],
+    "Wall": [
+     75,
+     4
+    ],
+    "Air Defense": [
+     1,
+     2
+    ],
+    "Mortar": [
+     1,
+     2
+    ],
+    "Clan Castle": [
+     1,
+     2
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hero Hall": [
+     1,
+     1
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     2,
+     2
+    ],
+    "Spring Trap": [
+     2,
+     1
+    ],
+    "Air Bomb": [
+     1,
+     1
+    ],
+    "Giant Bomb": [
+     1,
+     1
+    ],
+    "Seeking Air Mine": [
+     1,
+     1
+    ],
+    "Skeleton Trap": [
+     1,
+     1
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 1
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "5": {
+   "buildings": {
+    "Army Camp": [
+     3,
+     5
+    ],
+    "Elixir Collector": [
+     5,
+     10
+    ],
+    "Elixir Storage": [
+     2,
+     9
+    ],
+    "Gold Mine": [
+     5,
+     10
+    ],
+    "Gold Storage": [
+     2,
+     9
+    ],
+    "Barracks": [
+     1,
+     7
+    ],
+    "Laboratory": [
+     1,
+     3
+    ],
+    "Cannon": [
+     3,
+     6
+    ],
+    "Archer Tower": [
+     3,
+     6
+    ],
+    "Wall": [
+     100,
+     5
+    ],
+    "Wizard Tower": [
+     1,
+     2
+    ],
+    "Air Defense": [
+     1,
+     3
+    ],
+    "Mortar": [
+     1,
+     3
+    ],
+    "Clan Castle": [
+     1,
+     2
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Spell Factory": [
+     1,
+     1
+    ],
+    "Hero Hall": [
+     1,
+     1
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     4,
+     3
+    ],
+    "Spring Trap": [
+     2,
+     1
+    ],
+    "Air Bomb": [
+     2,
+     2
+    ],
+    "Giant Bomb": [
+     1,
+     1
+    ],
+    "Seeking Air Mine": [
+     1,
+     1
+    ],
+    "Skeleton Trap": [
+     1,
+     1
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 1,
+    "Battle Machine": 5
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "6": {
+   "buildings": {
+    "Army Camp": [
+     3,
+     6
+    ],
+    "Elixir Collector": [
+     6,
+     10
+    ],
+    "Elixir Storage": [
+     2,
+     10
+    ],
+    "Gold Mine": [
+     6,
+     10
+    ],
+    "Gold Storage": [
+     2,
+     10
+    ],
+    "Barracks": [
+     1,
+     8
+    ],
+    "Laboratory": [
+     1,
+     4
+    ],
+    "Cannon": [
+     3,
+     7
+    ],
+    "Archer Tower": [
+     3,
+     7
+    ],
+    "Wall": [
+     125,
+     6
+    ],
+    "Wizard Tower": [
+     2,
+     3
+    ],
+    "Air Defense": [
+     2,
+     4
+    ],
+    "Mortar": [
+     2,
+     4
+    ],
+    "Clan Castle": [
+     1,
+     3
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Spell Factory": [
+     1,
+     2
+    ],
+    "Air Sweeper": [
+     1,
+     2
+    ],
+    "Hero Hall": [
+     1,
+     1
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     4,
+     3
+    ],
+    "Spring Trap": [
+     4,
+     1
+    ],
+    "Air Bomb": [
+     2,
+     2
+    ],
+    "Giant Bomb": [
+     1,
+     2
+    ],
+    "Seeking Air Mine": [
+     1,
+     1
+    ],
+    "Skeleton Trap": [
+     1,
+     1
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 1,
+    "Battle Machine": 10
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "7": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     6
+    ],
+    "Elixir Collector": [
+     6,
+     11
+    ],
+    "Elixir Storage": [
+     2,
+     11
+    ],
+    "Gold Mine": [
+     6,
+     11
+    ],
+    "Gold Storage": [
+     2,
+     11
+    ],
+    "Barracks": [
+     1,
+     9
+    ],
+    "Laboratory": [
+     1,
+     5
+    ],
+    "Cannon": [
+     5,
+     8
+    ],
+    "Archer Tower": [
+     4,
+     8
+    ],
+    "Wall": [
+     175,
+     7
+    ],
+    "Wizard Tower": [
+     2,
+     4
+    ],
+    "Air Defense": [
+     3,
+     5
+    ],
+    "Mortar": [
+     3,
+     5
+    ],
+    "Clan Castle": [
+     1,
+     3
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hidden Tesla": [
+     2,
+     3
+    ],
+    "Spell Factory": [
+     1,
+     3
+    ],
+    "Dark Elixir Drill": [
+     1,
+     3
+    ],
+    "Dark Elixir Storage": [
+     1,
+     2
+    ],
+    "Dark Barracks": [
+     1,
+     2
+    ],
+    "Air Sweeper": [
+     1,
+     3
+    ],
+    "Hero Hall": [
+     1,
+     1
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     6,
+     4
+    ],
+    "Spring Trap": [
+     4,
+     2
+    ],
+    "Air Bomb": [
+     2,
+     3
+    ],
+    "Giant Bomb": [
+     2,
+     2
+    ],
+    "Seeking Air Mine": [
+     1,
+     1
+    ],
+    "Skeleton Trap": [
+     1,
+     1
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 10,
+    "Battle Machine": 20
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "8": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     6
+    ],
+    "Elixir Collector": [
+     6,
+     12
+    ],
+    "Elixir Storage": [
+     3,
+     11
+    ],
+    "Gold Mine": [
+     6,
+     12
+    ],
+    "Gold Storage": [
+     3,
+     11
+    ],
+    "Barracks": [
+     1,
+     10
+    ],
+    "Laboratory": [
+     1,
+     6
+    ],
+    "Cannon": [
+     5,
+     10
+    ],
+    "Archer Tower": [
+     5,
+     10
+    ],
+    "Wall": [
+     225,
+     8
+    ],
+    "Wizard Tower": [
+     3,
+     6
+    ],
+    "Air Defense": [
+     3,
+     6
+    ],
+    "Mortar": [
+     4,
+     6
+    ],
+    "Clan Castle": [
+     1,
+     4
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hidden Tesla": [
+     3,
+     6
+    ],
+    "Spell Factory": [
+     1,
+     3
+    ],
+    "Dark Elixir Drill": [
+     2,
+     3
+    ],
+    "Dark Elixir Storage": [
+     1,
+     4
+    ],
+    "Dark Barracks": [
+     1,
+     4
+    ],
+    "Air Sweeper": [
+     1,
+     4
+    ],
+    "Dark Spell Factory": [
+     1,
+     2
+    ],
+    "Bomb Tower": [
+     1,
+     2
+    ],
+    "Blacksmith": [
+     1,
+     1
+    ],
+    "Hero Hall": [
+     1,
+     2
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     6,
+     5
+    ],
+    "Spring Trap": [
+     6,
+     3
+    ],
+    "Air Bomb": [
+     4,
+     3
+    ],
+    "Giant Bomb": [
+     3,
+     3
+    ],
+    "Seeking Air Mine": [
+     2,
+     1
+    ],
+    "Skeleton Trap": [
+     2,
+     2
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 20,
+    "Archer Queen": 10,
+    "Battle Machine": 25,
+    "Battle Copter": 25
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "9": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     7
+    ],
+    "Elixir Collector": [
+     7,
+     12
+    ],
+    "Elixir Storage": [
+     4,
+     11
+    ],
+    "Gold Mine": [
+     7,
+     12
+    ],
+    "Gold Storage": [
+     4,
+     11
+    ],
+    "Barracks": [
+     1,
+     11
+    ],
+    "Laboratory": [
+     1,
+     7
+    ],
+    "Cannon": [
+     5,
+     11
+    ],
+    "Archer Tower": [
+     6,
+     11
+    ],
+    "Wall": [
+     250,
+     10
+    ],
+    "Wizard Tower": [
+     4,
+     7
+    ],
+    "Air Defense": [
+     4,
+     7
+    ],
+    "Mortar": [
+     4,
+     7
+    ],
+    "Clan Castle": [
+     1,
+     5
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hidden Tesla": [
+     4,
+     7
+    ],
+    "Spell Factory": [
+     1,
+     4
+    ],
+    "X-Bow": [
+     2,
+     3
+    ],
+    "Dark Elixir Drill": [
+     3,
+     6
+    ],
+    "Dark Elixir Storage": [
+     1,
+     6
+    ],
+    "Dark Barracks": [
+     1,
+     6
+    ],
+    "Air Sweeper": [
+     2,
+     5
+    ],
+    "Dark Spell Factory": [
+     1,
+     4
+    ],
+    "Bomb Tower": [
+     1,
+     3
+    ],
+    "Blacksmith": [
+     1,
+     2
+    ],
+    "Hero Hall": [
+     1,
+     3
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     6,
+     6
+    ],
+    "Spring Trap": [
+     6,
+     4
+    ],
+    "Air Bomb": [
+     4,
+     4
+    ],
+    "Giant Bomb": [
+     4,
+     3
+    ],
+    "Seeking Air Mine": [
+     4,
+     2
+    ],
+    "Skeleton Trap": [
+     2,
+     3
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 30,
+    "Archer Queen": 30,
+    "Battle Machine": 30,
+    "Battle Copter": 30,
+    "Minion Prince": 10
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "10": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     8
+    ],
+    "Elixir Collector": [
+     7,
+     13
+    ],
+    "Elixir Storage": [
+     4,
+     11
+    ],
+    "Gold Mine": [
+     7,
+     13
+    ],
+    "Gold Storage": [
+     4,
+     11
+    ],
+    "Barracks": [
+     1,
+     12
+    ],
+    "Laboratory": [
+     1,
+     8
+    ],
+    "Cannon": [
+     6,
+     13
+    ],
+    "Archer Tower": [
+     7,
+     13
+    ],
+    "Wall": [
+     275,
+     11
+    ],
+    "Wizard Tower": [
+     4,
+     9
+    ],
+    "Air Defense": [
+     4,
+     8
+    ],
+    "Mortar": [
+     4,
+     8
+    ],
+    "Clan Castle": [
+     1,
+     6
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hidden Tesla": [
+     4,
+     8
+    ],
+    "Spell Factory": [
+     1,
+     5
+    ],
+    "X-Bow": [
+     3,
+     4
+    ],
+    "Dark Elixir Drill": [
+     3,
+     7
+    ],
+    "Dark Elixir Storage": [
+     1,
+     6
+    ],
+    "Dark Barracks": [
+     1,
+     7
+    ],
+    "Inferno Tower": [
+     2,
+     3
+    ],
+    "Air Sweeper": [
+     2,
+     6
+    ],
+    "Dark Spell Factory": [
+     1,
+     5
+    ],
+    "Bomb Tower": [
+     2,
+     4
+    ],
+    "Blacksmith": [
+     1,
+     3
+    ],
+    "Hero Hall": [
+     1,
+     4
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     6,
+     7
+    ],
+    "Spring Trap": [
+     6,
+     5
+    ],
+    "Air Bomb": [
+     5,
+     4
+    ],
+    "Giant Bomb": [
+     5,
+     4
+    ],
+    "Seeking Air Mine": [
+     5,
+     3
+    ],
+    "Skeleton Trap": [
+     3,
+     4
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 40,
+    "Archer Queen": 40,
+    "Battle Machine": 35,
+    "Battle Copter": 35,
+    "Minion Prince": 20
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "11": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     9
+    ],
+    "Elixir Collector": [
+     7,
+     14
+    ],
+    "Elixir Storage": [
+     4,
+     12
+    ],
+    "Gold Mine": [
+     7,
+     14
+    ],
+    "Gold Storage": [
+     4,
+     12
+    ],
+    "Barracks": [
+     1,
+     13
+    ],
+    "Laboratory": [
+     1,
+     9
+    ],
+    "Cannon": [
+     7,
+     15
+    ],
+    "Archer Tower": [
+     8,
+     15
+    ],
+    "Wall": [
+     300,
+     12
+    ],
+    "Wizard Tower": [
+     5,
+     10
+    ],
+    "Air Defense": [
+     4,
+     9
+    ],
+    "Mortar": [
+     4,
+     10
+    ],
+    "Clan Castle": [
+     1,
+     7
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hidden Tesla": [
+     4,
+     9
+    ],
+    "Spell Factory": [
+     1,
+     6
+    ],
+    "X-Bow": [
+     4,
+     5
+    ],
+    "Dark Elixir Drill": [
+     3,
+     8
+    ],
+    "Dark Elixir Storage": [
+     1,
+     6
+    ],
+    "Dark Barracks": [
+     1,
+     8
+    ],
+    "Inferno Tower": [
+     2,
+     5
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     5
+    ],
+    "Eagle Artillery": [
+     1,
+     2
+    ],
+    "Bomb Tower": [
+     2,
+     6
+    ],
+    "Blacksmith": [
+     1,
+     4
+    ],
+    "Hero Hall": [
+     1,
+     5
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     6,
+     8
+    ],
+    "Spring Trap": [
+     6,
+     6
+    ],
+    "Air Bomb": [
+     5,
+     5
+    ],
+    "Giant Bomb": [
+     5,
+     5
+    ],
+    "Seeking Air Mine": [
+     5,
+     3
+    ],
+    "Skeleton Trap": [
+     3,
+     4
+    ],
+    "Tornado Trap": [
+     1,
+     2
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 50,
+    "Archer Queen": 50,
+    "Grand Warden": 20,
+    "Battle Machine": 35,
+    "Battle Copter": 35,
+    "Minion Prince": 30
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "12": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     10
+    ],
+    "Elixir Collector": [
+     7,
+     15
+    ],
+    "Elixir Storage": [
+     4,
+     13
+    ],
+    "Gold Mine": [
+     7,
+     15
+    ],
+    "Gold Storage": [
+     4,
+     13
+    ],
+    "Barracks": [
+     1,
+     14
+    ],
+    "Laboratory": [
+     1,
+     10
+    ],
+    "Cannon": [
+     7,
+     17
+    ],
+    "Archer Tower": [
+     8,
+     17
+    ],
+    "Wall": [
+     300,
+     13
+    ],
+    "Wizard Tower": [
+     5,
+     11
+    ],
+    "Air Defense": [
+     4,
+     10
+    ],
+    "Mortar": [
+     4,
+     12
+    ],
+    "Clan Castle": [
+     1,
+     8
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hidden Tesla": [
+     5,
+     10
+    ],
+    "Spell Factory": [
+     1,
+     6
+    ],
+    "X-Bow": [
+     4,
+     6
+    ],
+    "Dark Elixir Drill": [
+     3,
+     9
+    ],
+    "Dark Elixir Storage": [
+     1,
+     7
+    ],
+    "Dark Barracks": [
+     1,
+     9
+    ],
+    "Inferno Tower": [
+     3,
+     6
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     6
+    ],
+    "Eagle Artillery": [
+     1,
+     3
+    ],
+    "Bomb Tower": [
+     2,
+     7
+    ],
+    "Workshop": [
+     1,
+     3
+    ],
+    "Blacksmith": [
+     1,
+     5
+    ],
+    "Hero Hall": [
+     1,
+     6
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     6,
+     8
+    ],
+    "Spring Trap": [
+     8,
+     7
+    ],
+    "Air Bomb": [
+     6,
+     6
+    ],
+    "Giant Bomb": [
+     6,
+     5
+    ],
+    "Seeking Air Mine": [
+     6,
+     3
+    ],
+    "Skeleton Trap": [
+     3,
+     4
+    ],
+    "Tornado Trap": [
+     1,
+     3
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 65,
+    "Archer Queen": 65,
+    "Grand Warden": 40,
+    "Battle Machine": 35,
+    "Battle Copter": 35,
+    "Minion Prince": 40
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "13": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     11
+    ],
+    "Elixir Collector": [
+     7,
+     15
+    ],
+    "Elixir Storage": [
+     4,
+     14
+    ],
+    "Gold Mine": [
+     7,
+     15
+    ],
+    "Gold Storage": [
+     4,
+     14
+    ],
+    "Barracks": [
+     1,
+     15
+    ],
+    "Laboratory": [
+     1,
+     11
+    ],
+    "Cannon": [
+     7,
+     19
+    ],
+    "Archer Tower": [
+     8,
+     19
+    ],
+    "Wall": [
+     300,
+     14
+    ],
+    "Wizard Tower": [
+     5,
+     13
+    ],
+    "Air Defense": [
+     4,
+     11
+    ],
+    "Mortar": [
+     4,
+     13
+    ],
+    "Clan Castle": [
+     1,
+     9
+    ],
+    "Builder's Hut": [
+     5,
+     1
+    ],
+    "Hidden Tesla": [
+     5,
+     12
+    ],
+    "Spell Factory": [
+     1,
+     7
+    ],
+    "X-Bow": [
+     4,
+     8
+    ],
+    "Dark Elixir Drill": [
+     3,
+     9
+    ],
+    "Dark Elixir Storage": [
+     1,
+     8
+    ],
+    "Dark Barracks": [
+     1,
+     10
+    ],
+    "Inferno Tower": [
+     3,
+     7
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     6
+    ],
+    "Eagle Artillery": [
+     1,
+     4
+    ],
+    "Bomb Tower": [
+     2,
+     8
+    ],
+    "Workshop": [
+     1,
+     5
+    ],
+    "Scattershot": [
+     2,
+     2
+    ],
+    "Blacksmith": [
+     1,
+     6
+    ],
+    "Hero Hall": [
+     1,
+     7
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     7,
+     9
+    ],
+    "Spring Trap": [
+     9,
+     8
+    ],
+    "Air Bomb": [
+     6,
+     8
+    ],
+    "Giant Bomb": [
+     6,
+     7
+    ],
+    "Seeking Air Mine": [
+     7,
+     4
+    ],
+    "Skeleton Trap": [
+     3,
+     4
+    ],
+    "Tornado Trap": [
+     1,
+     3
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 75,
+    "Archer Queen": 75,
+    "Grand Warden": 50,
+    "Battle Machine": 35,
+    "Royal Champion": 25,
+    "Battle Copter": 35,
+    "Minion Prince": 50
+   },
+   "pets": {},
+   "guardians": {}
+  },
+  "14": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     11
+    ],
+    "Elixir Collector": [
+     7,
+     16
+    ],
+    "Elixir Storage": [
+     4,
+     15
+    ],
+    "Gold Mine": [
+     7,
+     16
+    ],
+    "Gold Storage": [
+     4,
+     15
+    ],
+    "Barracks": [
+     1,
+     16
+    ],
+    "Laboratory": [
+     1,
+     12
+    ],
+    "Cannon": [
+     7,
+     20
+    ],
+    "Archer Tower": [
+     8,
+     20
+    ],
+    "Wall": [
+     325,
+     15
+    ],
+    "Wizard Tower": [
+     5,
+     14
+    ],
+    "Air Defense": [
+     4,
+     12
+    ],
+    "Mortar": [
+     4,
+     14
+    ],
+    "Clan Castle": [
+     1,
+     10
+    ],
+    "Builder's Hut": [
+     5,
+     4
+    ],
+    "Hidden Tesla": [
+     5,
+     13
+    ],
+    "Spell Factory": [
+     1,
+     7
+    ],
+    "X-Bow": [
+     4,
+     9
+    ],
+    "Dark Elixir Drill": [
+     3,
+     10
+    ],
+    "Dark Elixir Storage": [
+     1,
+     9
+    ],
+    "Dark Barracks": [
+     1,
+     11
+    ],
+    "Inferno Tower": [
+     3,
+     8
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     7
+    ],
+    "Eagle Artillery": [
+     1,
+     5
+    ],
+    "Bomb Tower": [
+     2,
+     9
+    ],
+    "Workshop": [
+     1,
+     6
+    ],
+    "Scattershot": [
+     2,
+     3
+    ],
+    "Pet House": [
+     1,
+     4
+    ],
+    "Blacksmith": [
+     1,
+     7
+    ],
+    "Hero Hall": [
+     1,
+     8
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     8,
+     10
+    ],
+    "Spring Trap": [
+     9,
+     9
+    ],
+    "Air Bomb": [
+     7,
+     9
+    ],
+    "Giant Bomb": [
+     7,
+     8
+    ],
+    "Seeking Air Mine": [
+     8,
+     4
+    ],
+    "Skeleton Trap": [
+     4,
+     4
+    ],
+    "Tornado Trap": [
+     1,
+     3
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 85,
+    "Archer Queen": 85,
+    "Grand Warden": 60,
+    "Battle Machine": 35,
+    "Royal Champion": 30,
+    "Battle Copter": 35,
+    "Minion Prince": 60
+   },
+   "pets": {
+    "L.A.S.S.I": 10,
+    "Mighty Yak": 10,
+    "Electro Owl": 10,
+    "Unicorn": 10
+   },
+   "guardians": {}
+  },
+  "15": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     12
+    ],
+    "Elixir Collector": [
+     7,
+     16
+    ],
+    "Elixir Storage": [
+     4,
+     16
+    ],
+    "Gold Mine": [
+     7,
+     16
+    ],
+    "Gold Storage": [
+     4,
+     16
+    ],
+    "Barracks": [
+     1,
+     17
+    ],
+    "Laboratory": [
+     1,
+     13
+    ],
+    "Cannon": [
+     7,
+     21
+    ],
+    "Archer Tower": [
+     8,
+     21
+    ],
+    "Wall": [
+     325,
+     16
+    ],
+    "Wizard Tower": [
+     5,
+     15
+    ],
+    "Air Defense": [
+     4,
+     13
+    ],
+    "Mortar": [
+     4,
+     15
+    ],
+    "Clan Castle": [
+     1,
+     11
+    ],
+    "Builder's Hut": [
+     5,
+     5
+    ],
+    "Hidden Tesla": [
+     5,
+     14
+    ],
+    "Spell Factory": [
+     1,
+     8
+    ],
+    "X-Bow": [
+     4,
+     10
+    ],
+    "Dark Elixir Drill": [
+     3,
+     10
+    ],
+    "Dark Elixir Storage": [
+     1,
+     10
+    ],
+    "Dark Barracks": [
+     1,
+     12
+    ],
+    "Inferno Tower": [
+     3,
+     9
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     8
+    ],
+    "Eagle Artillery": [
+     1,
+     6
+    ],
+    "Bomb Tower": [
+     2,
+     10
+    ],
+    "Workshop": [
+     1,
+     7
+    ],
+    "Scattershot": [
+     2,
+     4
+    ],
+    "Pet House": [
+     1,
+     8
+    ],
+    "Blacksmith": [
+     1,
+     8
+    ],
+    "Hero Hall": [
+     1,
+     9
+    ],
+    "Spell Tower": [
+     2,
+     3
+    ],
+    "Monolith": [
+     1,
+     2
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     8,
+     11
+    ],
+    "Spring Trap": [
+     9,
+     10
+    ],
+    "Air Bomb": [
+     7,
+     10
+    ],
+    "Giant Bomb": [
+     7,
+     9
+    ],
+    "Seeking Air Mine": [
+     8,
+     5
+    ],
+    "Skeleton Trap": [
+     4,
+     4
+    ],
+    "Tornado Trap": [
+     1,
+     3
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 90,
+    "Archer Queen": 90,
+    "Grand Warden": 65,
+    "Battle Machine": 35,
+    "Royal Champion": 40,
+    "Battle Copter": 35,
+    "Minion Prince": 70,
+    "Dragon Duke": 10
+   },
+   "pets": {
+    "L.A.S.S.I": 15,
+    "Mighty Yak": 15,
+    "Electro Owl": 10,
+    "Unicorn": 10,
+    "Phoenix": 10,
+    "Poison Lizard": 10,
+    "Diggy": 10,
+    "Frosty": 10
+   },
+   "guardians": {}
+  },
+  "16": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     12
+    ],
+    "Elixir Collector": [
+     7,
+     17
+    ],
+    "Elixir Storage": [
+     4,
+     17
+    ],
+    "Gold Mine": [
+     7,
+     17
+    ],
+    "Gold Storage": [
+     4,
+     17
+    ],
+    "Barracks": [
+     1,
+     18
+    ],
+    "Laboratory": [
+     1,
+     14
+    ],
+    "Cannon": [
+     7,
+     21
+    ],
+    "Archer Tower": [
+     8,
+     21
+    ],
+    "Wall": [
+     325,
+     17
+    ],
+    "Wizard Tower": [
+     5,
+     16
+    ],
+    "Air Defense": [
+     4,
+     14
+    ],
+    "Mortar": [
+     4,
+     16
+    ],
+    "Clan Castle": [
+     1,
+     12
+    ],
+    "Builder's Hut": [
+     5,
+     6
+    ],
+    "Hidden Tesla": [
+     5,
+     15
+    ],
+    "Spell Factory": [
+     1,
+     9
+    ],
+    "X-Bow": [
+     4,
+     11
+    ],
+    "Dark Elixir Drill": [
+     3,
+     11
+    ],
+    "Dark Elixir Storage": [
+     1,
+     11
+    ],
+    "Dark Barracks": [
+     1,
+     13
+    ],
+    "Inferno Tower": [
+     3,
+     10
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     8
+    ],
+    "Eagle Artillery": [
+     1,
+     7
+    ],
+    "Bomb Tower": [
+     2,
+     11
+    ],
+    "Workshop": [
+     1,
+     8
+    ],
+    "Scattershot": [
+     2,
+     5
+    ],
+    "Pet House": [
+     1,
+     10
+    ],
+    "Blacksmith": [
+     1,
+     9
+    ],
+    "Hero Hall": [
+     1,
+     10
+    ],
+    "Spell Tower": [
+     2,
+     3
+    ],
+    "Monolith": [
+     1,
+     3
+    ],
+    "Multi-Archer Tower": [
+     2,
+     2
+    ],
+    "Ricochet Cannon": [
+     2,
+     2
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     8,
+     12
+    ],
+    "Spring Trap": [
+     9,
+     11
+    ],
+    "Air Bomb": [
+     7,
+     11
+    ],
+    "Giant Bomb": [
+     7,
+     10
+    ],
+    "Seeking Air Mine": [
+     8,
+     6
+    ],
+    "Skeleton Trap": [
+     4,
+     4
+    ],
+    "Tornado Trap": [
+     1,
+     3
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 95,
+    "Archer Queen": 95,
+    "Grand Warden": 70,
+    "Battle Machine": 35,
+    "Royal Champion": 45,
+    "Battle Copter": 35,
+    "Minion Prince": 80,
+    "Dragon Duke": 15
+   },
+   "pets": {
+    "L.A.S.S.I": 15,
+    "Mighty Yak": 15,
+    "Electro Owl": 15,
+    "Unicorn": 10,
+    "Phoenix": 10,
+    "Poison Lizard": 10,
+    "Diggy": 10,
+    "Frosty": 10,
+    "Spirit Fox": 10,
+    "Angry Jelly": 10
+   },
+   "guardians": {}
+  },
+  "17": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     13
+    ],
+    "Elixir Collector": [
+     7,
+     17
+    ],
+    "Elixir Storage": [
+     4,
+     18
+    ],
+    "Gold Mine": [
+     7,
+     17
+    ],
+    "Gold Storage": [
+     4,
+     18
+    ],
+    "Barracks": [
+     1,
+     19
+    ],
+    "Laboratory": [
+     1,
+     15
+    ],
+    "Cannon": [
+     7,
+     21
+    ],
+    "Archer Tower": [
+     9,
+     21
+    ],
+    "Wall": [
+     325,
+     18
+    ],
+    "Wizard Tower": [
+     5,
+     17
+    ],
+    "Air Defense": [
+     4,
+     15
+    ],
+    "Mortar": [
+     4,
+     17
+    ],
+    "Clan Castle": [
+     1,
+     13
+    ],
+    "Builder's Hut": [
+     5,
+     7
+    ],
+    "Hidden Tesla": [
+     5,
+     16
+    ],
+    "Spell Factory": [
+     1,
+     9
+    ],
+    "X-Bow": [
+     4,
+     12
+    ],
+    "Dark Elixir Drill": [
+     3,
+     11
+    ],
+    "Dark Elixir Storage": [
+     1,
+     12
+    ],
+    "Dark Barracks": [
+     1,
+     13
+    ],
+    "Inferno Tower": [
+     3,
+     11
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     8
+    ],
+    "Eagle Artillery": [
+     1,
+     7
+    ],
+    "Bomb Tower": [
+     2,
+     12
+    ],
+    "Workshop": [
+     1,
+     9
+    ],
+    "Scattershot": [
+     2,
+     6
+    ],
+    "Pet House": [
+     1,
+     11
+    ],
+    "Blacksmith": [
+     1,
+     10
+    ],
+    "Hero Hall": [
+     1,
+     11
+    ],
+    "Spell Tower": [
+     2,
+     4
+    ],
+    "Monolith": [
+     1,
+     4
+    ],
+    "Multi-Gear Tower": [
+     1,
+     2
+    ],
+    "Multi-Archer Tower": [
+     3,
+     3
+    ],
+    "Ricochet Cannon": [
+     3,
+     3
+    ],
+    "Firespitter": [
+     2,
+     2
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     8,
+     13
+    ],
+    "Spring Trap": [
+     9,
+     12
+    ],
+    "Air Bomb": [
+     7,
+     12
+    ],
+    "Giant Bomb": [
+     8,
+     11
+    ],
+    "Seeking Air Mine": [
+     9,
+     7
+    ],
+    "Skeleton Trap": [
+     4,
+     4
+    ],
+    "Tornado Trap": [
+     1,
+     3
+    ],
+    "Giga Bomb": [
+     1,
+     3
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 100,
+    "Archer Queen": 100,
+    "Grand Warden": 75,
+    "Battle Machine": 35,
+    "Royal Champion": 50,
+    "Battle Copter": 35,
+    "Minion Prince": 90,
+    "Dragon Duke": 20
+   },
+   "pets": {
+    "L.A.S.S.I": 15,
+    "Mighty Yak": 15,
+    "Electro Owl": 15,
+    "Unicorn": 15,
+    "Phoenix": 10,
+    "Poison Lizard": 15,
+    "Diggy": 10,
+    "Frosty": 15,
+    "Spirit Fox": 10,
+    "Angry Jelly": 10,
+    "Sneezy": 10
+   },
+   "guardians": {}
+  },
+  "18": {
+   "buildings": {
+    "Army Camp": [
+     4,
+     14
+    ],
+    "Elixir Collector": [
+     7,
+     17
+    ],
+    "Elixir Storage": [
+     4,
+     19
+    ],
+    "Gold Mine": [
+     7,
+     17
+    ],
+    "Gold Storage": [
+     4,
+     19
+    ],
+    "Barracks": [
+     1,
+     19
+    ],
+    "Laboratory": [
+     1,
+     16
+    ],
+    "Cannon": [
+     7,
+     21
+    ],
+    "Archer Tower": [
+     9,
+     21
+    ],
+    "Wall": [
+     325,
+     19
+    ],
+    "Wizard Tower": [
+     6,
+     17
+    ],
+    "Air Defense": [
+     4,
+     16
+    ],
+    "Mortar": [
+     4,
+     18
+    ],
+    "Clan Castle": [
+     1,
+     14
+    ],
+    "Builder's Hut": [
+     5,
+     8
+    ],
+    "Hidden Tesla": [
+     5,
+     17
+    ],
+    "Spell Factory": [
+     1,
+     9
+    ],
+    "X-Bow": [
+     4,
+     13
+    ],
+    "Dark Elixir Drill": [
+     3,
+     11
+    ],
+    "Dark Elixir Storage": [
+     1,
+     13
+    ],
+    "Dark Barracks": [
+     1,
+     13
+    ],
+    "Inferno Tower": [
+     3,
+     12
+    ],
+    "Air Sweeper": [
+     2,
+     7
+    ],
+    "Dark Spell Factory": [
+     1,
+     8
+    ],
+    "Eagle Artillery": [
+     1,
+     7
+    ],
+    "Bomb Tower": [
+     2,
+     13
+    ],
+    "Workshop": [
+     1,
+     9
+    ],
+    "Scattershot": [
+     2,
+     7
+    ],
+    "Pet House": [
+     1,
+     12
+    ],
+    "Blacksmith": [
+     1,
+     10
+    ],
+    "Hero Hall": [
+     1,
+     12
+    ],
+    "Spell Tower": [
+     2,
+     4
+    ],
+    "Monolith": [
+     1,
+     5
+    ],
+    "Multi-Gear Tower": [
+     1,
+     3
+    ],
+    "Multi-Archer Tower": [
+     3,
+     4
+    ],
+    "Ricochet Cannon": [
+     3,
+     4
+    ],
+    "Revenge Tower": [
+     1,
+     2
+    ],
+    "Firespitter": [
+     2,
+     3
+    ],
+    "Super Wizard Tower": [
+     2,
+     2
+    ]
+   },
+   "traps": {
+    "Bomb": [
+     8,
+     14
+    ],
+    "Spring Trap": [
+     9,
+     13
+    ],
+    "Air Bomb": [
+     8,
+     13
+    ],
+    "Giant Bomb": [
+     8,
+     12
+    ],
+    "Seeking Air Mine": [
+     9,
+     8
+    ],
+    "Skeleton Trap": [
+     4,
+     5
+    ],
+    "Tornado Trap": [
+     1,
+     3
+    ],
+    "Giga Bomb": [
+     1,
+     4
+    ]
+   },
+   "heroes": {
+    "Barbarian King": 110,
+    "Archer Queen": 110,
+    "Grand Warden": 85,
+    "Battle Machine": 35,
+    "Royal Champion": 55,
+    "Battle Copter": 35,
+    "Minion Prince": 95,
+    "Dragon Duke": 25
+   },
+   "pets": {
+    "L.A.S.S.I": 15,
+    "Mighty Yak": 15,
+    "Electro Owl": 15,
+    "Unicorn": 15,
+    "Phoenix": 10,
+    "Poison Lizard": 15,
+    "Diggy": 15,
+    "Frosty": 15,
+    "Spirit Fox": 10,
+    "Angry Jelly": 10,
+    "Sneezy": 10,
+    "Greedy Raven": 10
+   },
+   "guardians": {
+    "Longshot": 5,
+    "Smasher": 5,
+    "Logger": 5
+   }
+  }
+ }
+}

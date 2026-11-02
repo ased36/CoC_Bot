@@ -562,6 +562,14 @@ class Resource_Reader:
     read_at = 0 # time of the last good read (the round end skips a read the attack message has just made)
 
     @classmethod
+    def good_values(cls):
+        """The last value read of each resource, on disk too: a read that misses one (02.11 16:20 elixir) or a bot just
+        opened still has a value to show (Telegram /ozet)."""
+        values = dict(Cache_Manager.get("resources_good") or {})
+        values.update({k: v for k, v in cls.last.items() if v is not None})
+        return values
+
+    @classmethod
     def _read_frame(cls, frame):
         import re
 
@@ -604,6 +612,7 @@ class Resource_Reader:
             logger.info(f"Resources: gold={fmt(values['gold'])} elixir={fmt(values['elixir'])} dark={fmt(values['dark'])} gems={fmt(values['gems'])} builders={builders}")
         cls.last = values
         if values.get("gold") is not None and values.get("elixir") is not None: cls.read_at = time.time()
+        if any(v is not None for v in values.values()): Cache_Manager["resources_good"] = cls.good_values()
         report("resources", values=values)
         return values
 

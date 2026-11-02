@@ -188,6 +188,23 @@ class Upgrader:
         report("status", status=status)
         return status
 
+    def _status_disagrees(self):
+        """The kept builder rows no longer fit the village: the live builder counter on the village screen says another
+        number is busy, or an end has passed (the builder may already be on something new). At most every 30 minutes, so
+        a row the reader misses does not make every round read the menus (~20 s)."""
+        import time
+        if not self._due("status_check"): return False
+        st = Cache_Manager.get("status") or {}
+        if not st.get("builders") and not st.get("lab"): return False
+        now = time.time()
+        r = Resource_Reader.last or {}
+        running = sum(1 for b in st.get("builders") or [] if b["end"] + b.get("prec", 0) > now)
+        busy = r["builders_total"] - r["builders_free"] if r.get("builders_total") and r.get("builders_free") is not None else running
+        passed = any(b["end"] + b.get("prec", 0) <= now for kind in ("builders", "lab") for b in st.get(kind) or [])
+        if busy == running and not passed: return False
+        self._later("status_check", 0.5, f"Status out of date ({running} rows running, {busy} builders busy{', an end passed' if passed else ''})")
+        return True
+
     @staticmethod
     def fmt_left(seconds):
         d, r = divmod(int(seconds), 86400)
@@ -1728,9 +1745,10 @@ class Upgrader:
         except: pass
         step("pet")
 
-        # Builder status (Emre 02.11, 4A): every 2 hours, and again once an upgrade started
+        # Builder status (Emre 02.11, 4A): every 2 hours, again once an upgrade started, and sooner when what is kept no longer
+        # fits the village (Emre 02.11 16:20: the summary showed old rows)
         try:
-            if upgrades_started or lab_upgrades_started or self._due("status"):
+            if upgrades_started or lab_upgrades_started or self._due("status") or self._status_disagrees():
                 self.read_status()
                 self._later("status", 2, "Status read")
         except (KeyboardInterrupt, SystemExit): raise
