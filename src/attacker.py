@@ -624,7 +624,10 @@ class Attacker:
         last = {"frame": Frame_Handler.get_frame(grayscale=False)}
         # Where troops were seen landing (the card's count fell while the finger was there) and the finger's way:
         # the heroes go to one of those spots, a new one every attack (Emre 2A)
-        landed, trail = [], []
+        # sure: where the finger stood still and a troop was seen coming out (a stroke's start): the heroes go there. A
+        # spot read from the count while the finger moves is up to ~0.5 s late (one look), ~300 px along the stroke,
+        # often inside the village (02.11 23:29: siege, king, warden, queen did not land on such spots)
+        landed, trail, sure = [], [], []
         def fresh_ring(label):
             nonlocal ring, ring_out, red, hero_spot, lead_spot
             frame = Frame_Handler.get_frame(grayscale=False)
@@ -639,6 +642,7 @@ class Attacker:
                 if red: red = ((red[0][0] + dx, red[0][1] + dy), red[1])
                 fx, fy = dx / 1920, dy / 1080
                 landed[:] = [(x + fx, y + fy) for x, y in landed]
+                sure[:] = [(x + fx, y + fy) for x, y in sure]
                 trail[:] = [(t, x + fx, y + fy) for t, x, y in trail]
                 if hero_side == "landed": hero_spot = (hero_spot[0] + fx, hero_spot[1] + fy)
                 if lead_side == "landed": lead_spot = (lead_spot[0] + fx, lead_spot[1] + fy)
@@ -661,7 +665,7 @@ class Attacker:
             # and three heroes tapped on the old spot, now inside the village): then the next visible side
             if side == "landed":
                 if visible(old): return side, old
-                seen = [p for p in landed if visible(p)]
+                seen = [p for p in sure if visible(p)] or [p for p in landed if visible(p)]
                 if seen: return side, random.choice(seen)
             if red:
                 # Middle of a side, the side nearest the old one first (corners can be off the map, 23:03)
@@ -691,7 +695,7 @@ class Attacker:
             """The card is selected: drop it on the spot, a little off every time, further out when the red line refuses it.
             By the red line: a little in, a little out, then the middle of another side (the band between the line
             and the map's edge is only ~1-2 % of the screen on a big village, 23:27: three tries further out, all off the map)."""
-            seen = [p for p in landed if visible(p) and gap(p, spot) > 0.08 ** 2]
+            seen = [p for p in sure if visible(p) and gap(p, spot) > 0.05 ** 2] or [p for p in landed if visible(p) and gap(p, spot) > 0.08 ** 2]
             if seen:
                 # Emre 2A: one more try, on another spot where troops did land (not five taps on the same spot)
                 tries = [random.choice(seen)]
@@ -798,9 +802,11 @@ class Attacker:
                     # in the red area dropped nothing and the moving finger dragged the view). Else it lifts and presses
                     # again a little out (the warning is up: red area) or in (no warning: off the map), like a hand would
                     for tries in range(4):
-                        pressed, seen = time.time(), len(state["drops"])
+                        pressed, seen, at = time.time(), len(state["drops"]), len(trail)
                         def dropped(): return len(state["drops"]) > seen or state["empty"]
-                        if sweep(pts, still, ready=dropped): break
+                        if sweep(pts, still, ready=dropped):
+                            if len(trail) > at: sure.append(trail[at][1:])
+                            break
                         step = 0.012 if state["warn"] else -0.008
                         logger.info(f"Stroke {k + 1}: nothing dropped at the press ({'red area' if state['warn'] else 'off the map?'}), pressing again {'out' if step > 0 else 'in'}")
                         stroke = [(a, m + step, t) for a, m, t in stroke]
@@ -835,7 +841,7 @@ class Attacker:
             finally:
                 done.set()
             logger.info(f"Troops: {what}, {held:.1f}s held, {first_count} -> {state['count'] if not state['empty'] else 0} "
-                        f"({swept} drops seen), push {steer['push'] * 100:+.1f} %, {len(landed)} landing spots, {taps} taps"
+                        f"({swept} drops seen), push {steer['push'] * 100:+.1f} %, {len(sure)} sure / {len(landed)} landing spots, {taps} taps"
                         + (", card ran out" if state["empty"] else ""))
             if not landed:
                 # Nothing seen landing (the count could not be read): the old way, taps further out by the line
@@ -847,7 +853,7 @@ class Attacker:
                 return
             # Emre 2A: the heroes on one of the spots where troops landed, the champion on another one far from it
             fresh_ring("after the sweeps")
-            seen = [p for p in landed if visible(p)] or landed
+            seen = [p for p in sure if visible(p)] or [p for p in landed if visible(p)] or landed
             hero_side, hero_spot = "landed", random.choice(seen)
             far = [p for p in seen if gap(p, hero_spot) > 0.25 ** 2]
             lead_side, lead_spot = "landed", random.choice(far) if far else max(seen, key=lambda p: gap(p, hero_spot))
