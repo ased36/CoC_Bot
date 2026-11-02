@@ -70,6 +70,13 @@ class CoC_Bot:
         if not general.get("rest_enabled"): return None
         self._day_rollover(general)
         d = self.day
+        # The panel's range changed during the day (Emre 03.11: 30-45 -> 50-70): today's cap comes from the new range
+        lo_d, hi_d = sorted((int(general.get("daily_min", 0) or 0), int(general.get("daily_max", 0) or 0)))
+        if d.get("cap") is not None and not (lo_d <= (d.get("cap") or 0) <= hi_d if hi_d else d.get("cap") == 0):
+            d["cap"] = random.randint(lo_d, hi_d) if hi_d else 0
+            if d.get("rest_kind") == "daily" and (not d["cap"] or d.get("attacks", 0) < d["cap"]): d["rest_until"] = 0
+            self.day = d
+            logger.info(f"Daily cap now {d['cap'] or 'none'} (panel range {lo_d}-{hi_d})")
         if d.get("rest_until", 0) > time.time():
             return d["rest_until"], d.get("rest_kind", "rest"), None
         if d.get("cap") and d["attacks"] >= d["cap"]:
