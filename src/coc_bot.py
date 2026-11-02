@@ -482,14 +482,16 @@ class CoC_Bot:
                         # With attacks on, walls run once every N attacks (walls, N attacks, walls, ...), always before an attack
                         # or, when the panel sets a gold / elixir level, only once either one reaches it (attack until then)
                         walls_now = True
+                        start_gold = Settings_Handler.get("walls", "start_gold", 0) or 0
+                        start_elixir = Settings_Handler.get("walls", "start_elixir", 0) or 0
+                        # The start levels hold with attacks off too (02.11 19:22: attacks off, 631 k gold, the wall menu
+                        # was read every 25 s round for nothing)
+                        if start_gold or start_elixir:
+                            have = Resource_Reader.last
+                            walls_now = bool(start_gold and (have.get("gold") or 0) >= start_gold) or bool(start_elixir and (have.get("elixir") or 0) >= start_elixir)
+                            if not walls_now and Settings_Handler.get("walls", "enabled", False): logger.info("Walls wait: gold and elixir below the start levels")
                         if not exclude_home_attacks:
-                            start_gold = Settings_Handler.get("walls", "start_gold", 0) or 0
-                            start_elixir = Settings_Handler.get("walls", "start_elixir", 0) or 0
-                            if start_gold or start_elixir:
-                                have = Resource_Reader.last
-                                walls_now = bool(start_gold and (have.get("gold") or 0) >= start_gold) or bool(start_elixir and (have.get("elixir") or 0) >= start_elixir)
-                                if not walls_now: logger.info("Walls wait: gold and elixir below the start levels")
-                            else:
+                            if not (start_gold or start_elixir):
                                 every = max(1, int(Settings_Handler.get("walls", "every_attacks", 3) or 1))
                                 walls_now = self.attacks_since_walls is None or self.attacks_since_walls >= every
                             if walls_now: self.attacks_since_walls = 0
@@ -534,6 +536,8 @@ class CoC_Bot:
                     update_status("error")
 
                 delay = next_check_delay(general)
+                # Interval 0 = attack after attack; with no attack in the round it only re-read the menus every ~25 s
+                if started and res != "error" and exclude_home_attacks and exclude_builder_attacks: delay = max(delay, 120)
                 next_check = time.time() + delay
                 if started:
                     logger.info(f"Round finished in {int(time.time() - round_start)}s, next check at {datetime.fromtimestamp(next_check).strftime('%H:%M')}")

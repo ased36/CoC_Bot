@@ -549,3 +549,10 @@ Testler scratchpad'de (t_look, t_ozet, t_ozet2, t_ozet3, t_potion, t_status, t_s
 - 17:35 / 17:39 duvar turları "selected wall count unclear (None, wanted 9 / 11)" ile ödeme öncesi güvenle durdu. `main_wall_fail.png` (17:39): başlık OCR'da "Walq ((tevel 13Jx 11" → "lev" aranıyordu. Artık "lev / tev" ya da "wa" ile başlayan satır kabul (kare üzerinde 11 ✅).
 - Aynı karede düğme sırası: altın (409–574 px) · iksir (618–783) · mavi duvar yüzüğü (822–990, "11"). Eski renk araması en geniş sarı sütun kümesini seçiyordu: düğmeler arasındaki boşluktan görünen köy (788–809) kazanıyor, dokunuş iksir düğmesine düşüyordu; yüzüğün altını da aynı şeritte. 16:50–16:58'de altın düşmemesinin açıklaması bu (yüzük ya da yanlış düğme). Yeni `_click_wall_button`: yalnız bej düğme kutuları (yüzük mavi → elenir), fiyat şeridinde istenen simgesi olan kutunun ortasına dokunur. Karede altın (492, 950), iksir (700, 950) ✅.
 - db59c90'ın pencere kareleri ve 1 saat bekleme yerinde; ilk gerçek duvar turunda `main_wall_2_dialog.png` / `main_wall_3_after.png` ile teyit.
+
+## 02.11 19:30 — Saldırı kapalıyken boş turlar, yanlış lab okuması
+
+- Emre botu 19:21'de açtı (2935730 yüklü). Profilde saldırı kapalı + tur aralığı 0 → bot 25 sn'de bir tur atıp her turda duvar menüsünü okudu (631 k altınla, duvar 900 k). Başlama değeri (8,25 M) yalnız saldırı açıkken uygulanıyordu → artık her zaman. Saldırısız turdan sonra en az 2 dk bekleme. "No wall in the menu" → "No affordable wall in the menu" (kırmızı fiyat maliyet okunmuyor).
+- 19:22:57 lab okuması inşaatçı listesinin sürelerini araştırma diye kaydetti (Gold Mine 2h 40m, Barracks 3d 14h…): lab sekmesine geçilememiş, kare `menu_lab_top.png`. Artık menü başlığı okunuyor ("Buildings & Heroes" = usta, "Army Upgrades" = lab); yanlış menüde okuma tutulmaz. Bozuk kayıt 21:22 okumasında düzelir.
+- "Status out of date (7 rows running, 6 builders busy)": 6/6 meşgulken 7 satır (fazladan bir usta) → boşta usta yokken satır fazlası çelişki sayılmıyor.
+- Duvar ödeme denemesi hâlâ bekliyor (altın 8,25 M'ye çıkmadı).

@@ -158,6 +158,13 @@ class Upgrader:
         time.sleep(1.0)
         frame = Frame_Handler.get_frame(grayscale=False)
         Frame_Handler.save_frame(frame, f"menu_{kind}_top.png")
+        # 02.11 19:22 the lab tab did not open: the builders list stayed (scrolled) and its upgrade times were kept as
+        # research. The builders menu is titled "Buildings & Heroes"; a lab read under that title is not kept
+        OCR_Handler.load()
+        title = " ".join(OCR_Handler.reader.readtext(Frame_Handler.crop(frame, 0.79, 0.01, 0.97, 0.055), detail=0)).lower()
+        if (kind == "lab") == ("build" in title or "hero" in title):
+            logger.info(f"Status {kind}: wrong menu on screen ({title or 'no title'}), kept the last read")
+            return None
         return self._read_ongoing(frame), self._read_potion(frame)
 
     def read_status(self):
@@ -201,7 +208,8 @@ class Upgrader:
         running = sum(1 for b in st.get("builders") or [] if b["end"] + b.get("prec", 0) > now)
         busy = r["builders_total"] - r["builders_free"] if r.get("builders_total") and r.get("builders_free") is not None else running
         passed = any(b["end"] + b.get("prec", 0) <= now for kind in ("builders", "lab") for b in st.get(kind) or [])
-        if busy == running and not passed: return False
+        # 19:22: 7 rows with 6 of 6 busy (an extra builder works too): more rows than busy builders is fine while none is free
+        if (busy == running or (running > busy and r.get("builders_free") == 0)) and not passed: return False
         self._later("status_check", 0.5, f"Status out of date ({running} rows running, {busy} builders busy{', an end passed' if passed else ''})")
         return True
 
@@ -1096,7 +1104,7 @@ class Upgrader:
             else: time.sleep(0.7)
             return dict(same[0], level=known.get(r["cost"], r.get("level")))
 
-        if not rows: logger.info("No wall in the menu")
+        if not rows: logger.info("No affordable wall in the menu (0 rows read)") # red prices are not read as costs
         elif levels: logger.info(f"No wall of the chosen levels ({', '.join(map(str, sorted(levels)))})")
         else:
             last = Resource_Reader.last
