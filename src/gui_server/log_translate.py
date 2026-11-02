@@ -80,6 +80,7 @@ TRANSLATIONS = [
     (r"Upgraded wall", "Duvar geliştirildi"),
     (r"Walls wait: gold and elixir below the start levels", "Duvar bekliyor: altın ve iksir başlama değerinin altında"),
     (r"Storage full: the attack brought no gold or elixir", "Depo dolu: saldırı altın / iksir getirmedi"),
+    (r"Walls: the tap selected something else \((.*)\)", "Duvar: menüde dokunulan satır duvar değil ({0}), ödeme yapılmadı (ekran debug/main_wall_fail.png)"),
     (r"Attack skipped: storage full.*", "Saldırı atlandı: depolar dolu (harcanınca devam eder)"),
     (r"Walls paused: upgrade button not found, next look at (.+)", "Duvar geliştirme düğmesi bulunamadı, duvar {0}'e kadar bekliyor (ekran debug/main_wall_fail.png)"),
     (r"(\S+): ability used right after the drop", "{0}: atılır atılmaz yeteneği kullanıldı"),

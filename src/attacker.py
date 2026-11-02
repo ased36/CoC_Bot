@@ -187,7 +187,7 @@ class Attacker:
         # A used up card turns gray
         y = self.CARD_Y
         section = Frame_Handler.get_frame_section(x - 0.01, y - 0.01, x + 0.01, y + 0.01, grayscale=False).astype(int)
-        return (abs(section[..., 0] - section[..., 1]).max() < 8) and (abs(section[..., 1] - section[..., 2]).max() < 8)
+        return section.mean() > 40 and (abs(section[..., 0] - section[..., 1]).max() < 8) and (abs(section[..., 1] - section[..., 2]).max() < 8)
 
     def _card_deployed(self, x, frame=None):
         # A siege machine or hero on the field shows a health bar above its card (~850 green pixels at full health and
@@ -453,8 +453,10 @@ class Attacker:
         return int(m.group(1)) if m and int(m.group(1)) <= 99 else None
 
     def _card_gray(self, frame, x):
+        # A black frame from the emulator is "gray" too (02.11 23:53: the first look said empty, no stroke was made):
+        # a used up card is mid gray
         s = Frame_Handler.crop(frame, x - 0.01, self.CARD_Y - 0.01, x + 0.01, self.CARD_Y + 0.01).astype(int)
-        return (abs(s[..., 0] - s[..., 1]).max() < 8) and (abs(s[..., 1] - s[..., 2]).max() < 8)
+        return s.mean() > 40 and (abs(s[..., 0] - s[..., 1]).max() < 8) and (abs(s[..., 1] - s[..., 2]).max() < 8)
 
     @staticmethod
     def _red_warning(frame):
@@ -476,10 +478,14 @@ class Attacker:
                 try:
                     frame = Frame_Handler.get_frame(grayscale=False)
                     now = time.time()
-                    if self._card_gray(frame, troop_x):
+                    # Empty only when two looks in a row say so
+                    gray = frame.std() > 5 and self._card_gray(frame, troop_x)
+                    if gray and state.get("gray"):
                         state["empty"] = True
                         state["drops"].append((now, 0))
                         return
+                    state["gray"] = gray
+                    if gray: continue
                     c = self._troop_count(frame, troop_x)
                     # A misread goes up or jumps far down: only a fall about as fast as troops drop (~7 a second) is believed
                     if c is not None and (state["count"] is None or 0 < state["count"] - c <= 4 + 10 * (now - state["t"])):

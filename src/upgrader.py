@@ -1125,7 +1125,7 @@ class Upgrader:
     def _select_wall(self, bounds):
         """Read every wall row in the open menu, then tap the cheapest one = the lowest level that is affordable, payable
         and of a chosen level, scrolling back to its page. Returns the row, or None."""
-        import time
+        import time, re
         left, top, right, bottom = bounds
         levels = set(Settings_Handler.get("walls", "levels", []) or [])
         known = getattr(self, "_wall_levels", {}) # cost -> level, remembered between walls
@@ -1172,6 +1172,15 @@ class Upgrader:
                     logger.info(f"Wall level {level if level is not None else '?'} not chosen ({r['cost']:,})".replace(",", "."))
                     continue
             else: time.sleep(0.7)
+            # 02.11 23:53 the tap on a wall row selected the Laboratory (the list had moved): only a selected Wall goes on
+            title = ""
+            for _ in range(3):
+                title = " ".join(OCR_Handler.get_text(Frame_Handler.crop(Frame_Handler.get_frame(grayscale=False), 0.15, 0.45, 0.80, 0.72))).lower()
+                if re.search(r"wa(ll|11|l1|1l)", title): break
+                time.sleep(0.5)
+            else:
+                self._wall_debug(f"Walls: the tap selected something else ({title[:60]})")
+                return None
             return dict(same[0], level=known.get(r["cost"], r.get("level")))
 
         if not rows: logger.info("No affordable wall in the menu (0 rows read)") # red prices are not read as costs
