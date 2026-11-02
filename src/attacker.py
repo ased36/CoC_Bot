@@ -1115,13 +1115,15 @@ class Attacker:
                 return None
             time.sleep(0.5)
             loot, frame = self._read_loot()
-            # OCR sometimes adds a digit (an iksir of 1.037.617 read as 10.376.176): keep values two reads agree on
-            second, _ = self._read_loot()
-            if second != loot:
-                third, _ = self._read_loot()
-                loot = {k: loot[k] if loot[k] in (second[k], third[k]) else second[k] if second[k] == third[k] else None for k in loot}
-            if search_only or attack.get("save_villages"): self._save_village(frame, n)
             mins = self.loot_minimums(attack, n)
+            # OCR sometimes adds a digit (an iksir of 1.037.617 read as 10.376.176): keep values two reads agree on.
+            # Emre 02.11 (4A): only a village that passes is read again; a poor village is skipped on one read
+            if self.loot_ok(loot, mins):
+                second, _ = self._read_loot()
+                if second != loot:
+                    third, _ = self._read_loot()
+                    loot = {k: loot[k] if loot[k] in (second[k], third[k]) else second[k] if second[k] == third[k] else None for k in loot}
+            if search_only or attack.get("save_villages"): self._save_village(frame, n)
             logger.info(
                 f"Search {n}: gold={fmt(loot['gold'])} elixir={fmt(loot['elixir'])} dark={fmt(loot['dark'])} "
                 f"min={fmt(mins['gold'])}/{fmt(mins['elixir'])}/{fmt(mins['dark'])}"
@@ -1131,8 +1133,8 @@ class Attacker:
                 if search_only: self._leave_search()
                 return loot
             if n == max_searches: break
-            # Look at the village for a moment, but decide well inside the 30 s scouting time
-            time.sleep(random.uniform(1.5, 4.0))
+            # Look at the village for a moment, but decide well inside the 30 s scouting time (Emre 02.11: faster, was 1.5-4 s)
+            time.sleep(random.uniform(0.8, 2.2))
             xy = self._wait_village(timeout=2)
             if xy is None:
                 logger.error("Next button not found")

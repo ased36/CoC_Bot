@@ -929,25 +929,77 @@ class Upgrader:
         Input_Handler.swipe(x1=(left + right) / 2, y1=top + 0.15, x2=(left + right) / 2, y2=bottom - 0.075, duration=0, hold_end_time=100)
         time.sleep(0.3)
 
-    def _select_wall(self, bounds):
-        """Read every wall row in the open menu (they sit together), then tap the cheapest one = the lowest level that is
-        affordable, payable and of a chosen level, scrolling back to its page. Returns the row, or None."""
-        import time, numpy as np
-        left, top, right, bottom = bounds
-        levels = set(Settings_Handler.get("walls", "levels", []) or [])
-        known = getattr(self, "_wall_levels", {}) # cost -> level, remembered between walls
-        self._wall_levels = known
-        templates = [render_text("Wall", "SupercellMagic", 17)]
-        read = lambda frame, y_min: [r for r in self._read_rows(frame, "home", bounds, y_min, ["Wall"], templates) if "wall" in r["names"] and r["cost"]]
+    # Wall rows in the builders menu (Emre 02.11, 1A): "Wall x 125" and a badge at the icon's bottom-left with the level the
+    # walls go up to (02.11 01:42 frame: the row "Wall x 200" has badge 14 and its wall reads "Wall (Level 13) x 9")
+    WALL_BADGE_X = (0.7396, 0.7531)
+    WALL_NAME_X = (0.7734, 0.9167)
 
-        # 1) Scroll down until the wall rows are behind us; a higher level can come before a lower one in the list
+    def _wall_row_info(self, frame, row):
+        """(level now, count) of a wall row on screen, or None when the badge cannot be read. One wall shows no "x N"."""
+        import re, cv2
+        OCR_Handler.load()
+        y = row["y"]
+        badge = Frame_Handler.crop(frame, self.WALL_BADGE_X[0], y - 0.0046, self.WALL_BADGE_X[1], y + 0.023)
+        digits = "".join(OCR_Handler.reader.readtext(cv2.resize(badge, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC), detail=0, allowlist="0123456789"))
+        if not digits.isdigit() or not 2 <= int(digits) <= 25: return None
+        name = Frame_Handler.crop(frame, self.WALL_NAME_X[0], row["name_y"] - 0.0185, self.WALL_NAME_X[1], row["name_y"] + 0.0185)
+        text = " ".join(OCR_Handler.reader.readtext(name, detail=0)).lower()
+        m = re.search(r"\bx\s*([\dilz|ots]+)\s*$", text) # OCR reads 2 as Z, 1 as I / l ("Wall x Z00")
+        count = int(m.group(1).translate(str.maketrans("ilz|ots", "1121015"))) if m else 1
+        return int(digits) - 1, count
+
+    def _walls_day(self, w):
+        """The walls cache with today's counter: on a new day the last rows read become the day's start."""
+        from datetime import date
+        today = date.today().isoformat()
+        if (w.get("day") or {}).get("date") != today:
+            w["day"] = {"date": today, "count": 0, "start": w.get("levels"), "start_top": w.get("top")}
+        return w
+
+    def _note_walls(self, census):
+        """Keep the wall rows read (level now -> count) for /ozet and the 21:00 summary (Emre 02.11, 2A). The walls at the
+        top level are not in the menu; "top" is the lowest level they can be at (the highest badge)."""
+        import time
+        if not census:
+            self._later("walls_census", 2, "Walls read: nothing")
+            return
+        w = self._walls_day(dict(Cache_Manager.get("walls") or {}))
+        w.update(t=time.time(), levels={str(k): v for k, v in sorted(census.items())}, top=max(census) + 1)
+        if not w["day"].get("start"): w["day"].update(start=w["levels"], start_top=w["top"])
+        Cache_Manager["walls"] = w
+        self._later("walls_census", 24, "Walls read: " + ", ".join(f"level {k} x{v}" for k, v in sorted(census.items())))
+
+    def _walls_upgraded(self, level, count):
+        """Count today's walls and move them one level up until the next read."""
+        w = self._walls_day(dict(Cache_Manager.get("walls") or {}))
+        w["day"]["count"] = w["day"].get("count", 0) + count
+        if level is not None and w.get("levels"):
+            lv = dict(w["levels"])
+            lv[str(level)] = max(0, lv.get(str(level), 0) - count)
+            lv[str(level + 1)] = lv.get(str(level + 1), 0) + count
+            w["levels"] = lv
+        Cache_Manager["walls"] = w
+
+    def _wall_pages(self, bounds):
+        """Scroll the open builders menu down until the wall rows are behind us (a higher level can come before a lower
+        one) and read them: ({cost: affordable row}, page on screen). Every wall row also goes into the wall count."""
+        import numpy as np
+        left, top, right, bottom = bounds
+        templates = [render_text("Wall", "SupercellMagic", 17)]
         frame = Frame_Handler.get_frame(grayscale=False)
-        rows, page = {}, 0 # cost -> row (pages overlap, so the same row can be read twice)
+        rows, census, seen, page = {}, {}, False, 0 # cost -> row (pages overlap, so the same row can be read twice)
         while True:
             y_min = max(top, self._menu_header_y("home", frame) or top) if page == 0 else top
-            walls = read(frame, y_min)
-            for r in walls: rows.setdefault(r["cost"], dict(r, page=page))
-            if rows and not walls: break
+            walls = [r for r in self._read_rows(frame, "home", bounds, y_min, ["Wall"], templates) if "wall" in r["names"]]
+            for r in walls:
+                info = self._wall_row_info(frame, r)
+                if info:
+                    census.setdefault(info[0], info[1])
+                    r["level"] = info[0]
+                if r["cost"]: rows.setdefault(r["cost"], dict(r, page=page))
+            # Rows too expensive now count too: with every wall red the list used to be scrolled to its end
+            if seen and not walls: break
+            seen = seen or bool(walls)
             if page + 1 >= self.MAX_MENU_PAGES: break
             self._menu_swipe(bounds)
             new_frame = Frame_Handler.get_frame(grayscale=False)
@@ -955,11 +1007,38 @@ class Upgrader:
             b = Frame_Handler.grayscale(Frame_Handler.crop(new_frame, left, top, right, bottom)).astype(int)
             if np.abs(a - b).mean() / 255 < 0.01: break # end of the list
             frame, page = new_frame, page + 1
+        self._note_walls(census)
+        return rows, page
+
+    @require_exit(x=0.99, y=0.01)
+    def read_walls(self):
+        """The wall count without upgrading (once a day when no wall pass read it): open the builders menu, read, close."""
+        bounds = self._open_menu("home")
+        if bounds is None:
+            self._later("walls_census", 2, "Walls read: nothing")
+            return
+        self._wall_pages(bounds)
+
+    def _select_wall(self, bounds):
+        """Read every wall row in the open menu, then tap the cheapest one = the lowest level that is affordable, payable
+        and of a chosen level, scrolling back to its page. Returns the row, or None."""
+        import time
+        left, top, right, bottom = bounds
+        levels = set(Settings_Handler.get("walls", "levels", []) or [])
+        known = getattr(self, "_wall_levels", {}) # cost -> level, remembered between walls
+        self._wall_levels = known
+        templates = [render_text("Wall", "SupercellMagic", 17)]
+        read = lambda frame, y_min: [r for r in self._read_rows(frame, "home", bounds, y_min, ["Wall"], templates) if "wall" in r["names"] and r["cost"]]
+
+        # 1) Every wall row (and the wall count)
+        rows, page = self._wall_pages(bounds)
 
         # 2) Cheapest first: scroll to its page, find it again by cost, tap it, check its level when levels are chosen
         for r in sorted(rows.values(), key=lambda r: r["cost"]):
             if not r["affordable"] or self._wall_payment(r["cost"]) is None: continue
             if levels and known.get(r["cost"]) is not None and known[r["cost"]] not in levels: continue
+            # The row's badge already tells its level: no tap on a level that is not chosen (the tap below still checks)
+            if levels and r.get("level") is not None and r["level"] not in levels: continue
             while page > r["page"]:
                 self._menu_swipe_back(bounds); page -= 1
             while page < r["page"]:
@@ -990,7 +1069,7 @@ class Upgrader:
                     logger.info(f"Wall level {level if level is not None else '?'} not chosen ({r['cost']:,})".replace(",", "."))
                     continue
             else: time.sleep(0.7)
-            return same[0]
+            return dict(same[0], level=known.get(r["cost"], r.get("level")))
 
         if not rows: logger.info("No wall in the menu")
         elif levels: logger.info(f"No wall of the chosen levels ({', '.join(map(str, sorted(levels)))})")
@@ -1058,6 +1137,7 @@ class Upgrader:
                 return None
             row = self._select_wall(bounds)
             if row is None: return None
+            self._last_wall_level = row.get("level") # for the wall count (run_walls)
             resource = self._wall_payment(row["cost"])
             have = Resource_Reader.last.get(resource) or 0
             keep = Settings_Handler.get("walls", "min_gold" if resource == "gold" else "min_elixir", 0) or 0
@@ -1108,6 +1188,7 @@ class Upgrader:
                 break
             logger.info(f"Upgraded {count} wall(s)")
             report("wall", count=count)
+            self._walls_upgraded(getattr(self, "_last_wall_level", None), count)
             left -= count
 
     @require_exit(x=0.99, y=0.01)
@@ -1557,10 +1638,18 @@ class Upgrader:
     
     def run_home_base(self, exclude_base=False, exclude_lab=False, exclude_pet=False, walls=True):
         import time
-        
+
+        # Emre 02.11 "the bot is slow": how long each step took, in one line at the end (steps under 0.5 s left out)
+        steps, mark = [], [time.time()]
+        def step(name):
+            now = time.time()
+            if now - mark[0] >= 0.5: steps.append(f"{name} {now - mark[0]:.1f}s")
+            mark[0] = now
+
         Input_Handler.zoom(dir="out")
         Input_Handler.swipe_down()
-        
+        step("view")
+
         # Building upgrades
         upgrades_started = []
         heroes_on = not Task_Handler.excluded("heroes")
@@ -1583,10 +1672,12 @@ class Upgrader:
                 except (KeyboardInterrupt, SystemExit): raise
                 except:
                     logger.warning("Encountered an error while attempting to upgrade home base. Retrying...")
+        step("buildings")
         if not Task_Handler.excluded("builder_apprentice") and self._due("apprentice"):
             assigned = self.assign_builder_apprentice()
             if assigned: self._later("apprentice", 12, "Builder apprentice assigned")
             elif assigned is False: self._later("apprentice", 2, "No builder apprentice to assign")
+            step("apprentice")
 
         # Lab upgrades
         lab_upgrades_started = []
@@ -1601,10 +1692,12 @@ class Upgrader:
         except (KeyboardInterrupt, SystemExit): raise
         except:
             logger.warning("Encountered an error while attempting to upgrade home lab. Retrying...")
+        step("lab")
         if not Task_Handler.excluded("lab_assistant") and self._due("lab_assistant"):
             assigned = self.assign_lab_assistant()
             if assigned: self._later("lab_assistant", 12, "Lab assistant assigned")
             elif assigned is False: self._later("lab_assistant", 2, "No lab assistant to assign")
+            step("assistant")
 
         # Pet house upgrades: the pet house takes one at a time and a pet upgrade takes days, so a busy house is not
         # looked at again for hours (its count is only in the build menu)
@@ -1633,6 +1726,7 @@ class Upgrader:
                 Cache_Manager["status"] = dict(Cache_Manager.get("status") or {}, pet_busy=pet_busy) # for Telegram /ozet
         except (KeyboardInterrupt, SystemExit): raise
         except: pass
+        step("pet")
 
         # Builder status (Emre 02.11, 4A): every 2 hours, and again once an upgrade started
         try:
@@ -1641,15 +1735,26 @@ class Upgrader:
                 self._later("status", 2, "Status read")
         except (KeyboardInterrupt, SystemExit): raise
         except: logger.exception("Upgrader.read_status:")
+        step("status")
 
         # Walls last, with what the upgrades above left over (when attacking, the bot runs them after the attack instead)
         try:
             if walls:
-                Resource_Reader.read()
+                # Fresh storage only when a wall can be paid (the read takes 1-2 s)
+                if Settings_Handler.get("walls", "enabled", False): Resource_Reader.read()
                 self.run_walls()
         except (KeyboardInterrupt, SystemExit): raise
         except:
             logger.warning("Encountered an error while attempting to upgrade walls")
+        step("walls")
+
+        # Wall count (Emre 02.11, 1A): a wall pass reads it on the way; without one, once a day on its own (~30 s)
+        try:
+            if self._due("walls_census"): self.read_walls()
+        except (KeyboardInterrupt, SystemExit): raise
+        except: logger.exception("Upgrader.read_walls:")
+        step("wall count")
+        if steps: logger.info("Home steps: " + ", ".join(steps))
 
         for kind, started in (("home", upgrades_started), ("home_lab", lab_upgrades_started), ("pet", pet_upgrades_started)):
             for upgrade in started:

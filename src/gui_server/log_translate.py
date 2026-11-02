@@ -11,6 +11,11 @@ tr = lambda word: WORDS.get(word, word)
 TRANSLATIONS = [
     (r"Starting CoC\.\.\.", "Oyun açılıyor…"),
     (r"CoC started", "Oyun açıldı"),
+    (r"CoC already open", "Oyun zaten açık, köyde (yeniden açılmadı)"),
+    (r"Round timing: (.+)", "Tur süreleri: {0}"),
+    (r"Home steps: (.+)", "Geliştirme adımı süreleri: {0}"),
+    (r"Walls read: nothing, next look at (.+)", "Duvar satırı okunamadı (sonraki okuma {0})"),
+    (r"Walls read: (.+), next look at (.+)", "Duvarlar okundu: {0} (sonraki okuma {1})"),
     (r"Stopping CoC\.\.\.", "Oyun kapatılıyor…"),
     (r"CoC stopped", "Oyun kapandı"),
     (r"No update available", "Oyun güncel"),

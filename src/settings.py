@@ -95,6 +95,7 @@ def default_settings():
             "every_attacks": 3, # with attacks on: one wall pass, then this many attacks (the menu takes ~30 s)
             "start_gold": 0, # with attacks on: walls only once gold OR elixir reaches these (0 and 0 = use every_attacks)
             "start_elixir": 0,
+            "total": 0, # walls in the village (Telegram wall count: the top level is not in the menu); 0 = unknown
         },
         "attack": {
             "min_gold": 400_000, # every non-zero minimum has to hold, 0 = no condition

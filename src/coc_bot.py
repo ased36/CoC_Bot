@@ -134,6 +134,29 @@ class CoC_Bot:
         if d.date() == date.today() + timedelta(days=1): return "yarın " + d.strftime("%H:%M")
         return d.strftime("%d.%m %H:%M")
 
+    @staticmethod
+    def _walls_lines():
+        """Emre 02.11 (2A): "🧱 Duvar · bugün 14" and the levels from the start of the day to now, "Sv13: 200 → 186". The
+        walls at the top level are not in the builders menu: they are the panel's total minus the rows read."""
+        from datetime import date
+        w = Cache_Manager.get("walls") or {}
+        if not w.get("levels"): return []
+        day = w.get("day") or {}
+        today = day.get("date") == date.today().isoformat()
+        start = (day.get("start") if today else None) or w["levels"]
+        top = min(t for t in (w.get("top"), day.get("start_top") if today else None) if t) # lowest level the unlisted walls can be at
+        total = int(Settings_Handler.get("walls", "total", 0) or 0)
+        def groups(levels):
+            g = {int(k): v for k, v in levels.items() if int(k) < top}
+            return g, (total - sum(g.values()) if total else None)
+        (a, a_top), (b, b_top) = groups(start), groups(w["levels"])
+        change = lambda x, y: f"{x} → {y}" if x != y else str(y)
+        parts = [f"Sv{k}: {change(a.get(k, 0), b.get(k, 0))}" for k in sorted(set(a) | set(b)) if a.get(k, 0) or b.get(k, 0)]
+        parts.append(f"Sv{top}+: " + (change(a_top, b_top) if total else "?"))
+        lines = [f"🧱 <b>Duvar</b> · bugün {day.get('count', 0) if today else 0}", " · ".join(parts)]
+        if not total: lines.append("<i>   En üst seviye için toplam duvar sayısını panele girin (Köy → Duvar).</i>")
+        return lines
+
     def _summary(self):
         """The Telegram /ozet answer (Emre 02.11: everything at a glance, with emojis since Telegram has no colors): profile,
         what the bot is doing, today's attacks and loot, storage, each builder and laboratory with its time left and end,
@@ -160,6 +183,7 @@ class CoC_Bot:
         if r:
             gems = f"{r['gems']:,}".replace(",", ".") if isinstance(r.get("gems"), int) else "?"
             lines += ["", "🏦 <b>Depo</b>", f"🟡 {store('gold')}   🟣 {store('elixir')}   ⚫ {store('dark')}   💎 {gems}"]
+        if walls := self._walls_lines(): lines += [""] + walls
         st = Cache_Manager.get("status") or {}
         fmt = self.upgrader.fmt_left
         def mmss(s): return f"{int(s) // 3600}h {int(s) % 3600 // 60}m" if s >= 3600 else f"{int(s) // 60}m {int(s) % 60}s"
@@ -357,8 +381,15 @@ class CoC_Bot:
                     if self.last_profile is not None: send_notification(f"🔀 Profil: {profile}", silent=True)
                     self.last_profile = profile
                 round_start = time.time()
+                # Emre 02.11 "the bot is slow": one line per round with how long each part took
+                timing, mark = [], [round_start]
+                def lap(name):
+                    now = time.time()
+                    timing.append(f"{name} {now - mark[0]:.0f}s")
+                    mark[0] = now
                 started, res = start_coc(detailed=True)
                 if started:
+                    lap("start")
                     update_status("now")
                     report("round_start")
 
@@ -382,6 +413,7 @@ class CoC_Bot:
                     to_home_base(ref_cache=True)
                     Resource_Reader.read()
                     report("scan_done")
+                    lap("village")
 
                     # Stop pressed in the panel: finish the current step, skip the rest of the round
                     def stopped():
@@ -406,6 +438,7 @@ class CoC_Bot:
                                 walls_now = self.attacks_since_walls is None or self.attacks_since_walls >= every
                             if walls_now: self.attacks_since_walls = 0
                         self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=walls_now)
+                        lap("upgrades")
                     if not exclude_home_attacks and not stopped():
                         logger.info("Attacking home base")
                         report("attack", base="home")
@@ -416,10 +449,12 @@ class CoC_Bot:
                         self.attacks_since_walls = (self.attacks_since_walls or 0) + 1
                         if self.attacker.last_result is not None and in_home_base(): # an attack was played (not only searched)
                             self._attack_message(before, time.time() - attack_start)
+                        lap("attack")
 
                     # Check builder base
                     builder_base_stopped = stopped()
-                    if (not skip_builder_base_upgrades or not exclude_builder_attacks) and not builder_base_stopped:
+                    went_builder = (not skip_builder_base_upgrades or not exclude_builder_attacks) and not builder_base_stopped
+                    if went_builder:
                         to_builder_base(ref_cache=True)
 
                     if not skip_builder_base_upgrades and not builder_base_stopped:
@@ -432,10 +467,13 @@ class CoC_Bot:
                         self.attacker.run_builder_base()
 
                     to_home_base()
-                    Resource_Reader.read()
+                    # The attack message has just read the storage (1-2 s): no second read right after it
+                    if went_builder or time.time() - Resource_Reader.read_at > 15: Resource_Reader.read()
                     if general.get("close_game", True):
                         stop_coc(sleep=configs.SUSPEND_EMULATOR_ON_IDLE)
                     update_status(time.time())
+                    lap("end")
+                    logger.info("Round timing: " + ", ".join(timing))
                 elif res == "error":
                     update_status("error")
 

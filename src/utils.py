@@ -559,6 +559,7 @@ class Resource_Reader:
         "builders": (0.885, 0.750, 0.935, 0.790),
     }
     last = {}
+    read_at = 0 # time of the last good read (the round end skips a read the attack message has just made)
 
     @classmethod
     def _read_frame(cls, frame):
@@ -602,6 +603,7 @@ class Resource_Reader:
             builders = f"{fmt(values['builders_free'])}/{fmt(values['builders_total'])}"
             logger.info(f"Resources: gold={fmt(values['gold'])} elixir={fmt(values['elixir'])} dark={fmt(values['dark'])} gems={fmt(values['gems'])} builders={builders}")
         cls.last = values
+        if values.get("gold") is not None and values.get("elixir") is not None: cls.read_at = time.time()
         report("resources", values=values)
         return values
 
@@ -713,6 +715,16 @@ def start_coc(timeout=60, detailed=False):
         if not ensure_emulator():
             if not detailed: return False
             else: return False, "error"
+        # Emre 02.11 (3A): the game already open on a village is not closed and opened again (am start -S did that every
+        # round, ~12 s). A popup, the "anyone there?" screen or the search screen hide the village: then the old way
+        if ADB_Manager.adbutils_device.shell("pidof com.supercell.clashofclans").strip():
+            Frame_Handler.get_frame()
+            for check, location in ((in_home_base, "home_base"), (in_builder_base, "builder_base")):
+                if check():
+                    TEMP_CACHE["location"] = location
+                    logger.info("CoC already open")
+                    if not detailed: return True
+                    else: return True, "running"
         to_system_home()
         logger.info("Starting CoC...")
 
