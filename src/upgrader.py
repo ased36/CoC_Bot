@@ -27,6 +27,18 @@ class Upgrader:
         Cache_Manager["look_again"] = dict(Cache_Manager.get("look_again") or {}, **{key: at})
         logger.info(f"{why}, next look at {datetime.fromtimestamp(at).strftime('%d.%m %H:%M')}")
 
+    def _paid(self, before, name):
+        """The chosen row's cost really left the storage. 02.11 04:23 and 04:29 the pet house read busy after the confirm
+        tap, but no dark elixir was spent: the upgrade had not started (and Telegram said it had)."""
+        resource, cost = getattr(self, "last_choice", None) or (None, None)
+        after = (Resource_Reader.read() or {}).get(resource)
+        if not cost or before.get(resource) is None or after is None: return True # cannot tell, trust the count
+        if after <= before[resource] - cost * 0.5: return True
+        n = lambda v: f"{v:,}".replace(",", ".")
+        logger.warning(f"{name}: {resource} did not drop ({n(before[resource])} -> {n(after)}, cost {n(cost)}), not started")
+        Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "not_started.png")
+        return False
+
     # ============================================================
     # 📱 Screen Interaction
     # ============================================================
@@ -675,6 +687,7 @@ class Upgrader:
                 return None
             cost = f"{row['cost']:,}".replace(",", ".")
             logger.info(f"Chosen ({reason}): {row['resource']} {cost}{' discounted' if row['discount'] else ''}")
+            self.last_choice = (row["resource"], row["cost"])
             if not self._goto_row(kind, bounds, row, page): return None
 
             if kind == "home":
@@ -1419,10 +1432,12 @@ class Upgrader:
         lab_upgrades_started = []
         try:
             if not exclude_lab and self.home_lab_available(1):
+                before = dict(Resource_Reader.read() or {})
                 upgraded = self.home_lab_upgrade()
                 time.sleep(0.5)
                 final_lab_avail = self.home_lab_available(1)
-                if upgraded is not None and not final_lab_avail: lab_upgrades_started.append(upgraded.lower())
+                if upgraded is not None and not final_lab_avail and self._paid(before, upgraded):
+                    lab_upgrades_started.append(upgraded.lower())
         except (KeyboardInterrupt, SystemExit): raise
         except:
             logger.warning("Encountered an error while attempting to upgrade home lab. Retrying...")
@@ -1437,12 +1452,16 @@ class Upgrader:
         try:
             if not exclude_pet and self._due("pet"):
                 if self.pet_house_available(1):
+                    before = dict(Resource_Reader.read() or {})
                     upgraded = self.pet_house_upgrade()
                     time.sleep(0.5)
                     final_pet_avail = self.pet_house_available(1)
                     if upgraded is not None and not final_pet_avail:
-                        pet_upgrades_started.append(upgraded.lower())
-                        self._later("pet", 12, "Pet upgrade started")
+                        if self._paid(before, upgraded):
+                            pet_upgrades_started.append(upgraded.lower())
+                            self._later("pet", 12, "Pet upgrade started")
+                        else:
+                            self._later("pet", 1, "Pet upgrade did not start")
                     elif upgraded is None:
                         self._later("pet", 1, "No pet upgrade to start")
                 else:
