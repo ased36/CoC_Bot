@@ -572,3 +572,4 @@ Testler scratchpad'de (t_look, t_ozet, t_ozet2, t_ozet3, t_potion, t_status, t_s
 - `src/advice.py`: belediye seviyesi = panel (Genel → Köy, 0 = bot bulur) → menüdeki Town Hall satırı → menünün sunduğu seviyelere izin veren en düşük TH. /koy: TH, TH max'ına kalan seviye + en geride 8 satır, indirimli iş sayısı, duvar. /tavsiye: boş usta + parası yeten (saldırı binaları önce), boşa akan iksir, boş lab, duvar başlama değeri geçildi, indirimde pahalılar önce, en geride saldırı binaları, ekonomi.
 - Denendi oyunsuz: sahte önbellekle iki durum (boş usta yok / 1 boş usta + 9,5 M altın); bu köy için tahmin TH15.
 - Sırada: ilk canlı okuma (yeni kodla açılınca ilk tur), Demirci ölçümü (onay ister) → ekipman tavsiyesi.
+- 02.11 19:58 canlı ilk okuma ✅: 73 satır, 3 seviyesiz; Town Hall satırı rozet 16 → TH15 (tahminle aynı). Gürültü: kahraman adlarının bir kısmı okunamadı ("3 6C", "Ejcpo Ogeonu", "Barracks Sv46"); TH maxı

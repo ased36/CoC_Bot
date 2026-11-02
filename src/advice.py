@@ -84,9 +84,14 @@ def koy_text():
     if th:
         b = behind(v, th)
         total = sum(x[4] for x in b)
-        lines += ["", f"📈 <b>TH{th} max'ına kalan</b>: {total} seviye, {len(b)} bina / tuzak / kahraman"]
-        lines += [f"• {esc(n)}{f' ×{c}' if c > 1 else ''}: {lv} → {m}" for n, c, lv, m, _ in b[:8]]
-        if len(b) > 8: lines.append(f"<i>   +{len(b) - 8} satır daha</i>")
+        # Traps filled the top of the list (02.11 live read: Spring Trap x9 1 -> 10): they get one line of their own
+        traps = {n.lower() for n in (th_data().get(str(th)) or {}).get("traps", {})}
+        bt = [x for x in b if x[0].lower() in traps]
+        bb = [x for x in b if x[0].lower() not in traps]
+        lines += ["", f"📈 <b>TH{th} max'ına kalan</b>: {total} seviye ({len(bb)} bina / kahraman satırı, {len(bt)} tuzak satırı)"]
+        lines += [f"• {esc(n)}{f' ×{c}' if c > 1 else ''}: {lv} → {m}" for n, c, lv, m, _ in bb[:8]]
+        if len(bb) > 8: lines.append(f"<i>   +{len(bb) - 8} bina satırı daha</i>")
+        if bt: lines.append(f"🪤 Tuzaklar: {sum(x[4] for x in bt)} seviye eksik (en geride {esc(bt[0][0])} {bt[0][2]} → {bt[0][3]})")
     disc = [r for r in v["rows"] if r.get("discount")]
     if disc: lines += ["", f"🏷 <b>İndirimli</b>: {len(disc)} iş (etkinlik)"]
     w = Cache_Manager.get("walls") or {}
@@ -135,7 +140,8 @@ def tavsiye_text():
     # 5) An event discount: the expensive ones first
     disc = sorted((x for x in v.get("rows") or [] if x.get("discount") and x.get("cost")), key=lambda x: -x["cost"])
     if disc:
-        tips.append("🏷 <b>İndirim sürüyor.</b> Pahalılar önce: " + ", ".join(f"{esc(x['name'])} ({_short(x['cost'])})" for x in disc[:3]) + ".")
+        tips.append(f"🏷 <b>İndirim sürüyor</b> ({len([x for x in v.get('rows') or [] if x.get('discount')])} iş). Parası yetenlerin en pahalıları: "
+                    + ", ".join(f"{esc(x['name'])} ({_short(x['cost'])})" for x in disc[:3]) + ".")
     # 6) Rushed: offence buildings furthest behind first
     if th and v.get("rows"):
         off = [x for x in behind(v, th) if x[0].lower() in {n.lower() for n in OFFENCE}][:3]
