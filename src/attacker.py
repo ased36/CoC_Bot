@@ -811,6 +811,7 @@ class Attacker:
                     # The finger moves on only once a troop came out where it pressed (02.11 23:22: a press off the map /
                     # in the red area dropped nothing and the moving finger dragged the view). Else it lifts and presses
                     # again a little out (the warning is up: red area) or in (no warning: off the map), like a hand would
+                    base_stroke, off = stroke, 0.0
                     for tries in range(4):
                         pressed, seen, at = time.time(), len(state["drops"]), len(trail)
                         def dropped(): return len(state["drops"]) > seen or state["empty"]
@@ -819,7 +820,10 @@ class Attacker:
                             break
                         step = 0.012 if state["warn"] else -0.008
                         logger.info(f"Stroke {k + 1}: nothing dropped at the press ({'red area' if state['warn'] else 'off the map?'}), pressing again {'out' if step > 0 else 'in'}")
-                        stroke = [(a, m + step, t) for a, m, t in stroke]
+                        # Only the start moves: the map's edge / the red line is near here, not all the way round
+                        # (moving the whole round 2-3 % in put it inside the red area)
+                        off += step
+                        stroke = [(a, m + off * max(0.0, 1 - max(t - still, 0) / 1.5), t) for a, m, t in base_stroke]
                         pts = self._render(red or ring_out, stroke)
                         time.sleep(random.uniform(0.15, 0.3))
                     else:
