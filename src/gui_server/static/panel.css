@@ -965,6 +965,7 @@ select option { background: var(--surface-2); color: var(--text); }
 .events li:first-child { border-top: none; }
 .events .t { color: var(--muted); width: 92px; flex: none; font: 12.5px/1.6 var(--mono); font-variant-numeric: tabular-nums; }
 .events .n { color: var(--muted); font-size: 12px; }
+.events .muted, .events li.muted { color: var(--muted); }
 
 /* ---------- Start summary ---------- */
 .safe-note {

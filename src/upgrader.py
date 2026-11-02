@@ -40,6 +40,118 @@ class Upgrader:
         return False
 
     # ============================================================
+    # 👷 Builder status (Emre 02.11): the ongoing upgrades on top of the builders and laboratory menus, with the time
+    # left at the right of each row ("6H 29M", "1d 5H"); measured on the 02.11 04:58 frames
+    # ============================================================
+
+    TIME_UNITS = {"D": 86400, "H": 3600, "M": 60, "S": 1}
+    TIME_LIMITS = {"D": 99, "H": 23, "M": 59, "S": 59}
+
+    @classmethod
+    def parse_time(cls, text):
+        """Game time text -> (seconds, precision): the second unit shown is the precision ("1d 5H" = 1 day 5 hours, up to
+        an hour more). OCR slips seen 02.11: the H read as a 4 ("64 29M"), a 5 as S ("1d SH"), a 2 as Z. None = not a time."""
+        import re
+        order = "DHMS"
+        s = text.upper().replace("O", "0").replace("I", "1").replace("L", "1").replace("Z", "2").replace("B", "8")
+        s = re.sub(r"S(?=[\dDHM])", "5", s)
+        tokens = s.split()
+        if not 1 <= len(tokens) <= 2: return None
+        parts = []
+        for tok in tokens:
+            m = re.fullmatch(r"(\d+)([DHMS]?)", tok)
+            if not m: return None
+            parts.append([m.group(1), m.group(2)])
+        if len(parts) == 2: # a unit lost to OCR comes from the order
+            (_, u1), (_, u2) = parts
+            if not u1 and u2 and order.index(u2) > 0: parts[0][1] = order[order.index(u2) - 1]
+            if u1 and not u2 and order.index(u1) < 3: parts[1][1] = order[order.index(u1) + 1]
+        total, last = 0, -1
+        for digits, unit in parts:
+            if not unit: return None
+            v = int(digits)
+            if v > cls.TIME_LIMITS[unit] and len(digits) > 1 and digits[-1] == "4": v = int(digits[:-1]) # "164": 16 and the H
+            if v > cls.TIME_LIMITS[unit] or order.index(unit) <= last or (last >= 0 and order.index(unit) != last + 1): return None
+            last = order.index(unit)
+            total += v * cls.TIME_UNITS[unit]
+        return total, cls.TIME_UNITS[order[last]]
+
+    def _read_time(self, section):
+        """Three readings of a white time text (two masks and the picture itself), the most common valid one."""
+        import cv2, numpy as np, collections
+        OCR_Handler.load()
+        reads = []
+        for mask in (section.min(axis=2) > 200, section.min(axis=2) > 170):
+            m = cv2.copyMakeBorder(255 - mask.astype(np.uint8) * 255, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
+            reads.append(m)
+        reads.append(section)
+        texts = [" ".join(OCR_Handler.reader.readtext(cv2.resize(r, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC), detail=0,
+                                                       allowlist="0123456789dhmsDHMS ")) for r in reads]
+        valid = [v for v in map(self.parse_time, texts) if v is not None]
+        return collections.Counter(valid).most_common(1)[0][0] if valid else None
+
+    def _read_ongoing(self, frame):
+        """[(name, seconds left, precision)] of the rows above "Suggested upgrades" / "Other upgrades" in an open builders
+        or laboratory menu (1920x1080: names from x 1426, times x 1790-1892, rows ~58 px apart)."""
+        import re, difflib
+        OCR_Handler.load()
+        crop = frame[60:1000, 1400:1920]
+        boxes = [(int((b[0][1] + b[2][1]) / 2) + 60, int(b[0][0]) + 1400, t) for b, t, _ in OCR_Handler.reader.readtext(crop, detail=1)]
+        stop = min([y for y, _, t in boxes if re.search(r"sugg|other\s*upg", t, re.I)] or [1000])
+        rows = []
+        for y, x, t in sorted(boxes):
+            if x > 1700 or not 80 < y < stop - 20: continue
+            if rows and abs(rows[-1][0] - y) < 14: rows[-1][1] += " " + t # one name in two boxes
+            else: rows.append([y, t])
+        names = Cache_Manager.get("vocab") or {}
+        names = [n for v in names.values() for n in v]
+        out = []
+        for y, text in rows:
+            left = self._read_time(frame[max(0, y - 20):y + 20, 1790:1892])
+            if left is None: continue
+            raw = re.sub(r"\s*x\s*\d+$", "", text.strip(), flags=re.I).title()
+            name = (difflib.get_close_matches(raw, names, 1, 0.6) or [raw])[0]
+            out.append((name, left[0], left[1]))
+        return out
+
+    @require_exit(x=0.99, y=0.01)
+    def _status_menu(self, kind):
+        import time
+        self._click_build_button()
+        time.sleep(0.5)
+        {"builders": self._click_home_builders, "lab": self._click_home_lab}[kind]()
+        time.sleep(1.0)
+        frame = Frame_Handler.get_frame(grayscale=False)
+        Frame_Handler.save_frame(frame, f"menu_{kind}_top.png")
+        return self._read_ongoing(frame)
+
+    def read_status(self):
+        """Builders and laboratory: what is being upgraded and when it ends, into the disk cache (Telegram /ozet, the
+        panel's Ustalar card). An end is the earliest the time shown allows; "prec" is how much later it can be."""
+        import time
+        status = dict(Cache_Manager.get("status") or {})
+        status["t"] = now = time.time()
+        for kind in ("builders", "lab"):
+            try:
+                rows = self._status_menu(kind)
+            except (KeyboardInterrupt, SystemExit): raise
+            except Exception:
+                logger.exception(f"Upgrader.read_status({kind}):")
+                continue
+            if rows is None: continue
+            status[kind] = [{"name": n, "end": now + s, "prec": p} for n, s, p in rows]
+            logger.info(f"Status {kind}: " + (", ".join(f"{n} {self.fmt_left(s)}" for n, s, _ in rows) or "nothing running"))
+        Cache_Manager["status"] = status
+        report("status", status=status)
+        return status
+
+    @staticmethod
+    def fmt_left(seconds):
+        d, r = divmod(int(seconds), 86400)
+        h, r = divmod(r, 3600)
+        return f"{d}d {h}h" if d else f"{h}h {r // 60}m" if h else f"{r // 60}m"
+
+    # ============================================================
     # 📱 Screen Interaction
     # ============================================================
     
@@ -1465,14 +1577,27 @@ class Upgrader:
                         if self._paid(before, upgraded):
                             pet_upgrades_started.append(upgraded.lower())
                             self._later("pet", 12, "Pet upgrade started")
+                            pet_busy = True
                         else:
                             self._later("pet", 1, "Pet upgrade did not start")
-                    elif upgraded is None:
-                        self._later("pet", 1, "No pet upgrade to start")
+                            pet_busy = False
+                    else:
+                        pet_busy = final_pet_avail is False
+                        if upgraded is None: self._later("pet", 1, "No pet upgrade to start")
                 else:
                     self._later("pet", 6, "Pet house busy")
+                    pet_busy = True
+                Cache_Manager["status"] = dict(Cache_Manager.get("status") or {}, pet_busy=pet_busy) # for Telegram /ozet
         except (KeyboardInterrupt, SystemExit): raise
         except: pass
+
+        # Builder status (Emre 02.11, 4A): every 2 hours, and again once an upgrade started
+        try:
+            if upgrades_started or lab_upgrades_started or self._due("status"):
+                self.read_status()
+                self._later("status", 2, "Status read")
+        except (KeyboardInterrupt, SystemExit): raise
+        except: logger.exception("Upgrader.read_status:")
 
         # Walls last, with what the upgrades above left over (when attacking, the bot runs them after the attack instead)
         try:

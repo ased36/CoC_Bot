@@ -125,28 +125,83 @@ class CoC_Bot:
                 f" · {self._short(gain['dark'])} kara\nDepo: {store('gold')} / {store('elixir')} / {store('dark')} · tur {int(seconds)} sn")
         send_notification(text, photo=self.attacker.last_result, silent=True)
 
+    @staticmethod
+    def _when(t):
+        """An end time for Telegram: 14:20 today, yarın 09:05, 04.11 18:00 later."""
+        from datetime import datetime, date, timedelta
+        d = datetime.fromtimestamp(t)
+        if d.date() == date.today(): return d.strftime("%H:%M")
+        if d.date() == date.today() + timedelta(days=1): return "yarın " + d.strftime("%H:%M")
+        return d.strftime("%d.%m %H:%M")
+
     def _summary(self):
-        """The Telegram /ozet answer: profile, what the bot is doing, today's attacks and loot, storage, builders."""
-        import time
+        """The Telegram /ozet answer (Emre 02.11: everything at a glance, with emojis since Telegram has no colors): profile,
+        what the bot is doing, today's attacks and loot, storage, each builder and laboratory with its time left and end,
+        the pet house. HTML (bold headings)."""
+        import time, html
         from datetime import datetime, date
+        now = time.time()
+        esc = html.escape
         hm = lambda t: datetime.fromtimestamp(t).strftime("%H:%M")
         d = self.day if self.day.get("date") == date.today().isoformat() else {"attacks": 0, "gold": 0, "elixir": 0, "dark": 0}
         status = TEMP_CACHE.get("status")
         rest_until = d.get("rest_until", 0) or 0
-        doing = {"now": "turda (geliştirme / saldırı)", "paused": "duraklatıldı", "idle": "durdu, Başlat bekleniyor",
-                 "hours": "çalışma saatleri dışında (ızgara)", "error": "son turda hata, 1 dk sonra yeniden",
-                 "rest": f"molada, devam {hm(rest_until)}", "daily": f"günlük sınır doldu, devam {hm(rest_until)}"}.get(status)
-        if isinstance(status, (int, float)): doing = f"tur bitti, sonraki {hm(status)}"
+        doing = {"now": "⚔️ Turda (geliştirme / saldırı)", "paused": "⏸ Duraklatıldı", "idle": "⏹ Durdu, Başlat bekleniyor",
+                 "hours": "🌙 Çalışma saatleri dışında", "error": "⚠️ Son turda hata, 1 dk sonra yeniden",
+                 "rest": f"☕ Molada, devam {hm(rest_until)}", "daily": f"📵 Günlük sınır doldu, devam {self._when(rest_until)}"}.get(status)
+        if isinstance(status, (int, float)): doing = f"🟢 Çalışıyor, sonraki tur {hm(status)}"
         r = Resource_Reader.last or {}
         store = lambda k: self._short(r.get(k)).lstrip("+")
         profile = (Settings_Handler.current or {}).get("profile")
-        lines = [f"📋 {profile + ' · ' if profile else ''}{hm(time.time())}",
-                 f"Durum: {doing or 'bilinmiyor'}",
-                 f"Bugün: {d['attacks']}{'/' + str(d['cap']) if d.get('cap') else ''} saldırı · {self._short(d['gold'])} altın · "
-                 f"{self._short(d['elixir'])} iksir · {self._short(d['dark'])} kara"]
-        if d.get("session_target"): lines.append(f"Mola: {d.get('session', 0)}/{d['session_target']} saldırıdan sonra")
-        if r: lines.append(f"Depo: {store('gold')} / {store('elixir')} / {store('dark')} · boş usta {r.get('builders_free', '?')}/{r.get('builders_total', '?')}")
+        cap = f"/{d['cap']}" if d.get("cap") else ""
+        lines = [f"🏰 <b>{esc(profile or 'Köy')}</b> · {hm(now)}", doing or "❔ Durum bilinmiyor", "",
+                 f"⚔️ <b>Bugün</b> · {d['attacks']}{cap} saldırı" + (f" · ☕ mola {d.get('session', 0)}/{d['session_target']}" if d.get("session_target") else ""),
+                 f"🟡 {self._short(d['gold'])}   🟣 {self._short(d['elixir'])}   ⚫ {self._short(d['dark'])}"]
+        if r:
+            gems = f"{r['gems']:,}".replace(",", ".") if isinstance(r.get("gems"), int) else "?"
+            lines += ["", "🏦 <b>Depo</b>", f"🟡 {store('gold')}   🟣 {store('elixir')}   ⚫ {store('dark')}   💎 {gems}"]
+        st = Cache_Manager.get("status") or {}
+        def section(kind, title, total):
+            rows = st.get(kind)
+            if rows is None: return
+            running = sorted((b for b in rows if b["end"] + b.get("prec", 0) > now), key=lambda b: b["end"])
+            done = [b for b in rows if b["end"] + b.get("prec", 0) <= now]
+            busy = f" · {len(running)}/{total} dolu" if total else ""
+            lines.extend(["", f"{title}{busy}"])
+            for b in running:
+                left = max(0, b["end"] - now)
+                dot = "🟢" if left <= 3600 else "🟡" if left <= 6 * 3600 else "🟠" if left <= 86400 else "🔴"
+                lines.append(f"{dot} {esc(b['name'])} · {self.upgrader.fmt_left(left)} · {self._when(b['end'] + b.get('prec', 0) / 2)}")
+            lines.extend(f"✅ {esc(b['name'])} bitti" for b in done)
+            if total and len(running) < total: lines.append(f"🔨 {total - len(running)} boş")
+        section("builders", "👷 <b>Ustalar</b>", r.get("builders_total"))
+        section("lab", "🔬 <b>Laboratuvar</b>", None)
+        if "pet_busy" in st: lines += ["", "🐾 <b>Evcil hayvan</b> · " + ("meşgul" if st["pet_busy"] else "boş")]
+        if st.get("t"): lines += ["", f"<i>Usta / lab okuma {hm(st['t'])} · 🟢 ≤1 sa 🟡 ≤6 sa 🟠 ≤1 gün 🔴 daha uzun</i>"]
         return "\n".join(lines)
+
+    def _status_events(self):
+        """Emre 02.11 (1A): a message when a builder or the laboratory gets free (the end the menu allowed is past) and the
+        summary at 09:00 and 21:00. Cheap (no game), called every loop."""
+        import time, html
+        from datetime import datetime, date
+        now = time.time()
+        st = Cache_Manager.get("status") or {}
+        done = set(Cache_Manager.get("status_done") or [])
+        new = []
+        for kind, what in (("builders", "usta boşaldı"), ("lab", "laboratuvar boşaldı")):
+            for b in st.get(kind) or []:
+                key = f"{kind}|{b['name']}|{int(b['end'])}"
+                if key not in done and b["end"] + b.get("prec", 0) <= now:
+                    done.add(key)
+                    new.append(f"✅ <b>{html.escape(b['name'])}</b> bitti, {what}")
+        if new:
+            Cache_Manager["status_done"] = sorted(done)[-60:]
+            send_notification("\n".join(new), html=True)
+        hour = datetime.now().hour
+        if hour in (9, 21) and Cache_Manager.get("summary_slot") != (slot := f"{date.today()} {hour}"):
+            Cache_Manager["summary_slot"] = slot
+            send_notification(self._summary(), html=True, silent=True)
 
     def _telegram_commands(self):
         """Emre 02.11: /ozet in Telegram gets the summary at once. Long polling on its own thread; only the chat the bot
@@ -170,7 +225,7 @@ class CoC_Bot:
                     if str(msg.get("chat", {}).get("id")) != str(Cache_Manager.get("telegram_chat_id")): continue
                     words = (msg.get("text") or "").strip().lower().split()
                     cmd = words[0].split("@")[0] if words else ""
-                    if cmd in ("/ozet", "/özet", "ozet", "özet"): send_notification(self._summary())
+                    if cmd in ("/ozet", "/özet", "ozet", "özet"): send_notification(self._summary(), html=True)
                     elif cmd in ("/start", "/help", "/yardim", "/yardım"): send_notification("Komutlar:\n/ozet — anlık özet")
             except (KeyboardInterrupt, SystemExit): raise
             except Exception:
@@ -224,6 +279,9 @@ class CoC_Bot:
                 if not online():
                     time.sleep(1)
                     continue
+                try: self._status_events()
+                except (KeyboardInterrupt, SystemExit): raise
+                except Exception: logger.exception("CoC_Bot._status_events:")
 
                 mode = bot_mode()
                 if mode in ("paused", "idle"):

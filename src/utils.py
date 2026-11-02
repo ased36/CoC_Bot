@@ -396,17 +396,18 @@ def get_telegram_chat_id():
 
 _notify_last = {}
 
-def send_notification(text, photo=None, silent=False, key=None, every=0):
+def send_notification(text, photo=None, silent=False, key=None, every=0, html=False):
     """Panel web app + Telegram (TELEGRAM_BOT_TOKEN in configs.py, never committed). Sent on a thread: a slow network
     never holds the bot. photo: a picture file sent with text as its caption. silent: no sound on the phone (every
-    attack). key / every: the same kind of message at most once per every seconds (errors can repeat each round)."""
+    attack). key / every: the same kind of message at most once per every seconds (errors can repeat each round).
+    html: Telegram reads <b>, <i>, <code> in the text (names from the game go through html.escape first)."""
     import time, threading
     if key is not None:
         if time.time() - _notify_last.get(key, 0) < every: return
         _notify_last[key] = time.time()
-    threading.Thread(target=_send_notification, args=(text, photo, silent), daemon=True).start()
+    threading.Thread(target=_send_notification, args=(text, photo, silent, html), daemon=True).start()
 
-def _send_notification(text, photo=None, silent=False):
+def _send_notification(text, photo=None, silent=False, html=False):
     import requests
 
     if WEB_APP_URL != "":
@@ -422,6 +423,7 @@ def _send_notification(text, photo=None, silent=False):
     if TELEGRAM_BOT_TOKEN != "":
         try:
             data = {"chat_id": get_telegram_chat_id(), "disable_notification": "true" if silent else "false"}
+            if html: data["parse_mode"] = "HTML"
             if photo is not None and Path(photo).exists():
                 with open(photo, "rb") as f:
                     requests.post(

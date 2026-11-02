@@ -187,6 +187,7 @@ def handle_state(id):
         "end_time": instance.end_time,
         "next_check": instance.next_check,
         "resources": instance.settings.get("resources", {}),
+        "upgrades": instance.settings.get("upgrades", {}), # builders and laboratory running (Durum → Ustalar)
     }
 
 @app.route("/instances/<id>/exclude", methods=["GET", "POST"])
@@ -212,6 +213,7 @@ def handle_settings(id):
         update = request.json or {}
         update.pop("stats", None)
         update.pop("resources", None)
+        update.pop("upgrades", None)
         update.pop("profile", None) # changed only through /profiles
         with settings_lock:
             settings_store.merge(instance.settings, update)
@@ -286,6 +288,8 @@ def handle_report(id):
         stats = instance.settings["stats"]
         if kind == "resources":
             instance.settings["resources"] = dict(data.get("values", {}), t=time.time())
+        elif kind == "status":
+            instance.settings["upgrades"] = data.get("status", {})
         elif kind == "round_start":
             stats["rounds"] += 1
             instance.next_check = 0

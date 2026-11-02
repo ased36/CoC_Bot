@@ -62,6 +62,11 @@
                     <p class="hint">Geliştirme, arama, hata gibi önemli olaylar. Tamamı İstatistik sekmesinde.</p>
                     <ul class="events" id="events_recent"></ul>
                 </div>
+                <div class="card">
+                    <h2>Ustalar ve laboratuvar</h2>
+                    <p class="hint">Bot usta ve laboratuvar menüsünü 2 saatte bir, bir de geliştirme başlatınca okur; aradaki kalan süreler hesaplanır. 🟢 ≤1 sa · 🟡 ≤6 sa · 🟠 ≤1 gün · 🔴 daha uzun.</p>
+                    <ul class="events" id="upgrades"></ul>
+                </div>
             </div>
 
             <h3 class="section-title">Kayıt — botun satır satır yaptıkları</h3>
@@ -898,7 +903,30 @@
             renderState();
         }
 
+        // Durum → Ustalar: what the builders and the laboratory are upgrading, time left and end (read by the bot)
+        function fmtLeft(s) {
+            const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+            return d ? `${d} g ${h} sa` : h ? `${h} sa ${m} dk` : `${m} dk`;
+        }
+        function renderUpgrades() {
+            const up = (state && state.upgrades) || {}, el = $("#upgrades"), t = now();
+            if (!up.t) { el.innerHTML = `<li class="muted"><span>Henüz okunmadı (bot ilk turda okur)</span></li>`; return; }
+            const rows = [];
+            [["builders", "👷 Usta"], ["lab", "🔬 Lab"]].forEach(([kind, label]) => {
+                (up[kind] || []).slice().sort((a, b) => a.end - b.end).forEach(b => {
+                    const end = b.end + (b.prec || 0), left = b.end - t;
+                    const dot = end <= t ? "✅" : left <= 3600 ? "🟢" : left <= 21600 ? "🟡" : left <= 86400 ? "🟠" : "🔴";
+                    const when = end <= t ? "bitti" : `${fmtLeft(Math.max(0, left))} · ${fmtDayClock(b.end + (b.prec || 0) / 2)}`;
+                    rows.push(`<li><span class="t">${label}</span><span>${dot} ${esc(b.name)} <span class="muted">· ${when}</span></span></li>`);
+                });
+            });
+            if ("pet_busy" in up) rows.push(`<li><span class="t">🐾 Evcil</span><span>${up.pet_busy ? "meşgul" : "boş"}</span></li>`);
+            rows.push(`<li class="muted"><span>Okuma ${fmtDayClock(up.t)}</span></li>`);
+            el.innerHTML = rows.join("");
+        }
+
         function renderState() {
+            renderUpgrades();
             const box = $("#status");
             const text = $("#status_text");
             if (!state) { box.className = "status err"; text.textContent = "Panel sunucusuna ulaşılamıyor"; return; }
