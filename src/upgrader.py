@@ -933,20 +933,45 @@ class Upgrader:
                 if runs and start - runs[-1][1] <= 8: runs[-1] = (runs[-1][0], i)
                 else: runs.append((start, i))
                 start = None
-        boxes = [(a, c) for a, c in runs if c - a > 0.06 * w and frac[a:c].mean() > 0.15]
-        best = None
+        # A button is ~170 px wide; the builders menu stays open on the right and its rows are beige with gold coins too
+        # (03.11 00:33: the tap went to the menu's "Wall x 22" row): anything wider than a button is not one
+        boxes = [(a, c) for a, c in runs if 0.06 * w < c - a < 0.11 * w and frac[a:c].mean() > 0.15]
+        found = []
         for a, c in boxes:
-            rows = (beige[:, a:c].mean(axis=1) > 0.3).nonzero()[0]
-            if len(rows) < 0.05 * h: continue
-            top, bottom = rows[0], rows[-1]
+            # The button's body: the longest unbroken run of beige rows. The yellow "Wall (Level 13) x 8" title just
+            # above the buttons is beige too (03.11 00:33: its letters were taken for the gold icon of +10 Add Wall)
+            on = list(beige[:, a:c].mean(axis=1) > 0.3) + [False]
+            spans, s0 = [], None
+            for i, v in enumerate(on):
+                if v and s0 is None: s0 = i
+                elif not v and s0 is not None:
+                    # The price strip is darker (beige 0.2 for ~17 rows): gaps up to ~25 rows stay inside the button;
+                    # the title is ~40 rows above it
+                    if spans and s0 - spans[-1][1] <= 0.023 * h: spans[-1] = (spans[-1][0], i - 1)
+                    else: spans.append((s0, i - 1))
+                    s0 = None
+            if not spans: continue
+            top, bottom = max(spans, key=lambda sp: sp[1] - sp[0])
+            if bottom - top < 0.05 * h: continue
             band = sec[top:top + max(12, (bottom - top) // 3), a:c]
             pr, pg, pb = band[..., 0], band[..., 1], band[..., 2]
-            mask = (pr > 200) & (pg > 150) & (pb < 90) if resource == "gold" else (pr > 140) & (pg < 110) & (pb > 150)
-            if mask.sum() > 60 and (best is None or mask.sum() > best[0]): best = (mask.sum(), a, c, top, bottom)
+            found.append({"a": a, "c": c, "top": top, "bottom": bottom,
+                          "gold": int(((pr > 200) & (pg > 150) & (pb < 90)).sum()), "elixir": int(((pr > 140) & (pg < 110) & (pb > 150)).sum())})
+        # The elixir button is sure (purple: nothing else in the bar is, not the title, not the menu); the gold button is
+        # always the box right left of it (02.11 17:39 with the Wall Ring button, 19:23 one wall, 03.11 00:33 Upgrade More).
+        # The gold coin alone is not sure: the title's yellow letters sit right above the buttons
+        elixir = max((f for f in found if f["elixir"] > 60), key=lambda f: f["elixir"], default=None)
+        best = None
+        if elixir and resource == "elixir": best = elixir
+        elif elixir:
+            left = [f for f in found if f["c"] <= elixir["a"] and elixir["a"] - f["c"] < 0.05 * w]
+            best = max(left, key=lambda f: f["c"], default=None)
+        else:
+            best = max((f for f in found if f["gold"] > 60), key=lambda f: f["gold"], default=None) if resource == "gold" else None
         if best is None:
-            logger.info(f"Wall buttons: beige boxes {boxes}, none with the {resource} icon")
+            logger.info(f"Wall buttons: beige boxes {[(f['a'], f['c'], f['gold'], f['elixir']) for f in found]}, none for {resource}")
             return False
-        Input_Handler.click((best[1] + best[2]) / 2 / w, Y0 + (best[3] + best[4]) / 2 / h)
+        Input_Handler.click((best["a"] + best["c"]) / 2 / w, Y0 + (best["top"] + best["bottom"]) / 2 / h)
         return True
 
     @staticmethod
