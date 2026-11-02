@@ -906,23 +906,31 @@ class Upgrader:
         return None
 
     def _click_wall_button(self, resource):
-        """Tap the gold or elixir Upgrade button under a selected wall, found by the icon next to its price."""
+        """Tap the gold or elixir Upgrade button under a selected wall: the beige button box whose price carries that icon.
+        02.11 17:39 frame: the largest run of gold columns was the village between two buttons (tap landed on the elixir
+        button), and the blue Wall Ring button next to them has a gold ring. Only beige boxes count, the tap is their middle."""
         h, w = WINDOW_DIMS[1], WINDOW_DIMS[0]
-        x1, y1, x2, y2 = 0.15, 0.80, 0.60, 0.845
-        band = Frame_Handler.get_frame_section(x1, y1, x2, y2, grayscale=False).astype(int)
-        r, g, b = band[..., 0], band[..., 1], band[..., 2]
-        mask = (r > 200) & (g > 150) & (b < 90) if resource == "gold" else (r > 140) & (g < 110) & (b > 150)
-        cols = list(mask.sum(axis=0) > 3) + [False]
-        # Largest run of icon columns; coins in the village can peek out next to the buttons
-        best, start = None, None
-        for i, v in enumerate(cols):
+        sec = Frame_Handler.get_frame_section(0, 0.79, 0.70, 0.95, grayscale=False).astype(int)
+        r, g, b = sec[..., 0], sec[..., 1], sec[..., 2]
+        frac = ((r > 170) & (g > 150) & (b > 100) & (b < 200) & (r - b > 25)).mean(axis=0)
+        runs, start = [], None
+        for i, v in enumerate(list(frac > 0.1) + [False]): # hammers and the price text break the beige up
             if v and start is None: start = i
             elif not v and start is not None:
-                if best is None or i - start > best[1] - best[0]: best = (start, i)
+                if runs and start - runs[-1][1] <= 8: runs[-1] = (runs[-1][0], i)
+                else: runs.append((start, i))
                 start = None
-        if best is None or best[1] - best[0] < 8: return False
-        icon_x = x1 + (best[0] + best[1]) / 2 / w
-        Input_Handler.click(icon_x - 0.035, 0.88)
+        boxes = [(a, c) for a, c in runs if c - a > 0.06 * w and frac[a:c].mean() > 0.3]
+        price = Frame_Handler.get_frame_section(0, 0.80, 0.70, 0.845, grayscale=False).astype(int)
+        best = None
+        for a, c in boxes:
+            pr, pg, pb = price[:, a:c, 0], price[:, a:c, 1], price[:, a:c, 2]
+            mask = (pr > 200) & (pg > 150) & (pb < 90) if resource == "gold" else (pr > 140) & (pg < 110) & (pb > 150)
+            if mask.sum() > 60 and (best is None or mask.sum() > best[0]): best = (mask.sum(), a, c)
+        if best is None:
+            logger.info(f"Wall buttons: beige boxes {boxes}, none with the {resource} icon")
+            return False
+        Input_Handler.click((best[1] + best[2]) / 2 / w, 0.88)
         return True
 
     @staticmethod
@@ -1103,7 +1111,7 @@ class Upgrader:
         frame = Frame_Handler.get_frame(grayscale=False)
         for text in OCR_Handler.get_text(Frame_Handler.crop(frame, 0.15, 0.45, 0.80, 0.72)):
             m = re.search(r"x\s*([\dil|otsz]+)\s*$", text.lower()) # OCR reads 1 as I / l / T
-            if "lev" in text.lower() and m: return int(m.group(1).translate(str.maketrans("il|otsz", "1110152")))
+            if re.search(r"[lt]ev|^wa", text.lower()) and m: return int(m.group(1).translate(str.maketrans("il|otsz", "1110152"))) # 17:39 OCR: "Walq ((tevel 13Jx 11"
         return None
 
     def _add_walls(self, n):
