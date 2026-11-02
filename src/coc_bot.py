@@ -440,6 +440,7 @@ class CoC_Bot:
                 except Exception: logger.exception("CoC_Bot._status_events:")
 
                 mode = bot_mode()
+                if mode == "idle": self.attacker.army_mismatch = None # Stop -> Start clears an army mismatch (Emre fixed the army)
                 if mode in ("paused", "idle"):
                     if waiting_logged != mode:
                         logger.info("Paused, waiting" if mode == "paused" else "Waiting for Start")
@@ -568,6 +569,9 @@ class CoC_Bot:
                         self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=walls_now)
                         lap("upgrades")
                     full = [] if exclude_home_attacks else self._storage_full()
+                    if not exclude_home_attacks and getattr(self.attacker, "army_mismatch", None):
+                        logger.info(f"Attack skipped: army does not fit the style ({self.attacker.army_mismatch})")
+                        exclude_home_attacks = True
                     self.storage_skip = bool(full)
                     if self.storage_skip:
                         have = Resource_Reader.last

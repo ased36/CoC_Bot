@@ -1282,7 +1282,16 @@ class Attacker:
         if ring is None or troops.get("card") not in cards:
             logger.error("Attack aborted: deploy line or troop card not found")
             self._leave_search() # nothing deployed yet, so this costs nothing
+            # 03.11 02:03-02:08: Emre changed the army (dragons, no super barbarians) and 20 searches went for nothing:
+            # the style's troop card missing twice in a row stops home attacks until the panel is started again
+            if troops.get("card") not in cards:
+                self.missing_card = getattr(self, "missing_card", 0) + 1
+                if self.missing_card >= 2:
+                    self.army_mismatch = f"{troops.get('card')} yok, çubukta: {', '.join(sorted(cards)) or 'hiçbiri'}"
+                    send_notification(f"⚠️ Ordu saldırı stiline uymuyor ({self.army_mismatch}). Saldırılar durdu; orduyu düzeltip "
+                                      "panelden Durdur → Başlat yap.", key="army_mismatch", every=3600)
             return False
+        self.missing_card = 0
 
         def tap_card(name):
             self._tap(cards[name], self.CARD_Y, spread=0.006)
