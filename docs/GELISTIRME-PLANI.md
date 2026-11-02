@@ -437,3 +437,13 @@ Sorun çıkarsa önce o düzeltilir, sonra adım 2.
 - `cache.json` "play": bugün 2 saldırı, sınır 37, molaya 25.
 - Denenebilirlik: ızgara 02–08 kapalı → şimdi Başlat'a basılırsa bot 09:00'a kadar bekler ("Outside working hours"; ilk turdan önce olduğu için Telegram'a 🌙 gitmez). Kahraman sırası: Kahramanlar görevi kapalı + ustalar 0/6 → bu denemede tetiklenmez.
 - Kod değişmedi. Adım 2 (profil) planı Emre'ye numaralı soruldu; kod Adım 1 denemesi görülünce.
+
+## 02.11 — Profil kararları (Emre 1A 2A 3A 4A 5A 6A, kod yok)
+
+- **1A:** profiller tek `data/main.json` içinde: `active_profile` + `profiles: {ad: {tasks, home, builder, walls, attack, attack_style, style}}`; `stats` / `resources` ortak. Panel sunucusu `/instances/<id>/settings` GET'inde etkin profili düzleştirip verir → bot (`Settings_Handler`) değişmez; POST etkin profile yazar. Profil değişimi bir sonraki turda.
+- **2A:** `general` (kontrol aralığı, oyunu kapat, mola, günlük sınır, ızgara) ortak, hesap başına; profilin içinde değil.
+- **3A:** profilde "Saldırı stili" seçimi şimdi; listede yalnız `yayma` (`super-barbar.yaml` eski biçim, gösterilmez). `scripted_attack` stili ayardan alır.
+- **4A:** mevcut ayarlar "Ganimet" adlı ilk profile göçer.
+- **5A:** ordu tarifi ölçümü profil kodu bitince, ayrı onayla, Emre oyunda değilken (yalnız ekrana bakmak).
+- **6A:** kod, Adım 1 canlı denemesinin kayıtları görüldükten sonra yazılır.
+- Panel: üst çubukta açılır liste + Yeni (etkin profilin kopyası) / Ad değiştir / Sil (etkin ve son profil silinmez). Kayıtta tur başında "Profile: <ad>", Telegram saldırı mesajında profil adı.
