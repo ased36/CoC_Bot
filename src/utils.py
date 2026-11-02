@@ -1815,6 +1815,38 @@ class Input_Handler:
             builder.publish(conn)
 
     @classmethod
+    def drag_timed(cls, points, stop=None, adjust=None, pointer=0):
+        """Hold one finger down and move it through points [(x, y, t)] (fractions, seconds from the press), at the
+        recorded pace: Emre's strokes keep their own speed, stops and the still start (02.11, 1A). adjust(x, y) -> (x, y)
+        is asked at every step (~60 ms) and may move the finger off the path (pushed out of the red area, pulled in off
+        the map's edge). Lifts early once stop() is true."""
+        import time, numpy as np
+        from pyminitouch import CommandBuilder
+        pts = np.array(points, dtype=float)
+        grid = np.arange(0, pts[-1, 2] + 1e-6, 0.06)
+        xs, ys = np.interp(grid, pts[:, 2], pts[:, 0]), np.interp(grid, pts[:, 2], pts[:, 1])
+        conn = ADB_Manager.minitouch_device.connection
+        builder = CommandBuilder()
+        place = adjust or (lambda x, y: (x, y))
+        builder.down(pointer, *cls._to_raw(*place(xs[0], ys[0])), 100)
+        builder.publish(conn)
+        start = time.time()
+        last = (xs[0], ys[0])
+        try:
+            for i in range(1, len(grid)):
+                if stop is not None and stop(): break
+                wait = start + grid[i] - time.time()
+                if wait > 0: time.sleep(wait)
+                # A still finger stays exactly still (a moving one would move the view instead of dropping)
+                if (xs[i], ys[i]) == last: continue
+                last = (xs[i], ys[i])
+                builder.move(pointer, *cls._to_raw(*place(xs[i], ys[i])), 100)
+                builder.publish(conn)
+        finally:
+            builder.up(pointer)
+            builder.publish(conn)
+
+    @classmethod
     def swipe_up(cls, y1=1.0, y2=0.0, x=1.0, **kwargs):
         cls.swipe(x, y1, x, y2, **kwargs)
 

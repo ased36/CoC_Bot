@@ -371,6 +371,117 @@ class Attacker:
         threading.Thread(target=run, daemon=True).start()
         return empty, done
 
+    # ---------- Emre's own strokes (02.11, 1A 2A): assets/emre_strokes.json, scripts/emre_strokes.py ----------
+
+    def _emre_plans(self):
+        import json
+        if not hasattr(self, "_plans"):
+            self._plans = json.loads((Asset_Manager.resource_path("assets/emre_strokes.json")).read_text(encoding="utf-8"))["plans"]
+        return self._plans
+
+    @staticmethod
+    def _ring_xy(ring, angle, margin):
+        """Screen point at angle, margin (part of the screen width) outside the ring, not clamped to the screen."""
+        import numpy as np
+        (cx, cy), radius = ring
+        r = radius[int(round(angle / 2)) % 180] + margin * 1920
+        return (cx + r * np.cos(np.radians(angle))) / 1920, (cy + r * np.sin(np.radians(angle))) / 1080
+
+    def _lay_plan(self, troops, ring):
+        """One of Emre's recorded attacks (1-2 strokes) made new for this attack: not one of the last four, mirrored
+        or flipped at random, turned up to 15 degrees, its moving part sped up or slowed down so the troops last about
+        as long as his did (the still start is kept: it is what makes the finger drop), the hand's wobble scaled.
+        Returns (strokes [(gap, [(angle, margin, t)])], what was chosen). A whole-round stroke needs the bottom of the
+        village in sight; where it hides under the troop bar a two-stroke plan is taken (the view moves between them)."""
+        import random
+        plans = self._emre_plans()
+        recent = getattr(self, "_recent_plans", [])
+        for _ in range(8):
+            i = random.choice([k for k in range(len(plans)) if k not in recent] or list(range(len(plans))))
+            strokes = plans[i]["strokes"]
+            if len(strokes) > 1 or self._hidden_share(self._render(ring, [(a, 0.01, 0) for a in range(0, 360, 10)]))[0] < 0.15: break
+        self._recent_plans = (recent + [i])[-4:]
+        turn = random.choice(("same", "mirror", "flip", "turned"))
+        rot = random.uniform(-15, 15)
+        def angle(a): return {"same": a, "mirror": 180 - a, "flip": -a, "turned": a + 180}[turn] + rot
+        moving = sum(s["dur"] - s["still"] for s in strokes)
+        target = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("plan_share", [1.0, 1.15]))
+        scale = min(max(target / moving, 0.8), 1.3)
+        base, wob = random.uniform(*troops.get("margin", [0.01, 0.016])), random.uniform(*troops.get("wobble", [0.3, 0.6]))
+        out = []
+        for s in strokes:
+            pts = []
+            for k, (da, w) in enumerate(zip(s["da"], s["wob"])):
+                t = k * 0.05
+                if t < s["still"]: # the still start stays exactly still
+                    da, w = 0.0, s["wob"][0]
+                pts.append((angle(s["a0"] + da), base + w * wob, t if t < s["still"] else s["still"] + (t - s["still"]) / scale))
+            out.append((s["gap"] / scale, pts))
+        return out, f"plan {i + 1} ({plans[i]['src']}), {len(strokes)} stroke(s), {turn} {rot:+.0f}°, pace x{1 / scale:.2f}"
+
+    def _render(self, ring, stroke, push=0.0):
+        """[(x, y, t)] of a stroke [(angle, margin, t)] on this ring (the red line, or Emre's band when it was not seen)."""
+        return [(*self._ring_xy(ring, a, m + push), t) for a, m, t in stroke]
+
+    @staticmethod
+    def _hidden_share(points):
+        """Share of the points under the troop bar (bottom) and above the screen (top)."""
+        n = max(len(points), 1)
+        return sum(1 for p in points if p[1] > 0.76) / n, sum(1 for p in points if p[1] < 0.04) / n
+
+    def _troop_count(self, frame, x):
+        """The "x44" on the troop card (02.11 22:12 frames: 11 of 11 read, ~75 ms on the CPU), or None."""
+        import re, cv2
+        s, y = self.card_scale / 0.8, self.CARD_Y
+        crop = Frame_Handler.crop(frame, x - 0.012 * s, y - 0.068 * s, x + 0.034 * s, y - 0.034 * s)
+        text = "".join(OCR_Handler.reader.readtext(cv2.resize(crop, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC), detail=0, allowlist="0123456789x"))
+        m = re.search(r"(\d+)", text)
+        return int(m.group(1)) if m and int(m.group(1)) <= 99 else None
+
+    def _card_gray(self, frame, x):
+        s = Frame_Handler.crop(frame, x - 0.01, self.CARD_Y - 0.01, x + 0.01, self.CARD_Y + 0.01).astype(int)
+        return (abs(s[..., 0] - s[..., 1]).max() < 8) and (abs(s[..., 1] - s[..., 2]).max() < 8)
+
+    @staticmethod
+    def _red_warning(frame):
+        """"You cannot deploy troops on the red area!" on screen (y 0.27-0.30, ~12 800 red pixels; none without it)."""
+        s = Frame_Handler.crop(frame, 0.2, 0.25, 0.8, 0.32).astype(int)
+        return int(((s[..., 0] > 200) & (s[..., 1] < 70) & (s[..., 2] < 70)).sum()) > 1500
+
+    def _watch_drops(self, troop_x, shots=None):
+        """While the troops are swept: a second thread reads the card's count and the red area warning from every frame.
+        Returns (state, done): state["count"], state["drops"] [(time, count)], state["warn"], state["empty"]."""
+        import threading, time, cv2
+        OCR_Handler.load()
+        state = {"count": None, "drops": [], "warn": False, "empty": False, "t": time.time()}
+        done = threading.Event()
+        t0 = time.time()
+        def run():
+            n = 0
+            while not done.is_set():
+                try:
+                    frame = Frame_Handler.get_frame(grayscale=False)
+                    now = time.time()
+                    if self._card_gray(frame, troop_x):
+                        state["empty"] = True
+                        state["drops"].append((now, 0))
+                        return
+                    c = self._troop_count(frame, troop_x)
+                    # A misread goes up or jumps far down: only a fall about as fast as troops drop (~7 a second) is believed
+                    if c is not None and (state["count"] is None or 0 < state["count"] - c <= 4 + 10 * (now - state["t"])):
+                        if state["count"] is not None: state["drops"].append((now, c))
+                        else: state["first"] = c
+                        state["count"], state["t"] = c, now
+                    state["warn"] = self._red_warning(frame)
+                    if shots is not None and n < 40:
+                        cv2.imwrite(str(shots / f"hold_{int((now - t0) * 1000):05d}.png"), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+                        n += 1
+                except Exception:
+                    return
+                time.sleep(0.03)
+        threading.Thread(target=run, daemon=True).start()
+        return state, done
+
     @classmethod
     def _red_area_from(cls, before, after):
         """The red area the game shows right after a troop is refused (measured 22:32, 22:41): the whole no-deploy zone
@@ -509,8 +620,11 @@ class Attacker:
         # Once the game has shown the real red area (Emre 1A, 22:32) everything goes by that line instead
         red = None
         last = {"frame": Frame_Handler.get_frame(grayscale=False)}
+        # Where troops were seen landing (the card's count fell while the finger was there) and the finger's way:
+        # the heroes go to one of those spots, a new one every attack (Emre 2A)
+        landed, trail = [], []
         def fresh_ring(label):
-            nonlocal ring, ring_out, red
+            nonlocal ring, ring_out, red, hero_spot, lead_spot
             frame = Frame_Handler.get_frame(grayscale=False)
             if frame.std() < 5: return # a black / empty frame from the emulator: nothing to compare, keep the last good one
             dx, dy = self._view_shift(last["frame"], frame)
@@ -521,6 +635,11 @@ class Attacker:
                 moved[1] += dy
                 ring, ring_out = self._emre_ring(self.EMRE_MID, moved), self._emre_ring(self.EMRE_OUTER, moved)
                 if red: red = ((red[0][0] + dx, red[0][1] + dy), red[1])
+                fx, fy = dx / 1920, dy / 1080
+                landed[:] = [(x + fx, y + fy) for x, y in landed]
+                trail[:] = [(t, x + fx, y + fy) for t, x, y in trail]
+                if hero_side == "landed": hero_spot = (hero_spot[0] + fx, hero_spot[1] + fy)
+                if lead_side == "landed": lead_spot = (lead_spot[0] + fx, lead_spot[1] + fy)
 
         # Two spots: the heroes' spot and the champion's spot on another side (a side whose edge is visible)
         spots = []
@@ -533,9 +652,15 @@ class Attacker:
         hero_side, hero_spot = spots[0]
         lead_side, lead_spot = spots[1] if len(spots) > 1 else spots[0]
         logger.info(f"Heroes {hero_side}, champion {lead_side}")
+        def visible(p): return 0.03 <= p[0] <= 0.97 and 0.05 <= p[1] <= 0.74 and not self._in_hud(*p)
+        def gap(a, b): return ((a[0] - b[0]) * 16 / 9) ** 2 + (a[1] - b[1]) ** 2
         def spot_again(side, old):
             # After the view moved a side can be hidden (the bottom under the troop bar after the pan back, 20:52: siege
             # and three heroes tapped on the old spot, now inside the village): then the next visible side
+            if side == "landed":
+                if visible(old): return side, old
+                seen = [p for p in landed if visible(p)]
+                if seen: return side, random.choice(seen)
             if red:
                 # Middle of a side, the side nearest the old one first (corners can be off the map, 23:03)
                 first = {"right": 315, "left": 225, "top": random.choice((225, 315)), "bottom": 45}.get(side, 315)
@@ -564,7 +689,11 @@ class Attacker:
             """The card is selected: drop it on the spot, a little off every time, further out when the red line refuses it.
             By the red line: a little in, a little out, then the middle of another side (the band between the line
             and the map's edge is only ~1-2 % of the screen on a big village, 23:27: three tries further out, all off the map)."""
-            if red:
+            seen = [p for p in landed if visible(p) and gap(p, spot) > 0.08 ** 2]
+            if seen:
+                # Emre 2A: one more try, on another spot where troops did land (not five taps on the same spot)
+                tries = [random.choice(seen)]
+            elif red:
                 tries = [self._outward(red, spot, push) for push in (0, -0.004, 0.006)]
                 others = [p[0] for a in random.sample([315, 225, 45, 135], 4)
                           for p in [self._deploy_points(red, a, 1, spread=15, **self.RED_SPOT)] if p]
@@ -608,6 +737,105 @@ class Attacker:
             if chance is not None and not random.random() < float(chance): return
             drop_lead()
 
+        def emre_troops(troop_x, reveal_t):
+            """Emre 02.11 (1A): the troops go the way his hand went in one of his recorded attacks, laid on this village's
+            red line, a different one and turned differently every time. A second thread reads the card's count and the
+            red area warning; like a hand that sees them, the finger moves out while the warning is up and in while
+            nothing drops (off the map's edge). Leftovers: a short sweep where troops did land, then single taps there."""
+            nonlocal hero_side, hero_spot, lead_side, lead_spot
+            st = troops.get("steer") or {}
+            out_step, in_step, max_out, max_in = st.get("out", 0.004), st.get("in", 0.004), st.get("max_out", 0.015), st.get("max_in", 0.008)
+            every, by = st.get("every", 0.3), troops.get("pan_by", 0.3)
+            plan, what = self._lay_plan(troops if red else dict(troops, margin=[-0.02, 0.0]), red or ring_out)
+            state, done = self._watch_drops(troop_x, shots)
+            steer = {"push": 0.0, "t": 0.0}
+            view_up, pans, held = False, 0, 0.0
+
+            def sweep(points, still, steering=True):
+                # One held stroke; the push is decided every `every` seconds from what the other thread saw. A stretch of
+                # the finger's own way (leftovers) is already pushed: it is gone again as it was
+                nonlocal held
+                start = time.time()
+                def adjust(x, y):
+                    now = time.time()
+                    if not steering:
+                        trail.append((now, x, y))
+                        return x, y
+                    if now - steer["t"] >= every:
+                        steer["t"] = now
+                        last_drop = state["drops"][-1][0] if state["drops"] else start
+                        if state["warn"] and now > reveal_t + 1.8: # the warning of the tap that showed the red area lasts a moment
+                            steer["push"] = min(steer["push"] + out_step, max_out)
+                        elif state["count"] is not None and now - start > still + 0.6 and now - last_drop > 0.8:
+                            steer["push"] = max(steer["push"] - in_step, -max_in)
+                    x, y = self._outward(red or ring_out, (x, y), steer["push"])
+                    trail.append((now, x, y))
+                    return x, y
+                Input_Handler.drag_timed(points, stop=lambda: state["empty"], adjust=adjust)
+                held += time.time() - start
+
+            try:
+                for k, (pause, stroke) in enumerate(plan):
+                    if state["empty"]: break
+                    if k: time.sleep(pause * random.uniform(0.85, 1.15))
+                    pts = self._render(red or ring_out, stroke)
+                    low, high = self._hidden_share(pts)
+                    # Emre's W / S (20:38): the view up before a stroke along the bottom, back down before one along the top
+                    if pans < 2 and ((low > 0.15 and not view_up) or (high > 0.15 and view_up)):
+                        Input_Handler.swipe(0.52, 0.51, 0.52 + random.uniform(-0.01, 0.01), 0.51 + (by if view_up else -by), duration=300, hold_end_time=200, inter_points=6)
+                        time.sleep(random.uniform(0.4, 0.6))
+                        view_up, pans = not view_up, pans + 1
+                    fresh_ring(f"before stroke {k + 1}")
+                    # The press must start on the field, not on a HUD button
+                    for turn in (0, 8, -8, 16, -16, 24, -24):
+                        pts = self._render(red or ring_out, [(a + turn, m, t) for a, m, t in stroke])
+                        if not self._in_hud(*pts[0][:2]) and 0.03 <= pts[0][0] <= 0.97 and 0.06 <= pts[0][1] <= 0.78: break
+                    still = next((t for a, m, t in stroke if a != stroke[0][0]), 0.4)
+                    sweep(pts, still)
+                first_count = state.get("first")
+                swept = len(state["drops"])
+
+                def landing():
+                    # Where the finger was a moment before the count fell (the frame and the reading take ~0.15 s)
+                    landed.clear()
+                    for te, _ in state["drops"]:
+                        before = [p for p in trail if p[0] <= te - 0.15]
+                        if before and visible(before[-1][1:]): landed.append(before[-1][1:])
+                landing()
+                # Leftovers: once more along a stretch where troops did land, then taps there (Emre: a few by hand)
+                if not state["empty"] and landed:
+                    te = random.choice(state["drops"][: max(1, len(state["drops"]) - 1)])[0]
+                    part = [p for p in trail if te - 0.7 <= p[0] <= te + 0.7]
+                    if len(part) > 3:
+                        t0 = part[0][0]
+                        sweep([(part[0][1], part[0][2], 0.0)] + [(x, y, 0.4 + t - t0) for t, x, y in part], 0.4, steering=False)
+                        landing()
+                taps = 0
+                while landed and taps < 20 and not self._card_empty(troop_x):
+                    x, y = random.choice(landed)
+                    self._tap(x, y, spread=0.006)
+                    taps += 1
+                    time.sleep(random.uniform(0.05, 0.12))
+            finally:
+                done.set()
+            logger.info(f"Troops: {what}, {held:.1f}s held, {first_count} -> {state['count'] if not state['empty'] else 0} "
+                        f"({swept} drops seen), push {steer['push'] * 100:+.1f} %, {len(landed)} landing spots, {taps} taps"
+                        + (", card ran out" if state["empty"] else ""))
+            if not landed:
+                # Nothing seen landing (the count could not be read): the old way, taps further out by the line
+                fresh_ring("after the sweeps")
+                (hero_side, hero_spot), (lead_side, lead_spot) = spot_again(hero_side, hero_spot), spot_again(lead_side, lead_spot)
+                if not self._card_empty(troop_x):
+                    if red: self._leftover_troops(red, troop_x, lambda: tap_card(troops["card"]), margins=self.RED_LEFTOVER, pause=0.05, around=[225, 315, 45, 135], spread=25, jitter=0.004)
+                    else: self._leftover_troops(ring, troop_x, lambda: tap_card(troops["card"]), margins=(0.035, 0.055, 0.015), pause=0.05)
+                return
+            # Emre 2A: the heroes on one of the spots where troops landed, the champion on another one far from it
+            fresh_ring("after the sweeps")
+            seen = [p for p in landed if visible(p)] or landed
+            hero_side, hero_spot = "landed", random.choice(seen)
+            far = [p for p in seen if gap(p, hero_spot) > 0.25 ** 2]
+            lead_side, lead_spot = "landed", random.choice(far) if far else max(seen, key=lambda p: gap(p, hero_spot))
+
         def step_troops(p):
             # Troops: hold and sweep (~7 troops a second while held). Two halves (top then bottom, or the other way, from the
             # left or the right) or one whole round. The hold ends a little before the card would run out; a second thread
@@ -615,6 +843,7 @@ class Attacker:
             nonlocal red, battle_start, hero_side, hero_spot, lead_side, lead_spot
             troop_x = cards[troops["card"]]
             tap_card(troops["card"])
+            reveal_t = 0.0
             if troops.get("red_line", True):
                 # One troop where the map is widest starts the battle (before it a tap only selects a building), then a tap
                 # on the middle of the village makes the game show the red area
@@ -622,9 +851,13 @@ class Attacker:
                 started = battle_start is not None or self._start_battle(ring, ring_out)
                 if started:
                     battle_start = battle_start or time.time()
+                    reveal_t = time.time()
                     red = self._reveal_red_area(clean, shots)
                 else:
                     logger.info("Battle did not start with one troop, using the recorded paths")
+            if troops.get("mode") == "emre":
+                battle_start = battle_start or time.time()
+                return emre_troops(troop_x, reveal_t)
             hold = troops.get("count", 60) / troops.get("per_second", 7.3) * random.uniform(*troops.get("hold_share", [0.9, 0.96]))
             jitter = lambda: random.uniform(-12, 12)
             # pan (Emre's W / S keys, 20:38): the view is pushed up to show the bottom, the bottom half is swept, the view
