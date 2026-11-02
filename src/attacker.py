@@ -817,9 +817,11 @@ class Attacker:
                         view_up, pans = not view_up, pans + 1
                     fresh_ring(f"before stroke {k + 1}")
                     # The press must start on the field, not on a HUD button
-                    for turn in (0, 8, -8, 16, -16, 24, -24):
+                    # 03.11 00:27: a start at the bottom was under the troop bar (clamped into the village, 4 presses for
+                    # nothing): the start slides along the line, up to 64 degrees, to the first spot in sight
+                    for turn in [0] + [d * k for k in range(8, 72, 8) for d in (1, -1)]:
                         pts = self._render(red or ring_out, [(a + turn, m, t) for a, m, t in stroke])
-                        if not self._in_hud(*pts[0][:2]) and 0.03 <= pts[0][0] <= 0.97 and 0.06 <= pts[0][1] <= 0.78: break
+                        if not self._in_hud(*pts[0][:2]) and 0.03 <= pts[0][0] <= 0.97 and 0.08 <= pts[0][1] <= 0.74: break
                     still = next((t for a, m, t in stroke if a != stroke[0][0]), 0.4)
                     # The finger moves on only once a troop came out where it pressed (02.11 23:22: a press off the map /
                     # in the red area dropped nothing and the moving finger dragged the view). Else it lifts and presses
