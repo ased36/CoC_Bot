@@ -1167,6 +1167,10 @@ class Upgrader:
                 logger.warning(f"Wall {resource} button not found")
                 return None
             time.sleep(0.5)
+            # 02.11 16:50-16:58 four passes "confirmed" and the gold never went down: keep what the button opened
+            dialog = Frame_Handler.get_frame(grayscale=False)
+            Frame_Handler.save_frame(dialog, "wall_2_dialog.png")
+            logger.info("Walls dialog: " + " | ".join(OCR_Handler.get_text(Frame_Handler.crop(dialog, 0.25, 0.20, 0.75, 0.80)))[:300])
             if self.dry_run:
                 cost = f"{row['cost']:,}".replace(",", ".")
                 logger.info(f"Dry run, not confirming: {count} wall(s) with {resource}, {cost} each")
@@ -1174,7 +1178,8 @@ class Upgrader:
             if not (self._click_walls_confirm() if count > 1 else self._click_home_confirm()):
                 self._wall_debug("Walls: confirm button not found")
                 return None
-            time.sleep(0.5)
+            time.sleep(1.0)
+            Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "wall_3_after.png")
             return resource, count
         except (KeyboardInterrupt, SystemExit): raise
         except Exception:
@@ -1185,6 +1190,9 @@ class Upgrader:
         import time
         if not Settings_Handler.get("walls", "enabled", False):
             logger.info("Walls skipped: disabled")
+            return
+        if not self._due("walls_retry"):
+            logger.info("Walls skipped: paused after an unpaid pass")
             return
         left = Settings_Handler.get("walls", "max_per_round", 5)
         # Cheapest wall seen so far: when neither resource can pay it, skip the menu (it takes ~30 s to look through)
@@ -1197,11 +1205,15 @@ class Upgrader:
             result = self.wall_upgrade(left)
             if result is None: break
             resource, count = result
-            time.sleep(0.5)
+            time.sleep(1.0) # the storage bar counts down for a moment
             after = Resource_Reader.read() or {}
             # Walls finish instantly, so they count only if the resource actually went down
             if (after.get(resource) or 0) >= (before.get(resource) or 0):
                 logger.warning(f"Walls: paid with {resource} but it did not go down ({before.get(resource)} -> {after.get(resource)})")
+                send_notification(f"⚠️ Duvar: {count} duvar {resource} ile onaylandı ama {resource} düşmedi; ekranlar debug/main_wall_2_dialog.png, "
+                                  "main_wall_3_after.png. Duvar yüzüğü sayını kontrol et.", key="wall_not_paid", every=3600)
+                # Each such pass cost ~40 s every round (16:50-16:58) and changed nothing: walls wait an hour
+                self._later("walls_retry", 1, "Walls paused after an unpaid pass")
                 break
             logger.info(f"Upgraded {count} wall(s)")
             report("wall", count=count)
