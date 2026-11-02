@@ -472,6 +472,7 @@ class Upgrader:
         {"home": self._click_home_builders, "lab": self._click_home_lab, "pet": self._click_pet_house}[kind]()
         time.sleep(0.5)
         frame = Frame_Handler.get_frame(grayscale=False)
+        Frame_Handler.save_frame(frame, f"menu_{kind}.png") # the ongoing upgrades and their times (builder status, Emre 02.11)
         _, left, top, right, bottom = self._get_upgrade_menu(frame, return_bounds=True, pet_house=kind == "pet")
         y_header = self._menu_header_y(kind, frame)
         if y_header is None: return None
@@ -963,9 +964,12 @@ class Upgrader:
             # Open upgrade list menu
             self._click_build_button()
             time.sleep(0.5)
+            Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "menu_build_bar.png") # builders / lab / pet counts
             self._click_home_builders()
-            time.sleep(0.5)
-            
+            time.sleep(1.0)
+            # The builders menu as it opens: the ongoing upgrades with their times are on top (builder status, Emre 02.11)
+            Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "menu_builders_top.png")
+
             # Find assistant available label
             xys = Frame_Handler.locate(self._get_assistant_available_template(), thresh=0.8, return_all=True)
             xys = sorted(xys, key=lambda pair: pair[1])
@@ -1012,7 +1016,8 @@ class Upgrader:
             self._click_build_button()
             time.sleep(0.5)
             self._click_home_lab()
-            time.sleep(0.5)
+            time.sleep(1.0)
+            Frame_Handler.save_frame(Frame_Handler.get_frame(grayscale=False), "menu_lab_top.png") # the research running and its time
             
             # Find assistant available label
             xys = Frame_Handler.locate(self._get_assistant_available_template(), thresh=0.8, return_all=True)
