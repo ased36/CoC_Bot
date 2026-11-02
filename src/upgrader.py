@@ -12,6 +12,21 @@ class Upgrader:
         self.misc_assets = Asset_Manager.misc_assets
         self.dry_run = False # choose and open the upgrade, but do not confirm (testing)
 
+    # Menus that need not be opened every round (Emre 02.11: a busy pet house, an apprentice already used): the next
+    # look is kept in the disk cache, so closing and opening the bot keeps it
+    @staticmethod
+    def _due(key):
+        import time
+        return time.time() >= (Cache_Manager.get("look_again") or {}).get(key, 0)
+
+    @staticmethod
+    def _later(key, hours, why):
+        import time
+        from datetime import datetime
+        at = time.time() + hours * 3600
+        Cache_Manager["look_again"] = dict(Cache_Manager.get("look_again") or {}, **{key: at})
+        logger.info(f"{why}, next look at {datetime.fromtimestamp(at).strftime('%d.%m %H:%M')}")
+
     # ============================================================
     # 📱 Screen Interaction
     # ============================================================
@@ -928,6 +943,7 @@ class Upgrader:
 
     @require_exit(x=0.99, y=0.01)
     def assign_builder_apprentice(self):
+        """True = assigned, False = nothing to assign (none free, or no upgrade running), None = error."""
         import time
         
         try:
@@ -940,29 +956,30 @@ class Upgrader:
             # Find assistant available label
             xys = Frame_Handler.locate(self._get_assistant_available_template(), thresh=0.8, return_all=True)
             xys = sorted(xys, key=lambda pair: pair[1])
-            if len(xys) == 0: return
+            if len(xys) == 0: return False
             x, y = xys[0]
-            if x is None or y is None: return
+            if x is None or y is None: return False
 
             Input_Handler.click(x, y)
             time.sleep(0.5)
             
             # Find assign assistant label
             xys = Frame_Handler.locate(self.assets["assign_assistant"], thresh=0.9, grayscale=False, return_all=True)
-            if len(xys) == 0: return
+            if len(xys) == 0: return False
             
             x, y = sorted(xys, key=lambda pair: pair[1])[0]
-            if x is None or y is None: return
+            if x is None or y is None: return False
             
             Input_Handler.click(x, y)
             time.sleep(0.5)
             
             # Find confirm button
             x, y = Frame_Handler.locate(self.assets["confirm_assistant"], grayscale=False, thresh=0.9)
-            if x is None or y is None: return
+            if x is None or y is None: return False
             
             Input_Handler.click(x, y)
             time.sleep(0.5)
+            return True
         except (KeyboardInterrupt, SystemExit): raise
         except Exception:
             logger.exception("Upgrader.assign_builder_apprentice:")
@@ -974,6 +991,7 @@ class Upgrader:
 
     @require_exit(x=0.99, y=0.01)
     def assign_lab_assistant(self):
+        """True = assigned, False = nothing to assign (none free, or no upgrade running), None = error."""
         import time
         
         try:
@@ -986,29 +1004,30 @@ class Upgrader:
             # Find assistant available label
             xys = Frame_Handler.locate(self._get_assistant_available_template(), thresh=0.8, return_all=True)
             xys = sorted(xys, key=lambda pair: pair[1])
-            if len(xys) == 0: return
+            if len(xys) == 0: return False
             x, y = xys[0]
-            if x is None or y is None: return
+            if x is None or y is None: return False
             
             Input_Handler.click(x, y)
             time.sleep(0.5)
             
             # Find assign assistant label
             xys = Frame_Handler.locate(self.assets["assign_assistant"], thresh=0.9, grayscale=False, return_all=True)
-            if len(xys) == 0: return
+            if len(xys) == 0: return False
             
             x, y = sorted(xys, key=lambda pair: pair[1])[0]
-            if x is None or y is None: return
+            if x is None or y is None: return False
             
             Input_Handler.click(x, y)
             time.sleep(0.5)
             
             # Find confirm button
             x, y = Frame_Handler.locate(self.assets["confirm_assistant"], grayscale=False, thresh=0.9)
-            if x is None or y is None: return
+            if x is None or y is None: return False
             
             Input_Handler.click(x, y)
             time.sleep(0.5)
+            return True
         except (KeyboardInterrupt, SystemExit): raise
         except Exception:
             logger.exception("Upgrader.assign_lab_assistant:")
@@ -1391,9 +1410,11 @@ class Upgrader:
                 except (KeyboardInterrupt, SystemExit): raise
                 except:
                     logger.warning("Encountered an error while attempting to upgrade home base. Retrying...")
-        if not Task_Handler.excluded("builder_apprentice"):
-            self.assign_builder_apprentice()
-        
+        if not Task_Handler.excluded("builder_apprentice") and self._due("apprentice"):
+            assigned = self.assign_builder_apprentice()
+            if assigned: self._later("apprentice", 12, "Builder apprentice assigned")
+            elif assigned is False: self._later("apprentice", 2, "No builder apprentice to assign")
+
         # Lab upgrades
         lab_upgrades_started = []
         try:
@@ -1405,17 +1426,27 @@ class Upgrader:
         except (KeyboardInterrupt, SystemExit): raise
         except:
             logger.warning("Encountered an error while attempting to upgrade home lab. Retrying...")
-        if not Task_Handler.excluded("lab_assistant"):
-            self.assign_lab_assistant()
-        
-        # Pet house upgrades
+        if not Task_Handler.excluded("lab_assistant") and self._due("lab_assistant"):
+            assigned = self.assign_lab_assistant()
+            if assigned: self._later("lab_assistant", 12, "Lab assistant assigned")
+            elif assigned is False: self._later("lab_assistant", 2, "No lab assistant to assign")
+
+        # Pet house upgrades: the pet house takes one at a time and a pet upgrade takes days, so a busy house is not
+        # looked at again for hours (its count is only in the build menu)
         pet_upgrades_started = []
         try:
-            if not exclude_pet and self.pet_house_available(1):
-                upgraded = self.pet_house_upgrade()
-                time.sleep(0.5)
-                final_pet_avail = self.pet_house_available(1)
-                if upgraded is not None and not final_pet_avail: pet_upgrades_started.append(upgraded.lower())
+            if not exclude_pet and self._due("pet"):
+                if self.pet_house_available(1):
+                    upgraded = self.pet_house_upgrade()
+                    time.sleep(0.5)
+                    final_pet_avail = self.pet_house_available(1)
+                    if upgraded is not None and not final_pet_avail:
+                        pet_upgrades_started.append(upgraded.lower())
+                        self._later("pet", 12, "Pet upgrade started")
+                    elif upgraded is None:
+                        self._later("pet", 1, "No pet upgrade to start")
+                else:
+                    self._later("pet", 6, "Pet house busy")
         except (KeyboardInterrupt, SystemExit): raise
         except: pass
 
