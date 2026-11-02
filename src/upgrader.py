@@ -967,14 +967,23 @@ class Upgrader:
     WALL_BADGE_X = (0.7396, 0.7531)
     WALL_NAME_X = (0.7734, 0.9167)
 
+    def _row_badge(self, frame, y):
+        """The level badge at the bottom-left of a row's icon (the level the upgrade goes to), or None.
+        4x with a replicated border: at 3x a lone 7 (Dark Spell Factory, 19:22 frame) and the 1 of 11 were missed."""
+        import cv2
+        OCR_Handler.load()
+        badge = Frame_Handler.crop(frame, self.WALL_BADGE_X[0], y - 0.0046, self.WALL_BADGE_X[1], y + 0.023)
+        big = cv2.copyMakeBorder(cv2.resize(badge, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC), 10, 10, 10, 10, cv2.BORDER_REPLICATE)
+        digits = "".join(OCR_Handler.reader.readtext(big, detail=0, allowlist="0123456789", text_threshold=0.4, low_text=0.3))
+        return int(digits) if digits.isdigit() and 1 <= int(digits) <= 99 else None
+
     def _wall_row_info(self, frame, row):
         """(level now, count) of a wall row on screen, or None when the badge cannot be read. One wall shows no "x N"."""
-        import re, cv2
+        import re
         OCR_Handler.load()
-        y = row["y"]
-        badge = Frame_Handler.crop(frame, self.WALL_BADGE_X[0], y - 0.0046, self.WALL_BADGE_X[1], y + 0.023)
-        digits = "".join(OCR_Handler.reader.readtext(cv2.resize(badge, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC), detail=0, allowlist="0123456789"))
-        if not digits.isdigit() or not 2 <= int(digits) <= 25: return None
+        badge = self._row_badge(frame, row["y"])
+        if badge is None or not 2 <= badge <= 25: return None
+        digits = str(badge)
         name = Frame_Handler.crop(frame, self.WALL_NAME_X[0], row["name_y"] - 0.0185, self.WALL_NAME_X[1], row["name_y"] + 0.0185)
         text = " ".join(OCR_Handler.reader.readtext(name, detail=0)).lower()
         m = re.search(r"\bx\s*([\dilz|ots]+)\s*$", text) # OCR reads 2 as Z, 1 as I / l ("Wall x Z00")
@@ -1044,6 +1053,57 @@ class Upgrader:
             frame, page = new_frame, page + 1
         self._note_walls(census)
         return rows, page
+
+    def _row_name(self, frame, row):
+        """(name, count) of any row: "Air Defense x 3" -> ("Air Defense", 3), matched to the game's names when close."""
+        import re, difflib
+        OCR_Handler.load()
+        crop = Frame_Handler.crop(frame, self.WALL_NAME_X[0], row["name_y"] - 0.0185, 0.935, row["name_y"] + 0.0185)
+        text = " ".join(OCR_Handler.reader.readtext(crop, detail=0)).strip()
+        m = re.search(r"\s*x\s*([\dilz|ots]+)\s*$", text, re.I)
+        count = int(m.group(1).lower().translate(str.maketrans("ilz|ots", "1121015"))) if m else 1
+        raw = (text[:m.start()] if m else text).strip().title()
+        vocab = Cache_Manager.get("vocab") or {}
+        names = [n for k, v in vocab.items() if k.startswith(("buildings/home", "traps/home", "heroes", "guardians")) for n in v]
+        return (difflib.get_close_matches(raw, names, 1, 0.7) or [raw])[0].replace("'S ", "'s "), count # title(): "Builder'S Hut"
+
+    @require_exit(x=0.99, y=0.01)
+    def read_village(self):
+        """The whole builders menu once a day (Emre 02.11, 1A: village facts for Telegram /koy and /tavsiye without the
+        game's API): every row's name, count and level, the wall count with it. A building at its Town Hall's max is not
+        in the menu; one being upgraded shows its timer on top, not here."""
+        import time, numpy as np
+        bounds = self._open_menu("home")
+        if bounds is None:
+            self._later("village_read", 2, "Village read: the menu did not open")
+            return
+        left, top, right, bottom = bounds
+        frame = Frame_Handler.get_frame(grayscale=False)
+        rows, census, page = {}, {}, 0
+        while True:
+            y_min = max(top, self._menu_header_y("home", frame) or top) if page == 0 else top
+            for r in self._read_rows(frame, "home", bounds, y_min):
+                badge = self._row_badge(frame, r["y"])
+                name, count = self._row_name(frame, r)
+                if not name: continue
+                level = badge - 1 if badge else None
+                if name == "Wall" and level: census.setdefault(level, count)
+                # Pages overlap: the same row read twice is one row
+                rows.setdefault((name, level, count), {"name": name, "count": count, "level": level, "cost": r["cost"],
+                                                       "resource": r["resource"], "discount": bool(r["discount"])})
+            if page + 1 >= self.MAX_MENU_PAGES: break
+            self._menu_swipe(bounds)
+            new_frame = Frame_Handler.get_frame(grayscale=False)
+            a = Frame_Handler.grayscale(Frame_Handler.crop(frame, left, top, right, bottom)).astype(int)
+            b = Frame_Handler.grayscale(Frame_Handler.crop(new_frame, left, top, right, bottom)).astype(int)
+            if np.abs(a - b).mean() / 255 < 0.01: break # end of the list
+            frame, page = new_frame, page + 1
+        if census: self._note_walls(census)
+        if not rows:
+            self._later("village_read", 2, "Village read: nothing")
+            return
+        Cache_Manager["village"] = {"t": time.time(), "rows": list(rows.values())}
+        self._later("village_read", 24, f"Village read: {len(rows)} rows, {sum(1 for r in rows.values() if r['level'] is None)} without a level")
 
     @require_exit(x=0.99, y=0.01)
     def read_walls(self):
@@ -1798,6 +1858,7 @@ class Upgrader:
 
         # Wall count (Emre 02.11, 1A): a wall pass reads it on the way; without one, once a day on its own (~30 s)
         try:
+            if self._due("village_read"): self.read_village() # also counts the walls
             if self._due("walls_census"): self.read_walls()
         except (KeyboardInterrupt, SystemExit): raise
         except: logger.exception("Upgrader.read_walls:")

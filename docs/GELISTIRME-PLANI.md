@@ -564,3 +564,11 @@ Testler scratchpad'de (t_look, t_ozet, t_ozet2, t_ozet3, t_potion, t_status, t_s
 - Bot → panel yeni raporlar: `loot` (saldırı başına ganimet, stats.loot son 30), `walls` (duvar sayımı → walls_info), `step` / `search` (bellekte, diske yazılmaz).
 - Denendi: deneme kopyası (port 5871) + sahte raporlar, Edge 1280 / 500 px. Bot yeniden açılınca yüklenir; tablo ilk saldırıdan sonra dolar.
 - Sırada (Emre 1A 3B): CoC API (leo TOWER etiketi + anahtar), Telegram /koy /tavsiye /ekipman /sor.
+
+## 02.11 21:00 — Köy okuması + Telegram /koy /tavsiye (Emre 1A 2A 3B; CoC API iptal)
+
+- Resmi CoC API kullanılmıyor (Emre: Supercell fark edip banlamasın; ev IP'si sabit değil). /sor (Claude) şimdilik yok (3B).
+- `Upgrader.read_village`: usta menüsü günde bir baştan sona; her satırın adı (OCR + oyun ad listesi), adedi ("x 3"), seviyesi (rozet − 1), maliyeti, indirimi → önbellek `village`; duvar sayımı da buradan. Rozet okuma 4x + kenar (3x'te tek 7 ve 11'in 1'i kaçıyordu); 19:22 karesinde 10/10 satır doğru.
+- `src/advice.py`: belediye seviyesi = panel (Genel → Köy, 0 = bot bulur) → menüdeki Town Hall satırı → menünün sunduğu seviyelere izin veren en düşük TH. /koy: TH, TH max'ına kalan seviye + en geride 8 satır, indirimli iş sayısı, duvar. /tavsiye: boş usta + parası yeten (saldırı binaları önce), boşa akan iksir, boş lab, duvar başlama değeri geçildi, indirimde pahalılar önce, en geride saldırı binaları, ekonomi.
+- Denendi oyunsuz: sahte önbellekle iki durum (boş usta yok / 1 boş usta + 9,5 M altın); bu köy için tahmin TH15.
+- Sırada: ilk canlı okuma (yeni kodla açılınca ilk tur), Demirci ölçümü (onay ister) → ekipman tavsiyesi.

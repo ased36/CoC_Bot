@@ -54,6 +54,7 @@ def default_settings():
             "hours_start": "08:00",
             "hours_end": "23:59",
             "close_game": True,
+            "th_level": 0, # Town Hall level for /koy and /tavsiye; 0 = the bot works it out from the builders menu
             # Play like a person (Emre 02.11, 2A): a break after a few attacks, a daily cap, a 24 hour grid (sleep).
             # Defaults are the advised values; every range is picked at random again each time
             "rest_enabled": True,

@@ -304,7 +304,7 @@ class CoC_Bot:
         api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
         offset = None
         try:
-            requests.post(f"{api}/setMyCommands", json={"commands": [{"command": "ozet", "description": "Anlık özet"}, {"command": "th", "description": "TH max seviyeleri (/th 16)"}]}, timeout=(5, 10))
+            requests.post(f"{api}/setMyCommands", json={"commands": [{"command": "ozet", "description": "Anlık özet"}, {"command": "koy", "description": "Köy: TH, max'a kalan, en geride"}, {"command": "tavsiye", "description": "Şimdi ne yapılmalı"}, {"command": "th", "description": "TH max seviyeleri (/th 16)"}]}, timeout=(5, 10))
             old = requests.get(f"{api}/getUpdates", params={"offset": -1, "timeout": 0}, timeout=(5, 10)).json().get("result", [])
             if old: offset = old[-1]["update_id"] + 1
         except (KeyboardInterrupt, SystemExit): raise
@@ -322,7 +322,13 @@ class CoC_Bot:
                     cmd = words[0].split("@")[0] if words else ""
                     if cmd in ("/ozet", "/özet", "ozet", "özet"): send_notification(self._summary(), html=True)
                     elif cmd in ("/th", "th"): send_notification(self._th_text(words[1] if len(words) > 1 else None), html=True)
-                    elif cmd in ("/start", "/help", "/yardim", "/yardım"): send_notification("Komutlar:\n/ozet — anlık özet\n/th — duvar tablosu, /th 16 — TH16 max seviyeleri")
+                    elif cmd in ("/koy", "/köy", "koy", "köy"):
+                        import advice
+                        send_notification(advice.koy_text(), html=True)
+                    elif cmd in ("/tavsiye", "tavsiye"):
+                        import advice
+                        send_notification(advice.tavsiye_text(), html=True)
+                    elif cmd in ("/start", "/help", "/yardim", "/yardım"): send_notification("Komutlar:\n/ozet — anlık özet\n/koy — köy: TH, max'a kalan, en geride\n/tavsiye — şimdi ne yapılmalı\n/th — duvar tablosu, /th 16 — TH16 max seviyeleri")
             except (KeyboardInterrupt, SystemExit): raise
             except Exception:
                 time.sleep(30) # no network: try again later
