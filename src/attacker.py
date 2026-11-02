@@ -1148,8 +1148,10 @@ class Attacker:
                 f"Search {n}: gold={fmt(loot['gold'])} elixir={fmt(loot['elixir'])} dark={fmt(loot['dark'])} "
                 f"min={fmt(mins['gold'])}/{fmt(mins['elixir'])}/{fmt(mins['dark'])}"
             )
+            report("search", n=n)
             if self.loot_ok(loot, mins):
                 logger.info(f"Village found after {n} searches")
+                self.last_searches = n
                 if search_only: self._leave_search()
                 return loot
             if n == max_searches: break

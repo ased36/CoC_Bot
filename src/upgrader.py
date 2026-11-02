@@ -1000,6 +1000,7 @@ class Upgrader:
         w.update(t=time.time(), levels={str(k): v for k, v in sorted(census.items())}, top=max(census) + 1)
         if not w["day"].get("start"): w["day"].update(start=w["levels"], start_top=w["top"])
         Cache_Manager["walls"] = w
+        report("walls", walls=w)
         self._later("walls_census", 24, "Walls read: " + ", ".join(f"level {k} x{v}" for k, v in sorted(census.items())))
 
     def _walls_upgraded(self, level, count):
@@ -1012,6 +1013,7 @@ class Upgrader:
             lv[str(level + 1)] = lv.get(str(level + 1), 0) + count
             w["levels"] = lv
         Cache_Manager["walls"] = w
+        report("walls", walls=w)
 
     def _wall_pages(self, bounds):
         """Scroll the open builders menu down until the wall rows are behind us (a higher level can come before a lower

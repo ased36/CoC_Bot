@@ -556,3 +556,11 @@ Testler scratchpad'de (t_look, t_ozet, t_ozet2, t_ozet3, t_potion, t_status, t_s
 - 19:22:57 lab okuması inşaatçı listesinin sürelerini araştırma diye kaydetti (Gold Mine 2h 40m, Barracks 3d 14h…): lab sekmesine geçilememiş, kare `menu_lab_top.png`. Artık menü başlığı okunuyor ("Buildings & Heroes" = usta, "Army Upgrades" = lab); yanlış menüde okuma tutulmaz. Bozuk kayıt 21:22 okumasında düzelir.
 - "Status out of date (7 rows running, 6 builders busy)": 6/6 meşgulken 7 satır (fazladan bir usta) → boşta usta yokken satır fazlası çelişki sayılmıyor.
 - Duvar ödeme denemesi hâlâ bekliyor (altın 8,25 M'ye çıkmadı).
+
+## 02.11 20:10 — Panel Durum sekmesi yeni tasarım (Emre 4A, taslak onaylandı)
+
+- Taslak: https://claude.ai/artifact/EHQXY3tBJNCyaAUqm1SD8k. Genel: yazı 13 px, kart boşlukları ve rakamlar küçüldü (28 → 21 px), sekmeler 13 px.
+- Durum: kaynak kartlarında son saldırının getirdiği (sağ üst) ve usta doluluk çubuğu; Ustalar / Laboratuvar 48 saatlik çizelge (çubuk dolarak gelir, ışık geçer; renk kalan süreye göre; iksir rozeti); Son saldırılar tablosu (saat · arama · altın · iksir · kara · çubuk, 8 saldırı + toplam); Şu an (turun hangi adımı, arama sayısı); Duvarlar (seviyelere göre şerit + başlama değerine ilerleme); Son olaylarda tur başla / bitti gizli; "Başlat'a basınca" katlanır, harcama uyarısı görünür kalır; kayıt kendi kartında 420 px.
+- Bot → panel yeni raporlar: `loot` (saldırı başına ganimet, stats.loot son 30), `walls` (duvar sayımı → walls_info), `step` / `search` (bellekte, diske yazılmaz).
+- Denendi: deneme kopyası (port 5871) + sahte raporlar, Edge 1280 / 500 px. Bot yeniden açılınca yüklenir; tablo ilk saldırıdan sonra dolar.
+- Sırada (Emre 1A 3B): CoC API (leo TOWER etiketi + anahtar), Telegram /koy /tavsiye /ekipman /sor.

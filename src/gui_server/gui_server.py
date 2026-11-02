@@ -188,6 +188,8 @@ def handle_state(id):
         "next_check": instance.next_check,
         "resources": instance.settings.get("resources", {}),
         "upgrades": instance.settings.get("upgrades", {}), # builders and laboratory running (Durum → Ustalar)
+        "walls_info": instance.settings.get("walls_info", {}), # wall count by level (Durum → Duvarlar)
+        "step": getattr(instance, "step", {}), # the part of the round running now (Durum → Şu an)
     }
 
 @app.route("/instances/<id>/exclude", methods=["GET", "POST"])
@@ -214,6 +216,7 @@ def handle_settings(id):
         update.pop("stats", None)
         update.pop("resources", None)
         update.pop("upgrades", None)
+        update.pop("walls_info", None)
         update.pop("profile", None) # changed only through /profiles
         with settings_lock:
             settings_store.merge(instance.settings, update)
@@ -290,6 +293,18 @@ def handle_report(id):
             instance.settings["resources"] = dict(data.get("values", {}), t=time.time())
         elif kind == "status":
             instance.settings["upgrades"] = data.get("status", {})
+        elif kind == "walls":
+            instance.settings["walls_info"] = data.get("walls", {})
+        elif kind == "step": # not kept on disk: only the running round
+            instance.step = {"done": data.get("done"), "t": time.time()}
+            return jsonify(1)
+        elif kind == "search":
+            instance.step = dict(getattr(instance, "step", {}) or {}, search=data.get("n"), t=time.time())
+            return jsonify(1)
+        elif kind == "loot": # Durum → Son saldırılar, the last 30
+            loot = stats.setdefault("loot", [])
+            loot.append({k: data.get(k) for k in ("gold", "elixir", "dark", "searches", "seconds")} | {"t": time.time()})
+            del loot[:-30]
         elif kind == "round_start":
             stats["rounds"] += 1
             instance.next_check = 0

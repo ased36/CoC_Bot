@@ -124,6 +124,8 @@ class CoC_Bot:
         text = (f"⚔️ Saldırı{profile} (bugün {d['attacks']}{cap}.): {self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
                 f" · {self._short(gain['dark'])} kara\nDepo: {store('gold')} / {store('elixir')} / {store('dark')} · tur {int(seconds)} sn")
         send_notification(text, photo=self.attacker.last_result, silent=True)
+        # Panel "Son saldırılar" table (Emre 02.11, design A)
+        report("loot", **gain, searches=getattr(self.attacker, "last_searches", None), seconds=int(seconds))
 
     @staticmethod
     def _when(t):
@@ -443,6 +445,7 @@ class CoC_Bot:
                     now = time.time()
                     timing.append(f"{name} {now - mark[0]:.0f}s")
                     mark[0] = now
+                    report("step", done=name) # panel "Şu an" strip
                 started, res = start_coc(detailed=True)
                 if started:
                     lap("start")

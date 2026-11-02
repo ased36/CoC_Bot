@@ -44,41 +44,70 @@
         <!-- Durum -->
         <section class="page active" id="page_status">
             <div class="kpis">
-                <div class="kpi gold"><div class="k"><i></i>Altın</div><div class="v" id="k_gold">–</div><div class="s" id="k_when"></div></div>
-                <div class="kpi elixir"><div class="k"><i></i>İksir</div><div class="v" id="k_elixir">–</div><div class="s"></div></div>
-                <div class="kpi dark"><div class="k"><i></i>Kara iksir</div><div class="v" id="k_dark">–</div><div class="s"></div></div>
-                <div class="kpi gems"><div class="k"><i></i>Mücevher</div><div class="v" id="k_gems">–</div><div class="s"></div></div>
-                <div class="kpi builders"><div class="k"><i></i>Boş usta</div><div class="v" id="k_builders">–</div><div class="s">boş / toplam</div></div>
+                <div class="kpi gold"><div class="k"><i></i>Altın<span class="d" id="d_gold"></span></div><div class="v" id="k_gold">–</div><div class="s" id="k_when"></div></div>
+                <div class="kpi elixir"><div class="k"><i></i>İksir<span class="d" id="d_elixir"></span></div><div class="v" id="k_elixir">–</div><div class="s">son saldırının getirdiği sağ üstte</div></div>
+                <div class="kpi dark"><div class="k"><i></i>Kara iksir<span class="d" id="d_dark"></span></div><div class="v" id="k_dark">–</div><div class="s"></div></div>
+                <div class="kpi gems"><div class="k"><i></i>Mücevher</div><div class="v" id="k_gems">–</div><div class="s">bot harcamaz</div></div>
+                <div class="kpi builders"><div class="k"><i></i>Boş usta</div><div class="v" id="k_builders">–</div><div class="meter"><b id="k_busy_bar"></b></div><div class="s" id="k_busy"></div></div>
             </div>
-            <div class="grid">
-                <div class="card">
-                    <h2>Başlat'a basınca bot şunları yapar</h2>
-                    <p class="hint">Ayarlardan çıkarılır, ayar değişince kendiliğinden güncellenir. Bot dururken hiçbir şey yapmaz. "Köyü oku" ve "Yalnız ara" hiçbir şey geliştirmez; yalnız aramanın kendi bedeli (Next başına ~1 400 altın) gider.</p>
-                    <div class="safe-note" id="summary_note"></div>
-                    <ul class="plan" id="summary"></ul>
+            <div class="status-cols">
+                <div class="col-main">
+                    <div class="card">
+                        <div class="card-head"><h2>Ustalar <span class="muted" id="up_builders_sum"></span></h2><span class="hint-r" id="up_when"></span></div>
+                        <div class="lanes" id="up_builders"></div>
+                        <div class="legend"><span class="l1">≤ 1 sa</span><span class="l2">≤ 6 sa</span><span class="l3">≤ 1 gün</span><span class="l4">daha uzun (çubuk kenarda biter)</span></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h2>Laboratuvar</h2><span class="pill potion" id="up_lab_potion" hidden></span></div>
+                        <div class="lanes" id="up_lab"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h2>Son saldırılar</h2><span class="hint-r" id="loot_sum"></span></div>
+                        <div class="table-wrap"><table class="loot">
+                            <thead><tr><th class="l">Saat</th><th>Arama</th><th>Altın</th><th>İksir</th><th>Kara</th><th class="l bars">Ganimet</th></tr></thead>
+                            <tbody id="loot_rows"></tbody>
+                        </table></div>
+                    </div>
                 </div>
-                <div class="card">
-                    <h2>Son olaylar</h2>
-                    <p class="hint">Geliştirme, arama, hata gibi önemli olaylar. Tamamı İstatistik sekmesinde.</p>
-                    <ul class="events" id="events_recent"></ul>
-                </div>
-                <div class="card">
-                    <h2>Ustalar ve laboratuvar</h2>
-                    <p class="hint">Bot usta ve laboratuvar menüsünü 2 saatte bir, bir de geliştirme başlatınca okur; aradaki kalan süreler hesaplanır. 🟢 ≤1 sa · 🟡 ≤6 sa · 🟠 ≤1 gün · 🔴 daha uzun.</p>
-                    <ul class="events" id="upgrades"></ul>
+                <div class="col-side">
+                    <div class="card now">
+                        <div class="eyebrow">Şu an</div>
+                        <div class="now-title" id="now_title">–</div>
+                        <div class="now-sub" id="now_sub"></div>
+                        <div class="steps" id="now_steps"><span></span><span></span><span></span><span></span><span></span></div>
+                        <div class="steps-l"><span>köy</span><span>geliştirme</span><span>saldırı</span><span>bitiş</span><span>bekleme</span></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h2>Duvarlar</h2><span class="hint-r" id="walls_sum"></span></div>
+                        <div class="wallbar" id="walls_bar"></div>
+                        <div class="wall-legend" id="walls_legend"></div>
+                        <div class="wall-gate" id="walls_gate"></div>
+                    </div>
+                    <div class="card">
+                        <h2>Son olaylar</h2>
+                        <ul class="events" id="events_recent"></ul>
+                    </div>
+                    <details class="card plan-card">
+                        <summary><h2>Başlat'a basınca bot şunları yapar</h2><div class="safe-note" id="summary_note"></div></summary>
+                        <p class="hint">Ayarlardan çıkarılır, ayar değişince kendiliğinden güncellenir. Bot dururken hiçbir şey yapmaz. "Köyü oku" ve "Yalnız ara" hiçbir şey geliştirmez; yalnız aramanın kendi bedeli (Next başına ~1 400 altın) gider.</p>
+                        <ul class="plan" id="summary"></ul>
+                    </details>
                 </div>
             </div>
 
-            <h3 class="section-title">Kayıt — botun satır satır yaptıkları</h3>
-            <div class="log-tools">
-                <label><input type="checkbox" id="log_important"> Yalnız uyarı ve hatalar</label>
-                <label><input type="checkbox" id="log_details"> Hata ayrıntılarını göster</label>
-                <label><input type="checkbox" id="log_follow" checked> En alta kaydır</label>
+            <div class="card log-card">
+                <div class="card-head">
+                    <h2 class="eyebrow">Kayıt</h2>
+                    <div class="log-tools">
+                        <label><input type="checkbox" id="log_important"> Yalnız uyarı ve hatalar</label>
+                        <label><input type="checkbox" id="log_details"> Hata ayrıntıları</label>
+                        <label><input type="checkbox" id="log_follow" checked> En alta kaydır</label>
+                    </div>
+                </div>
+                <div class="log" id="log"></div>
             </div>
-            <div class="log" id="log"></div>
         </section>
 
-        <!-- Geliştirme: alt sekmeler (02.11, 1A) -->
         <section class="page" id="page_village">
             <nav class="subtabs" data-page="village">
                 <button data-sub="heroes" data-flag="tasks.heroes">Kahramanlar</button>
@@ -883,7 +912,63 @@
         async function refreshRecent() {
             let s;
             try { s = await api("/settings"); } catch (e) { return; }
-            renderEvents($("#events_recent"), s.stats.events, 8);
+            // "Tur başladı / bitti" every 30 s filled the list (Emre 02.11): only what happened
+            const quiet = /^Tur (başladı|bitti)/;
+            renderEvents($("#events_recent"), (s.stats.events || []).filter(e => !quiet.test(e.text)), 8);
+            renderLoot(s.stats.loot || []);
+            renderWalls();
+        }
+
+        // Durum → Son saldırılar: loot of each attack (storage after - before)
+        function short(n) {
+            if (n === null || n === undefined) return "–";
+            const a = Math.abs(n), sign = n < 0 ? "−" : "+";
+            return a >= 1e6 ? `${sign}${(a / 1e6).toFixed(2).replace(".", ",")} M` : a >= 1e3 ? `${sign}${(a / 1e3).toFixed(1).replace(".", ",")} k` : `${sign}${a}`;
+        }
+        function renderLoot(list) {
+            const rows = list.slice(-8).reverse();
+            const last = rows[0] || null;
+            ["gold", "elixir", "dark"].forEach(k => { $(`#d_${k}`).textContent = last && last[k] != null ? short(last[k]) : ""; });
+            if (!rows.length) {
+                $("#loot_rows").innerHTML = `<tr><td colspan="6" class="l muted">Henüz kayıtlı saldırı yok (bot yeni kodla ilk saldırıyı yapınca dolar)</td></tr>`;
+                $("#loot_sum").textContent = "";
+                return;
+            }
+            const max = Math.max(1, ...rows.map(r => Math.max(r.gold || 0, r.elixir || 0)));
+            const sum = k => rows.reduce((a, r) => a + (r[k] || 0), 0);
+            const srch = rows.filter(r => r.searches).map(r => r.searches);
+            $("#loot_sum").innerHTML = `${rows.length} saldırı · <b class="c-gold">${short(sum("gold"))}</b> altın · <b class="c-elixir">${short(sum("elixir"))}</b> iksir · <b class="c-dark">${short(sum("dark"))}</b> kara`
+                + (srch.length ? ` · ort. ${(srch.reduce((a, b) => a + b, 0) / srch.length).toFixed(1).replace(".", ",")} arama` : "");
+            const w = v => `${Math.max(0, (v || 0) / max * 48).toFixed(1)}%`;
+            $("#loot_rows").innerHTML = rows.map(r => `<tr><td class="l">${fmtClock(r.t)}</td><td class="muted">${r.searches || "–"}</td>`
+                + `<td class="c-gold">${fmtNum(r.gold)}</td><td class="c-elixir">${fmtNum(r.elixir)}</td><td class="c-dark">${fmtNum(r.dark)}</td>`
+                + `<td class="l bars"><div><i class="g" style="width:${w(r.gold)}"></i><i class="e" style="width:${w(r.elixir)}"></i></div></td></tr>`).join("");
+        }
+
+        // Durum → Duvarlar: the count by level (bot reads it once a day and on every wall pass) and the start level
+        function renderWalls() {
+            const wi = (state && state.walls_info) || {}, lv = wi.levels || {};
+            const total = (settings && settings.walls && settings.walls.total) || 0;
+            const keys = Object.keys(lv).map(Number).sort((a, b) => a - b);
+            const listed = keys.reduce((a, k) => a + lv[k], 0);
+            const top = total > listed && wi.top ? total - listed : 0;
+            const parts = keys.map(k => [k, lv[k]]).concat(top ? [[wi.top, top]] : []);
+            const all = parts.reduce((a, p) => a + p[1], 0);
+            const shades = ["#7c8698", "#5b8def", "#34d399", "#f2c14e"];
+            const today = new Date().toISOString().slice(0, 10);
+            $("#walls_sum").textContent = all ? `${all} duvar · bugün ${(wi.day && wi.day.date === today && wi.day.count) || 0}` : "";
+            $("#walls_bar").innerHTML = all ? parts.map((p, i) => `<i style="width:${(p[1] / all * 100).toFixed(1)}%;background:${shades[i % 4]}"></i>`).join("") : "";
+            $("#walls_legend").innerHTML = all
+                ? parts.map((p, i) => `<span><i style="background:${shades[i % 4]}"></i>Sv${p[0]}${i === parts.length - 1 && top ? "+" : ""} <b>${p[1]}</b></span>`).join("")
+                : `<span class="muted">Henüz sayılmadı (bot günde bir okur)</span>`;
+            const w = (settings && settings.walls) || {}, r = (state && state.resources) || {};
+            const gate = [["gold", "altın", w.start_gold], ["elixir", "iksir", w.start_elixir]].filter(g => g[2]);
+            if (!w.enabled) { $("#walls_gate").innerHTML = `<div class="muted">Duvar kapalı (Geliştirme sekmesi)</div>`; return; }
+            if (!gate.length) { $("#walls_gate").innerHTML = `<div class="muted">Her ${w.every_attacks || 3} saldırıda bir</div>`; return; }
+            const best = gate.map(g => [g[1], r[g[0]] || 0, g[2]]).sort((a, b) => b[1] / b[2] - a[1] / a[2])[0];
+            const pct = Math.min(100, best[1] / best[2] * 100);
+            $("#walls_gate").innerHTML = `<div class="kv"><span class="muted">Başlama</span><span>${short(best[1]).slice(1)} / ${short(best[2]).slice(1)} ${best[0]}</span></div>`
+                + `<div class="meter"><b class="bar-shine" style="width:${pct.toFixed(1)}%"></b></div>`;
         }
 
         $("#stats_reset").onclick = async () => {
@@ -909,27 +994,63 @@
             const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
             return d ? `${d} g ${h} sa` : h ? `${h} sa ${m} dk` : `${m} dk`;
         }
+        const LANE_SPAN = 48 * 3600; // the lanes show the next 48 hours
+        function laneColor(left) { return left <= 3600 ? 1 : left <= 21600 ? 2 : left <= 86400 ? 3 : 4; }
+        function lanesHtml(list, t) {
+            if (!list.length) return `<div class="muted lane-empty">Süren iş yok</div>`;
+            return list.slice().sort((a, b) => a.end - b.end).map((b, i) => {
+                const end = b.end + (b.prec || 0) / 2, left = Math.max(0, b.end - t), done = b.end + (b.prec || 0) <= t;
+                const width = done ? 0 : Math.min(100, left / LANE_SPAN * 100);
+                const c = done ? 0 : laneColor(left);
+                return `<div class="lane c${c}"><span class="n" title="${esc(b.name)}">${esc(b.name)}</span>`
+                    + `<span class="track"><b class="bar-shine" style="width:${width.toFixed(1)}%;animation-delay:${(i * 0.06).toFixed(2)}s"></b></span>`
+                    + `<span class="t"><b>${done ? "bitti" : fmtLeft(left)}</b> ${done ? "" : fmtDayClock(end)}</span></div>`;
+            }).join("");
+        }
+        let lanesSig = "";
         function renderUpgrades() {
-            const up = (state && state.upgrades) || {}, el = $("#upgrades"), t = now();
-            if (!up.t) { el.innerHTML = `<li class="muted"><span>Henüz okunmadı (bot ilk turda okur)</span></li>`; return; }
-            const rows = [];
-            [["builders", "👷 Usta", "İnşaatçı iksiri"], ["lab", "🔬 Lab", "Araştırma iksiri"]].forEach(([kind, label, potion]) => {
-                const p = up[`${kind}_potion`];
-                if (p && p.end > t) rows.push(`<li><span class="t">⚡ İksir</span><span><b>${potion}</b> · ${fmtLeft(p.end - t)} kaldı · ${p.speed} kat hız <span class="muted">· bitişler buna göre</span></span></li>`);
-                (up[kind] || []).slice().sort((a, b) => a.end - b.end).forEach(b => {
-                    const end = b.end + (b.prec || 0), left = b.end - t;
-                    const dot = end <= t ? "✅" : left <= 3600 ? "🟢" : left <= 21600 ? "🟡" : left <= 86400 ? "🟠" : "🔴";
-                    const when = end <= t ? "bitti" : `${fmtLeft(Math.max(0, left))} · ${fmtDayClock(b.end + (b.prec || 0) / 2)}`;
-                    rows.push(`<li><span class="t">${label}</span><span>${dot} ${esc(b.name)} <span class="muted">· ${when}</span></span></li>`);
-                });
-            });
-            if ("pet_busy" in up) rows.push(`<li><span class="t">🐾 Evcil</span><span>${up.pet_busy ? "meşgul" : "boş"}</span></li>`);
-            rows.push(`<li class="muted"><span>Okuma ${fmtDayClock(up.t)}</span></li>`);
-            el.innerHTML = rows.join("");
+            const up = (state && state.upgrades) || {}, t = now();
+            // Re-draw only when the read changes or once a minute, so the bars do not restart their animation every poll
+            const sig = `${up.t}|${Math.floor(t / 60)}`;
+            if (sig === lanesSig) return;
+            lanesSig = sig;
+            if (!up.t) {
+                $("#up_builders").innerHTML = $("#up_lab").innerHTML = `<div class="muted lane-empty">Henüz okunmadı (bot ilk turda okur)</div>`;
+                return;
+            }
+            const ticks = [0, 12, 24, 36, 48].map(h => h ? fmtClock(t + h * 3600) : "şimdi");
+            $("#up_when").textContent = `48 saat · okuma ${fmtDayClock(up.t)}`;
+            const r = (state && state.resources) || {};
+            const running = (up.builders || []).filter(b => b.end + (b.prec || 0) > t).length;
+            $("#up_builders_sum").textContent = r.builders_total ? `· ${r.builders_total - (r.builders_free || 0)}/${r.builders_total} meşgul, ${running} iş` : `· ${running} iş`;
+            const axis = `<div class="lane axis"><span></span><span class="ticks">${ticks.map(x => `<i>${x}</i>`).join("")}</span><span></span></div>`;
+            $("#up_builders").innerHTML = axis + lanesHtml(up.builders || [], t);
+            $("#up_lab").innerHTML = lanesHtml(up.lab || [], t) + ("pet_busy" in up ? `<div class="lane pet"><span class="n">Evcil hayvan evi</span><span class="muted">${up.pet_busy ? "meşgul" : "boş"}</span></div>` : "");
+            const p = up.lab_potion, bp = up.builders_potion, pill = $("#up_lab_potion");
+            pill.hidden = !(p && p.end > t);
+            if (p && p.end > t) pill.textContent = `Araştırma iksiri · ${fmtLeft(p.end - t)} · ${p.speed}×`;
+            if (bp && bp.end > t) $("#up_builders_sum").textContent += ` · inşaatçı iksiri ${fmtLeft(bp.end - t)}`;
+        }
+
+        // Durum → Şu an: which part of the round runs (the bot reports each part as it ends)
+        const STEP_NEXT = {start: [0, "Köy okunuyor"], village: [1, "Geliştirme"], upgrades: [2, "Saldırı"], attack: [3, "Tur bitiyor"], end: [4, "Bekliyor"]};
+        function renderStep() {
+            const st = (state && state.step) || {}, t = now();
+            let idx = -1, title = "Bekliyor", sub = "";
+            if (state && state.active && state.status === "now" && st.t && t - st.t < 600 && STEP_NEXT[st.done]) {
+                [idx, title] = STEP_NEXT[st.done];
+                if (idx === 2 && st.search) sub = `Arama ${st.search}`;
+            } else if (state && state.active && state.next_check > t) {
+                idx = 4; title = "Sonraki tur"; sub = fmtClock(state.next_check);
+            } else if (state && !state.active) { title = "Durdu"; sub = "Başlat'a basınca tur başlar"; }
+            $("#now_title").innerHTML = esc(title) + (idx >= 0 && idx < 4 ? ` <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>` : "");
+            $("#now_sub").textContent = sub;
+            [...$("#now_steps").children].forEach((el, i) => el.className = i < idx ? "done" : i === idx ? "on" : "");
         }
 
         function renderState() {
             renderUpgrades();
+            renderStep();
             const box = $("#status");
             const text = $("#status_text");
             if (!state) { box.className = "status err"; text.textContent = "Panel sunucusuna ulaşılamıyor"; return; }
@@ -970,6 +1091,11 @@
             $("#k_dark").textContent = fmtNum(r.dark);
             $("#k_gems").textContent = fmtNum(r.gems);
             $("#k_builders").textContent = $("#r_builders").textContent;
+            if (r.builders_total) {
+                const busy = r.builders_total - (r.builders_free || 0);
+                $("#k_busy_bar").style.width = `${busy / r.builders_total * 100}%`;
+                $("#k_busy").textContent = `${busy} usta çalışıyor`;
+            }
             $("#k_when").textContent = r.t ? `son okuma ${fmtClock(r.t)}` : "henüz okunmadı";
         }
 
