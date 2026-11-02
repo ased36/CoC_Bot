@@ -201,9 +201,10 @@ class Attacker:
             time.sleep(0.2)
         return False
 
-    def _click_button(self, name, timeout=3, scales=(0.6, 0.7, 0.8, 0.9, 1.0, 1.1), on_found=None):
+    def _click_button(self, name, timeout=3, scales=(0.6, 0.7, 0.8, 0.9, 1.0, 1.1), on_found=None, tap=True):
         """Tap a button image found at any of a few sizes (the button pictures were taken at other UI sizes).
-        on_found: called once the button is seen, before the tap (the results screen picture for Telegram)."""
+        on_found: called once the button is seen, before the tap (the results screen picture for Telegram).
+        tap=False: only look (True when seen)."""
         import time, cv2
         templates = [cv2.resize(self.assets[name], None, fx=s, fy=s, interpolation=cv2.INTER_AREA) for s in scales]
         start = time.time()
@@ -211,7 +212,7 @@ class Attacker:
             for x, y in Frame_Handler.batch_locate(templates, grayscale=False, thresh=0.85):
                 if x is not None:
                     if on_found: on_found()
-                    self._tap(x, y, spread=0.003)
+                    if tap: self._tap(x, y, spread=0.003)
                     return True
             time.sleep(0.3)
         return False
@@ -857,7 +858,9 @@ class Attacker:
                 if time.time() >= due:
                     self._tap(cards[name], self.CARD_Y, spread=0.006)
                     abilities.remove((due, name))
-            if self._click_button("return_home", timeout=0.3):
+            # The battle ended by itself: only look, the results part below takes the Telegram picture, then taps
+            # (tapping here sent the clouds after Return Home to Telegram, 02.11 04:24)
+            if self._click_button("return_home", timeout=0.3, tap=False):
                 break
             end_after = round((Settings_Handler.get("attack", "end_after", 60) or 0) * end_factor)
             timed_out = end_after > 0 and time.time() - battle_start >= end_after
