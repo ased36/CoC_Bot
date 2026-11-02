@@ -917,10 +917,15 @@ class Upgrader:
         """Tap the gold or elixir Upgrade button under a selected wall: the beige button box whose price carries that icon.
         02.11 17:39 frame: the largest run of gold columns was the village between two buttons (tap landed on the elixir
         button), and the blue Wall Ring button next to them has a gold ring. Only beige boxes count, the tap is their middle."""
+        # 02.11 21:51-22:14: with no Wall Ring left the bar is Info, Select Row, Upgrade More, gold, elixir and sits higher
+        # (prices at y 0.72), so the old band (y 0.79-0.95, x < 0.70) held only the first three boxes: the whole bar
+        # up to the Build button is searched, and each box's price is looked for in its own top part
         h, w = WINDOW_DIMS[1], WINDOW_DIMS[0]
-        sec = Frame_Handler.get_frame_section(0, 0.79, 0.70, 0.95, grayscale=False).astype(int)
+        Y0, Y1 = 0.66, 0.97
+        sec = Frame_Handler.get_frame_section(0, Y0, 0.88, Y1, grayscale=False).astype(int)
         r, g, b = sec[..., 0], sec[..., 1], sec[..., 2]
-        frac = ((r > 170) & (g > 150) & (b > 100) & (b < 200) & (r - b > 25)).mean(axis=0)
+        beige = (r > 170) & (g > 150) & (b > 100) & (b < 200) & (r - b > 25)
+        frac = beige.mean(axis=0)
         runs, start = [], None
         for i, v in enumerate(list(frac > 0.1) + [False]): # hammers and the price text break the beige up
             if v and start is None: start = i
@@ -928,17 +933,20 @@ class Upgrader:
                 if runs and start - runs[-1][1] <= 8: runs[-1] = (runs[-1][0], i)
                 else: runs.append((start, i))
                 start = None
-        boxes = [(a, c) for a, c in runs if c - a > 0.06 * w and frac[a:c].mean() > 0.3]
-        price = Frame_Handler.get_frame_section(0, 0.80, 0.70, 0.845, grayscale=False).astype(int)
+        boxes = [(a, c) for a, c in runs if c - a > 0.06 * w and frac[a:c].mean() > 0.15]
         best = None
         for a, c in boxes:
-            pr, pg, pb = price[:, a:c, 0], price[:, a:c, 1], price[:, a:c, 2]
+            rows = (beige[:, a:c].mean(axis=1) > 0.3).nonzero()[0]
+            if len(rows) < 0.05 * h: continue
+            top, bottom = rows[0], rows[-1]
+            band = sec[top:top + max(12, (bottom - top) // 3), a:c]
+            pr, pg, pb = band[..., 0], band[..., 1], band[..., 2]
             mask = (pr > 200) & (pg > 150) & (pb < 90) if resource == "gold" else (pr > 140) & (pg < 110) & (pb > 150)
-            if mask.sum() > 60 and (best is None or mask.sum() > best[0]): best = (mask.sum(), a, c)
+            if mask.sum() > 60 and (best is None or mask.sum() > best[0]): best = (mask.sum(), a, c, top, bottom)
         if best is None:
             logger.info(f"Wall buttons: beige boxes {boxes}, none with the {resource} icon")
             return False
-        Input_Handler.click((best[1] + best[2]) / 2 / w, 0.88)
+        Input_Handler.click((best[1] + best[2]) / 2 / w, Y0 + (best[3] + best[4]) / 2 / h)
         return True
 
     @staticmethod
@@ -1242,7 +1250,9 @@ class Upgrader:
                 self._wall_debug(f"Walls: selected wall count unclear ({count}, wanted {n})")
                 return None
             if not self._click_wall_button(resource):
-                logger.warning(f"Wall {resource} button not found")
+                self._wall_debug(f"Wall {resource} button not found")
+                # 02.11 21:51-22:14 every round read the wall menu (~35 s) for this: walls wait half an hour
+                self._later("walls_retry", 0.5, "Walls paused: upgrade button not found")
                 return None
             time.sleep(0.5)
             # 02.11 16:50-16:58 four passes "confirmed" and the gold never went down: keep what the button opened

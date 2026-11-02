@@ -115,6 +115,7 @@ class CoC_Bot:
     def _attack_message(self, before, seconds):
         """After a home attack (back home): loot won (storage before / after) and the results screen as a picture.
         Silent on the phone: one comes every ~2 minutes."""
+        import time
         after = Resource_Reader.read() or {}
         gain = {k: (after.get(k) - before.get(k)) if None not in (after.get(k), before.get(k)) else None for k in ("gold", "elixir", "dark")}
         d = self._count_attack(gain)
@@ -124,8 +125,25 @@ class CoC_Bot:
         text = (f"⚔️ Saldırı{profile} (bugün {d['attacks']}{cap}.): {self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
                 f" · {self._short(gain['dark'])} kara\nDepo: {store('gold')} / {store('elixir')} / {store('dark')} · tur {int(seconds)} sn")
         send_notification(text, photo=self.attacker.last_result, silent=True)
+        # Full storage (Emre 02.11 22:13: 13,75 M gold / 10,5 M elixir, attack after attack for no loot): an attack that
+        # brought (almost) no gold and no elixir into a well-filled storage marks it full; attacks wait (_storage_full)
+        if all(gain[k] is not None and gain[k] < 20_000 for k in ("gold", "elixir")) \
+                and min(before.get("gold") or 0, before.get("elixir") or 0) >= 1_000_000:
+            Cache_Manager["storage_full"] = {"t": time.time(), "gold": after.get("gold"), "elixir": after.get("elixir")}
+            logger.info("Storage full: the attack brought no gold or elixir")
         # Panel "Son saldırılar" table (Emre 02.11, design A)
         report("loot", **gain, searches=getattr(self.attacker, "last_searches", None), seconds=int(seconds))
+
+    @staticmethod
+    def _storage_full():
+        """Storage marked full by the last attacks and still as full: no home attack. The mark holds an hour, then one
+        attack checks again (a storage upgrade or a bad loot read would otherwise stop attacks for good). Anything that
+        spends gold or elixir (walls, a builder) brings it under the mark and attacks go on."""
+        import time
+        f = Cache_Manager.get("storage_full") or {}
+        if not f or time.time() - f.get("t", 0) > 3600: return False
+        have = Resource_Reader.last
+        return all((have.get(k) or 0) >= 0.98 * (f.get(k) or 0) for k in ("gold", "elixir"))
 
     @staticmethod
     def _when(t):
@@ -506,7 +524,14 @@ class CoC_Bot:
                             if walls_now: self.attacks_since_walls = 0
                         self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=walls_now)
                         lap("upgrades")
-                    if not exclude_home_attacks and not stopped():
+                    self.storage_skip = not exclude_home_attacks and self._storage_full()
+                    if self.storage_skip:
+                        have = Resource_Reader.last
+                        logger.info(f"Attack skipped: storage full (gold {have.get('gold')}, elixir {have.get('elixir')})")
+                        send_notification(f"🏦 Depolar dolu ({self._short(have.get('gold')).lstrip('+')} altın / {self._short(have.get('elixir')).lstrip('+')} iksir): "
+                                          "saldırı bekliyor, duvar ya da inşaat harcayınca kendiliğinden devam eder. Saatte bir deneme saldırısı yapar.",
+                                          key="storage_full", every=3 * 3600)
+                    if not exclude_home_attacks and not self.storage_skip and not stopped():
                         logger.info("Attacking home base")
                         report("attack", base="home")
                         self._day_rollover(general)
@@ -546,7 +571,8 @@ class CoC_Bot:
 
                 delay = next_check_delay(general)
                 # Interval 0 = attack after attack; with no attack in the round it only re-read the menus every ~25 s
-                if started and res != "error" and exclude_home_attacks and exclude_builder_attacks: delay = max(delay, 120)
+                no_attack = exclude_home_attacks or getattr(self, "storage_skip", False)
+                if started and res != "error" and no_attack and exclude_builder_attacks: delay = max(delay, 120)
                 next_check = time.time() + delay
                 if started:
                     logger.info(f"Round finished in {int(time.time() - round_start)}s, next check at {datetime.fromtimestamp(next_check).strftime('%H:%M')}")
