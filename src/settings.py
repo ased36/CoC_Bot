@@ -107,6 +107,7 @@ def default_settings():
         },
         # Panel Saldırı -> Dağıtım / Savaş sonu: these replace the same values in attacks/yayma.yaml
         "attack_style": {
+            "style": "yayma", # attacks/<style>.yaml
             "count": 60, # super barbarians in the army
             "per_side_min": 13, "per_side_max": 15, # troops swept onto each of the four sides
             "red_line": True, # show the red area with one troop first, then drop by it
@@ -131,21 +132,52 @@ def merge(base, update):
 def settings_path(id):
     return DATA_DIR / f"{id}.json"
 
-def load(id):
+# Profiles (Emre 02.11, 1A): every profile keeps its own copy of these sections. general (check interval, breaks,
+# daily cap, hour grid), resources and stats belong to the account and are shared (2A). On disk:
+# {"active_profile": name, "profiles": {name: {section: ...}}, "general": ..., "resources": ..., "stats": ...};
+# in memory the active profile is flattened over the shared part, so the bot reads the same keys as before
+PROFILE_SECTIONS = ("tasks", "home", "builder", "walls", "attack", "attack_style")
+FIRST_PROFILE = "Ganimet" # a file from before profiles becomes this profile (4A)
+
+def compose(shared, profile, name):
+    """Effective settings: defaults, then the shared part, then the profile; "profile" names it."""
     settings = default_settings()
+    merge(settings, copy.deepcopy({k: v for k, v in shared.items() if k not in PROFILE_SECTIONS}))
+    merge(settings, copy.deepcopy(profile))
+    settings["profile"] = name
+    return settings
+
+def load_all(id):
+    """(effective settings, {name: profile sections}, active name)"""
+    raw = {}
     path = settings_path(id)
     if path.exists():
         try:
-            merge(settings, json.loads(path.read_text(encoding="utf-8")))
+            raw = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             pass
-    return settings
+    profiles = raw.pop("profiles", None)
+    active = raw.pop("active_profile", None)
+    if not isinstance(profiles, dict) or not profiles:
+        profiles = {FIRST_PROFILE: {k: raw[k] for k in PROFILE_SECTIONS if k in raw}}
+    if active not in profiles: active = next(iter(profiles))
+    settings = compose(raw, profiles[active], active)
+    profiles[active] = {k: copy.deepcopy(settings[k]) for k in PROFILE_SECTIONS}
+    return settings, profiles, active
 
-def save(id, settings):
+def load(id):
+    return load_all(id)[0]
+
+def save(id, settings, profiles, active):
+    """Writes the effective settings back: the profile sections into profiles[active], the rest shared."""
+    profiles[active] = {k: copy.deepcopy(settings[k]) for k in PROFILE_SECTIONS}
+    data = {k: v for k, v in settings.items() if k not in PROFILE_SECTIONS and k != "profile"}
+    data["active_profile"] = active
+    data["profiles"] = profiles
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     path = settings_path(id)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
 
 def exclusions(settings):

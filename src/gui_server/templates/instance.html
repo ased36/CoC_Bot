@@ -16,6 +16,12 @@
             <div class="name"><b>CoC Bot</b><small>Kontrol paneli</small></div>
             <span class="instance">{{ id }}</span>
         </div>
+        <div class="profile" title="Profil: her profilin geliştirme, arama, dağıtım ve savaş sonu ayarları ayrı; Genel ve İnsan gibi ortak. Bot bir sonraki turda seçilen profille devam eder.">
+            <select id="profile_pick" aria-label="Profil"></select>
+            <button class="btn icon" id="profile_new" title="Yeni profil (seçili profilin kopyası)">+</button>
+            <button class="btn icon" id="profile_rename" title="Adını değiştir">✎</button>
+            <button class="btn icon" id="profile_delete" title="Sil">×</button>
+        </div>
         <nav class="tabs">
             <button class="tab active" data-page="status">Durum</button>
             <button class="tab" data-page="village">Geliştirme</button>
@@ -241,6 +247,7 @@
                     <div class="card">
                         <h2>Askerler</h2>
                         <p class="hint">Yayma stili: barbarlar dört kenara basılı sürükleyerek, Champion + yetenek, tomruk ve kahramanlar bir noktaya, sonra yarasalar.</p>
+                        <div class="row"><div class="label">Saldırı stili<small>attacks klasöründeki stil dosyası; bu profil bununla saldırır</small></div><select data-path="attack_style.style" id="style_pick"></select></div>
                         <div class="row"><div class="label">Ordudaki süper barbar<small>Sürüklemeler bu sayıya göre bölünür; ordu değişince burayı da değiştir</small></div><input type="number" min="1" max="400" data-path="attack_style.count"></div>
                         <div class="row"><div class="label">Kenar başına barbar<span class="q" tabindex="0" data-tip="Dört kenarın her birine bu aralıkta barbar sürüklenir, son kenar kalanı alır. Önerim 13–15 (senin 22:53 isteğin).">?</span></div><div class="pair"><input type="number" min="1" max="100" data-path="attack_style.per_side_min"> – <input type="number" min="1" max="100" data-path="attack_style.per_side_max"></div></div>
                         <div class="row"><div class="label">Kırmızı alanı okut<span class="q" tabindex="0" data-tip="Önce tek barbarla savaş başlar, köyün ortasına dokunulur, oyunun gösterdiği kırmızı alana göre bırakılır. Kapalıysa kayıtlı yollar kullanılır (daha sık ıskalıyordu). Önerim açık.">?</span></div><label class="switch"><input type="checkbox" data-path="attack_style.red_line"><span></span></label></div>
@@ -972,12 +979,51 @@
         };
         $("#btn_resume").onclick = () => pause(0);
 
+        // ---------- Profiles (1A) ----------
+        // Switching or a new profile changes every setting on the page: the page loads again
+        let profiles = {active: "", names: [], styles: []};
+        function renderProfiles() {
+            $("#profile_pick").innerHTML = profiles.names.map(n => `<option${n === profiles.active ? " selected" : ""}>${esc(n)}</option>`).join("");
+            $("#profile_delete").disabled = profiles.names.length < 2;
+            const style = $("#style_pick"), current = settings && settings.attack_style ? settings.attack_style.style : "";
+            const names = profiles.styles.includes(current) || !current ? profiles.styles : [...profiles.styles, current];
+            style.innerHTML = names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+            if (current) style.value = current;
+        }
+        async function profileAction(body, reload) {
+            try {
+                const res = await fetch(API + "/profiles", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+                const data = await res.json();
+                if (!res.ok) { alert(data.error || "Olmadı"); renderProfiles(); return; }
+                profiles = data;
+                if (reload) location.reload(); else renderProfiles();
+            } catch (e) {
+                showSave("err", "Profil kaydedilemedi");
+            }
+        }
+        $("#profile_pick").onchange = e => profileAction({action: "switch", name: e.target.value}, true);
+        $("#profile_new").onclick = () => {
+            const name = prompt(`Yeni profilin adı ("${profiles.active}" kopyalanır):`);
+            if (name && name.trim()) profileAction({action: "new", new_name: name}, true);
+        };
+        $("#profile_rename").onclick = () => {
+            const name = prompt("Yeni ad:", profiles.active);
+            if (name && name.trim() && name.trim() !== profiles.active) profileAction({action: "rename", name: profiles.active, new_name: name});
+        };
+        $("#profile_delete").onclick = () => {
+            const others = profiles.names.filter(n => n !== profiles.active);
+            const name = others.length === 1 ? others[0] : prompt(`Hangi profil silinsin? (${others.join(", ")})`);
+            if (name && others.includes(name.trim()) && confirm(`"${name.trim()}" profili silinsin mi?`)) profileAction({action: "delete", name: name.trim()});
+        };
+
         // ---------- Start ----------
         (async () => {
             try { vocab = await (await fetch("/vocab")).json(); } catch (e) {}
             await loadIcons();
+            try { profiles = await api("/profiles"); } catch (e) {}
             try {
                 settings = await api("/settings");
+                renderProfiles();
                 renderAll();
             } catch (e) {
                 showSave("err", "Ayarlar okunamadı");

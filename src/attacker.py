@@ -1349,7 +1349,12 @@ class Attacker:
             
             # Find a village worth attacking, then attack it
             if self.search(Settings_Handler.get_section("attack")) is not None:
-                self.scripted_attack("yayma", restart=restart)
+                # The profile's style (panel Saldırı -> Dağıtım, 3A); a file that is gone falls back to yayma
+                style = Settings_Handler.get("attack_style", "style", "yayma") or "yayma"
+                if not Path(Asset_Manager.resource_path(f"attacks/{style}.yaml")).exists():
+                    logger.warning(f"Attack style {style} not found, using yayma")
+                    style = "yayma"
+                self.scripted_attack(style, restart=restart)
             elif not in_home_base():
                 start_coc() # reset in case stuck on find a match screen
         

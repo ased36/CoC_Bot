@@ -102,6 +102,22 @@ b, strong { font-weight: 600; }
     letter-spacing: .02em;
 }
 
+/* Profile picker (1A): next to the bot name */
+.profile { display: flex; align-items: center; gap: 4px; }
+.profile select {
+    height: 32px;
+    max-width: 170px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 0 8px;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+}
+.btn.icon { width: 32px; height: 32px; padding: 0; font-size: 15px; color: var(--text-2); }
+.btn.icon:disabled { opacity: .35; cursor: default; }
+
 .tabs {
     display: flex;
     gap: 4px;
@@ -1061,6 +1077,8 @@ select option { background: var(--surface-2); color: var(--text); }
 @media (max-width: 700px) {
     .topbar { padding: 0 16px; gap: 0 16px; }
     .brand { padding: 12px 0 6px; }
+    .profile { flex: 1 1 100%; padding-bottom: 4px; }
+    .profile select { flex: 1; max-width: none; }
     .save-state { position: absolute; right: 16px; top: 22px; min-width: 0; }
     .tab { padding: 0 10px; min-height: 42px; font-size: 13.5px; }
     main { padding: 16px; }

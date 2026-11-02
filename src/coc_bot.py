@@ -28,6 +28,7 @@ class CoC_Bot:
         self.attacker = Attacker()
         self.attacks_since_walls = None # None = walls first (a full storage wastes loot)
         self.was_running = False
+        self.last_profile = None # panel profile (1A): logged when it changes
 
     # Today's attacks, the session (attacks since the last break) and the rest: in the disk cache, so closing and
     # opening the bot neither resets the daily cap nor ends a break early
@@ -119,7 +120,8 @@ class CoC_Bot:
         d = self._count_attack(gain)
         store = lambda k: self._short(after.get(k)).lstrip("+")
         cap = f"/{d['cap']}" if d.get("cap") else ""
-        text = (f"⚔️ Saldırı (bugün {d['attacks']}{cap}.): {self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
+        profile = f" · {p}" if (p := (Settings_Handler.current or {}).get("profile")) else ""
+        text = (f"⚔️ Saldırı{profile} (bugün {d['attacks']}{cap}.):{self._short(gain['gold'])} altın · {self._short(gain['elixir'])} iksir"
                 f" · {self._short(gain['dark'])} kara\nDepo: {store('gold')} / {store('elixir')} / {store('dark')} · tur {int(seconds)} sn")
         send_notification(text, photo=self.attacker.last_result, silent=True)
 
@@ -223,6 +225,10 @@ class CoC_Bot:
                 if not self.was_running:
                     send_notification("▶️ Bot başladı")
                     self.was_running = True
+                if (profile := all_settings.get("profile")) and profile != self.last_profile:
+                    logger.info(f"Profile: {profile}")
+                    if self.last_profile is not None: send_notification(f"🔀 Profil: {profile}", silent=True)
+                    self.last_profile = profile
                 round_start = time.time()
                 started, res = start_coc(detailed=True)
                 if started:

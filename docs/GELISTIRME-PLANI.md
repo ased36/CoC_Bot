@@ -447,3 +447,10 @@ Sorun çıkarsa önce o düzeltilir, sonra adım 2.
 - **5A:** ordu tarifi ölçümü profil kodu bitince, ayrı onayla, Emre oyunda değilken (yalnız ekrana bakmak).
 - **6A:** kod, Adım 1 canlı denemesinin kayıtları görüldükten sonra yazılır.
 - Panel: üst çubukta açılır liste + Yeni (etkin profilin kopyası) / Ad değiştir / Sil (etkin ve son profil silinmez). Kayıtta tur başında "Profile: <ad>", Telegram saldırı mesajında profil adı.
+
+## 02.11 04:20 — Adım 1 sonucu + profil kodu (Adım 2)
+
+- **Adım 1:** Emre 03:56 ve 04:15'te botu yeniden açtı (yeni panel yüklü). Izgara çalışıyor: 04:13 / 04:15 "Outside working hours, waiting", oyun açılmıyor (Emre "CoC'u açmıyor" dedi = 02–08 kapalı, 09:00'da başlar). BlueStacks 04:09'da yine çökmüştü; 04:13'te bot oyunu kapatmak için ADB'ye sorunca BlueStacks'i gece için yeniden açtı → 5df7bb4: süreç yoksa dokunma. Telegram resmi, mola / sınır, Dağıtım değerleri 09:00 saldırılarında bakılacak; kahraman sırası Kahramanlar açılıp usta boşalınca.
+- **Profil kodu (canlıda denenmedi):** `settings.py` `PROFILE_SECTIONS` (tasks, home, builder, walls, attack, attack_style) profilde, gerisi ortak; dosyada `active_profile` + `profiles`, bellekte düzleştirilmiş (`compose`), eski dosya "Ganimet"e göçer. Panel sunucusu `/instances/<id>/profiles` (switch / new = kopya / rename / delete; seçili ve son profil silinmez, ad ≤ 24). Bot değişmedi, yalnız: tur başında profil değişince "Profile: <ad>" + Telegram "🔀 Profil", saldırı mesajında profil adı, stil `attack_style.style` (dosya yoksa yayma). Panel: üst çubukta seçici + / ✎ / ×, Dağıtım'da "Saldırı stili" (yalnız `troops.mode: drag` yaml'lar).
+- Denendi: canlı `main.json` kopyasında göç / kaydetme / geçiş (Genel ortak kaldı); deneme sunucusunda API (yeni, geçiş, ad, silme engelleri); panel 1280 / 500 ekran görüntüsü.
+- **Sırada:** Emre 09:00 saldırılarını görünce botu yeniden açar (yeni kod `main.json`'u profil biçimine çevirir); sonra 5A ordu tarifi ölçümü (onaylı, Emre oynamıyorken), sonra Adım 3 stil dosyası.

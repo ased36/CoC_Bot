@@ -49,15 +49,22 @@ class Instance:
         self.active = True # False: the bot process idles until the Start button (only reads the village when asked)
         self.scan_requested = False
         self.search_requested = False
-        self.settings = settings_store.load(self.id)
-        settings_store.save(self.id, self.settings)
+        self.settings, self.profiles, self.profile = settings_store.load_all(self.id)
+        self.save()
 
     @property
     def exclusions(self):
         return settings_store.exclusions(self.settings)
 
     def save(self):
-        settings_store.save(self.id, self.settings)
+        settings_store.save(self.id, self.settings, self.profiles, self.profile)
+
+    def switch_profile(self, name):
+        # The bot reads the settings at the start of every round: the next round plays with this profile
+        self.save()
+        self.settings = settings_store.compose(self.settings, self.profiles[name], name)
+        self.profile = name
+        self.save()
 
     @property
     def mode(self):
@@ -205,10 +212,57 @@ def handle_settings(id):
         update = request.json or {}
         update.pop("stats", None)
         update.pop("resources", None)
+        update.pop("profile", None) # changed only through /profiles
         with settings_lock:
             settings_store.merge(instance.settings, update)
             instance.save()
     return instance.settings
+
+def attack_styles():
+    """attacks/*.yaml the scripted attack can play (the drag format; super-barbar.yaml is the old one)."""
+    import yaml
+    folder = (Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else path.parent.parent) / "attacks"
+    names = []
+    for f in sorted(folder.glob("*.yaml")):
+        try:
+            if (yaml.safe_load(f.read_text(encoding="utf-8")) or {}).get("troops", {}).get("mode") == "drag": names.append(f.stem)
+        except Exception:
+            pass
+    return names
+
+@app.route("/instances/<id>/profiles", methods=["GET", "POST"])
+def handle_profiles(id):
+    # Panel top bar: pick, new (a copy of the active one), rename, delete (not the active one, not the last one)
+    instance = get_instance(id)
+    if request.method == "POST":
+        data = request.json or {}
+        action = data.get("action", "")
+        name = str(data.get("name", "")).strip()
+        new_name = " ".join(str(data.get("new_name", "")).split())[:24]
+        with settings_lock:
+            profiles = instance.profiles
+            if action in ("new", "rename"):
+                if not new_name: return {"error": "Ad boş olamaz"}, 400
+                if new_name in profiles: return {"error": f"\"{new_name}\" adında profil var"}, 400
+            if action == "switch" and name in profiles:
+                instance.switch_profile(name)
+            elif action == "new":
+                instance.save()
+                profiles[new_name] = json.loads(json.dumps(profiles[instance.profile]))
+                instance.switch_profile(new_name)
+            elif action == "rename" and name in profiles:
+                instance.profiles = {new_name if k == name else k: v for k, v in profiles.items()}
+                if instance.profile == name:
+                    instance.profile = instance.settings["profile"] = new_name
+                instance.save()
+            elif action == "delete" and name in profiles:
+                if name == instance.profile: return {"error": "Seçili profil silinemez, önce başka profile geç"}, 400
+                if len(profiles) == 1: return {"error": "Son profil silinemez"}, 400
+                del profiles[name]
+                instance.save()
+            else:
+                return {"error": "Profil bulunamadı"}, 400
+    return {"active": instance.profile, "names": list(instance.profiles), "styles": attack_styles()}
 
 @app.route("/instances/<id>/stats/reset", methods=["POST"])
 def handle_stats_reset(id):
