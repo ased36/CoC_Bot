@@ -428,3 +428,12 @@ Sorun çıkarsa önce o düzeltilir, sonra adım 2.
 **Adım 3 — stil dosyası (2A):** adım biçimi + denetleyici + `docs/STIL-YAZMA.md`; `yayma.yaml` yeni biçime, kuru çizimle aynı noktalar çıktığı doğrulanır.
 
 **Açık kalan:** 4A klan kalesi (ölçüm, onaylı; elmas düğmesine asla basılmaz).
+
+## 02.11 03:50 — Adım 1 kayıt kontrolü: canlı deneme YAPILMAMIŞ
+
+- `debug/main.log` 01:54:56 "Waiting for Start" ile bitiyor; `debug/attacks/` son klasör 01:51:58. 01:53'ten sonra saldırı yok.
+- Çalışan bot 01:53:50'de açılmış: 6d59401 (Telegram sonuç ekranı) + 5cc6ba0 (ordu 60) yüklü, **f65ad44 (alt sekmeler, kahraman sırası, Dağıtım / Savaş sonu) yüklü DEĞİL** (02:09'da yazıldı). `data/main.json` 01:54'te eski panelce yazılmış: `attack_style` ve `hero_priority` yok.
+- BlueStacks 02:07 ve 03:49'da çökmüş (`Dumps/HD-Player`), şu an kapalı. Bot "Başlat" beklediği için yeniden açmamış.
+- `cache.json` "play": bugün 2 saldırı, sınır 37, molaya 25.
+- Denenebilirlik: ızgara 02–08 kapalı → şimdi Başlat'a basılırsa bot 09:00'a kadar bekler ("Outside working hours"; ilk turdan önce olduğu için Telegram'a 🌙 gitmez). Kahraman sırası: Kahramanlar görevi kapalı + ustalar 0/6 → bu denemede tetiklenmez.
+- Kod değişmedi. Adım 2 (profil) planı Emre'ye numaralı soruldu; kod Adım 1 denemesi görülünce.
