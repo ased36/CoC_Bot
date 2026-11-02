@@ -493,3 +493,20 @@ Sorun çıkarsa önce o düzeltilir, sonra adım 2.
 - 05:13 okuması Grand Warden'ı atlamıştı: "4H 11M" OCR'da "4H MM" (iki ince 1 = M). Düzeltme: dördüncü okuma I / l izinli ("4H IIm" → 11), "MM" → "11M". 04:58 ve 05:13 karelerinin 12 satırı doğru.
 - **İksir göstergesi:** açık menünün solunda koyu kutu + şişe (inşaatçı = mavi şişe + çekiç ~ (82,172,195), "53m 49s" 05:13; araştırma = mor ~ (143,5,100), "8m 8s" 04:58). `_read_potion`: kutu bölgesi (1120–1420, 540–650), süre + şişe rengi; 4 karede doğru (iksirsiz karede yok). Hız: inşaatçı 10x (Emre; 05:13→Emre'nin 51m 38s görüntüsü: 2 dk'da 23 dk iş), araştırma 24x (04:58→05:13 lab düşüşü 2–4 sa, 8 dk × 24 ile tutarlı).
 - Bitiş = `boosted_left`: iş ≤ iksir × hız ise iş / hız, değilse iksir + (iş − iksir × hız) (Emre: 10 saatlik iş iksirle 1 saatte). `/ozet`: iksir satırı (kalan, kat, bitiş saati, açıklama), her satırda iksirli bitiş + "iksirsiz" kalan iş; panel kartında iksir satırı. Düz "özet" / "Özet" / NFD "özet" de komut sayılır.
+
+## DEVİR 02.11 05:30 (yeni sohbet buradan başlar)
+
+Son commit 26000b0. Bu oturumda yazılanlar (hepsi push'lu): profiller (3fd46ef), seyrek menü (2dc8479), Telegram sonuç resmi (c993319), evcil "başladı" düzeltmesi (4877753), stil adımları + docs/STIL-YAZMA.md (a6f2b84), Telegram /ozet (8acfaf7), menü kareleri saklama (906c9c3), usta / lab önbilgisi + 09:00 / 21:00 özet + bitiş mesajı + panel kartı (96ccf1c), iksir hesabı + okuyucu düzeltmesi (26000b0).
+
+**Canlıda görülen:** profil göçü + ad değiştirme ("leo TOWER"), ızgara, Dağıtım değerleri, 05:13 usta / lab okuması (Grand Warden atlanmıştı → 26000b0'da düzeldi), /ozet Telegram'da çalıştı. **Görülmeyen:** stil adımlarıyla gerçek saldırı (Emre Saldırı'yı kapatmış), iksirli bitişler, bitiş mesajı, 09:00 özeti, mola / günlük sınır, kahraman sırası.
+
+**Yeni sohbetin ilk işi:**
+1. Emre botu 26000b0 ile yeniden açtı mı (süreç başlangıç saati), kayıtta "Status builders (potion …)" satırı, Telegram /ozet'te iksir satırı.
+2. Emre'nin cevaplayacağı 4 soru (önerim hepsi A):
+   1. Duvar seviyeleri: A usta menüsündeki "Wall x N" satırları (yalnız okuma; en üst seviye = toplam − listelenen, toplam duvar sayısını Emre söyler) / B köy düzeni → Edit layout → Remove all (riskli, önerilmedi).
+   2. Duvar bilgisi: A /ozet + 21:00 özetinde "🧱 Bugün N duvar · Sv14: 200 → 186" / B her duvar turundan sonra mesaj.
+   3. Hız: A oyun açık ve köydeyse `start_coc` yeniden açmasın (şu an her tur `am start -S`, ~25 sn) / B kalsın.
+   4. Ek hız: A aramada ganimet tek okuma + geliştirme turundaki beklemeler / B yalnız 3.
+3. Açık kalan: ordu tarifi ölçümü (profil 5A), klan kalesi (4A), kahraman sırası denemesi (Kahramanlar açık + boşta usta 0), inşaatçı iksiri dışındaki iksirler (kahraman iksiri "Boost left 18h 37m" Hero Hall'da görüldü, okunmuyor).
+
+Testler scratchpad'de (t_look, t_ozet, t_ozet2, t_ozet3, t_potion, t_status, t_steps + attacker_eski.py) — yeni sohbette kaybolmuş olabilir; gerekirse yeniden yazılır.
