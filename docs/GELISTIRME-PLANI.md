@@ -470,3 +470,10 @@ Sorun çıkarsa önce o düzeltilir, sonra adım 2.
 - **4A:** usta menüsü 2 saatte bir + her geliştirme başlatınca okunur; arada bitişler hesapla.
 - **5A:** ölçüm şimdi, bot duraklatılmışken, Emre oynamıyorken: build çubuğu, usta menüsü, evcil hayvan evi (yalnız açıp kapatma). Betik scratchpad `usta_olc.py` (kayıt "Paused, waiting" değilse çalışmaz). İksirli görünüm Emre'nin bir dahaki iksirinde bot kaydeder.
 - **Ek bulgu:** Mighty Yak 04:23 ve 04:29'da "Started upgrading" ama kara iksir düşmedi (43 733 → 44 985, 48 096) → evcil "başladı" yanlış; evcil ekranı ölçümde görülecek. Kara iksir 03:57–04:22 arasında bot beklerken 89 633 → 43 733 (Emre'ye soruldu).
+
+## 02.11 05:00 — Adım 3 stil dosyası (2A) + evcil düzeltmesi (canlıda denenmedi)
+
+- **4877753 evcil / lab:** geliştirme ancak seçilen satırın maliyeti depodan düştüyse "başladı" (04:23 / 04:29 Mighty Yak ödenmeden "başladı" + Telegram). Düşmezse uyarı + `debug/main_not_started.png`, evcil 1 sa sonra. Emre 03:57–04:22 arası kara iksiri kendisi harcamış.
+- **Stil adımları:** `_deploy_spread`'in ikinci yarısı adım fonksiyonları (lead, troops, heroes, spells, retry) + yeni wait / drop / cast / ability; `steps` yoksa eski sıra (`DEFAULT_STEPS`). `yayma.yaml` `steps:` ile. **Doğrulama:** eski kod (commit öncesi kopya) ile yeni kod aynı tohumla sahte savaşta 960 koşu (kırmızı alan var/yok, kart bitti/bitmedi, kenar/yarım, lead_first 0/0,5/1, eksik kahraman) → dokunuş / sürükleme / bekleme izi birebir aynı; sıra değişince fark yakalanıyor. Denetim (`check_style`) aramadan önce: bilinmeyen adım, resmi olmayan kart, yanlış `at`, `wait` biçimi, `troops` yok → saldırı yok + Telegram. `drop` ile inen kart `heroes`'ta atlanır (ikinci basış yetenek olurdu). Kılavuz `docs/STIL-YAZMA.md`. Yeni kart resmini ilk saldırıda kendiliğinden alma YOK (resim elle eklenir).
+- **Bekleyen (ölçüm, Emre onayıyla):** usta önbilgisi (usta menüsü + evcil ekranı, `usta_olc.py`), ordu tarifi (5A profil), klan kalesi (4A). Kahraman sırası denemesi (Emre: sonra; Kahramanlar açık + boşta usta 0 gerekir).
+- Bot yeniden açılınca yüklenecekler: profil, menü azaltma, Telegram resmi, evcil düzeltmesi, stil adımları.
