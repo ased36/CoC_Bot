@@ -85,6 +85,9 @@ def main(folders):
     def cover(st): return max(st["da"]) - min(st["da"])
     for p in plans: p["kind"] = "round" if len(p["strokes"]) == 1 and cover(p["strokes"][0]) >= 300 else "halves"
     plans = [p for p in plans if sum(cover(st) for st in p["strokes"]) >= 300]
+    # A half that goes out and comes back (net under 150 degrees) piles the troops on one side: 03.11 00:22 and 00:31 such
+    # plans left 19 of 59 for single taps, the whole rounds and the real halves dropped nearly all
+    plans = [p for p in plans if p["kind"] == "round" or all(abs(st["da"][-1]) >= 150 for st in p["strokes"])]
     out = Path(__file__).resolve().parents[1] / "assets" / "emre_strokes.json"
     json.dump({"made": "kayıt " + ", ".join(Path(f).name for f in folders), "center": [0.48, 0.47], "plans": plans},
               open(out, "w", encoding="utf-8"), separators=(",", ":"))
