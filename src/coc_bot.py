@@ -131,19 +131,33 @@ class CoC_Bot:
                 and min(before.get("gold") or 0, before.get("elixir") or 0) >= 1_000_000:
             Cache_Manager["storage_full"] = {"t": time.time(), "gold": after.get("gold"), "elixir": after.get("elixir")}
             logger.info("Storage full: the attack brought no gold or elixir")
+        # Each storage's size: what it held when an attack could add nothing to it (03.11, _storage_caps)
+        caps = dict(Cache_Manager.get("storage_cap") or {})
+        for k in ("gold", "elixir"):
+            if gain[k] is not None and gain[k] < 20_000 and (before.get(k) or 0) >= 1_000_000 and after.get(k):
+                caps[k] = max(caps.get(k) or 0, after[k])
+        if caps != (Cache_Manager.get("storage_cap") or {}): Cache_Manager["storage_cap"] = caps
         # Panel "Son saldırılar" table (Emre 02.11, design A)
         report("loot", **gain, searches=getattr(self.attacker, "last_searches", None), seconds=int(seconds))
 
     @staticmethod
-    def _storage_full():
-        """Storage marked full by the last attacks and still as full: no home attack. The mark holds an hour, then one
-        attack checks again (a storage upgrade or a bad loot read would otherwise stop attacks for good). Anything that
-        spends gold or elixir (walls, a builder) brings it under the mark and attacks go on."""
-        import time
-        f = Cache_Manager.get("storage_full") or {}
-        if not f or time.time() - f.get("t", 0) > 3600: return False
-        have = Resource_Reader.last
-        return all((have.get(k) or 0) >= 0.98 * (f.get(k) or 0) for k in ("gold", "elixir"))
+    def _storage_caps():
+        """{"gold", "elixir": storage size} as learned from attacks that could add nothing (the 02.11 night: 13,75 M and
+        10,5 M). More than the size in storage means it was upgraded: that size is learned again."""
+        caps = dict(Cache_Manager.get("storage_cap") or {})
+        mark = Cache_Manager.get("storage_full") or {}
+        for k in ("gold", "elixir"):
+            if not caps.get(k) and mark.get(k): caps[k] = mark[k]
+            v = Resource_Reader.last.get(k)
+            if caps.get(k) and v and v > caps[k] * 1.01: caps.pop(k)
+        if caps != (Cache_Manager.get("storage_cap") or {}): Cache_Manager["storage_cap"] = caps
+        return caps
+
+    def _storage_full(self):
+        """The resources whose storage is full (97 %). Emre 03.11: "look at the storage first, then go to battle": with
+        either one full no home attack, the walls spend it first (the fuller one pays first, Upgrader._wall_payment)."""
+        caps, have = self._storage_caps(), Resource_Reader.last
+        return [k for k in ("gold", "elixir") if caps.get(k) and (have.get(k) or 0) >= 0.97 * caps[k]]
 
     @staticmethod
     def _when(t):
@@ -546,12 +560,14 @@ class CoC_Bot:
                             if walls_now: self.attacks_since_walls = 0
                         self.upgrader.run_home_base(exclude_home_base, exclude_home_lab, exclude_pets, walls=walls_now)
                         lap("upgrades")
-                    self.storage_skip = not exclude_home_attacks and self._storage_full()
+                    full = [] if exclude_home_attacks else self._storage_full()
+                    self.storage_skip = bool(full)
                     if self.storage_skip:
                         have = Resource_Reader.last
-                        logger.info(f"Attack skipped: storage full (gold {have.get('gold')}, elixir {have.get('elixir')})")
-                        send_notification(f"🏦 Depolar dolu ({self._short(have.get('gold')).lstrip('+')} altın / {self._short(have.get('elixir')).lstrip('+')} iksir): "
-                                          "saldırı bekliyor, duvar ya da inşaat harcayınca kendiliğinden devam eder. Saatte bir deneme saldırısı yapar.",
+                        logger.info(f"Attack skipped: storage full ({', '.join(full)}; gold {have.get('gold')}, elixir {have.get('elixir')})")
+                        names = " ve ".join({"gold": "altın", "elixir": "iksir"}[k] for k in full)
+                        send_notification(f"🏦 {names.capitalize()} deposu dolu ({self._short(have.get('gold')).lstrip('+')} altın / {self._short(have.get('elixir')).lstrip('+')} iksir): "
+                                          "saldırı bekliyor, duvar ya da inşaat harcayınca kendiliğinden devam eder.",
                                           key="storage_full", every=3 * 3600)
                     if not exclude_home_attacks and not self.storage_skip and not stopped():
                         logger.info("Attacking home base")

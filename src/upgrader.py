@@ -906,9 +906,12 @@ class Upgrader:
     # ============================================================
 
     def _wall_payment(self, cost):
-        """Gold first down to its panel minimum, then elixir down to its minimum (Emre 01.11): run_walls pays one batch per resource."""
+        """The fuller storage first (03.11: a full elixir storage stayed full while walls took gold, and attacks wait on a
+        full storage), each down to its panel minimum (Emre 01.11): run_walls pays one batch per resource."""
         last = Resource_Reader.last
-        for resource, key in (("gold", "min_gold"), ("elixir", "min_elixir")):
+        caps = Cache_Manager.get("storage_cap") or {}
+        def fill(resource): return (last.get(resource) or 0) / caps[resource] if caps.get(resource) else 0
+        for resource, key in sorted((("gold", "min_gold"), ("elixir", "min_elixir")), key=lambda rk: -fill(rk[0])):
             have = last.get(resource)
             if have is not None and have - cost >= Settings_Handler.get("walls", key, 0): return resource
         return None
