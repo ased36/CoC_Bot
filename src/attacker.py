@@ -1024,12 +1024,15 @@ class Attacker:
             shot(f"result_{int(time.time() - start):02d}")
             # The village takes a few seconds to load after Return Home (clouds): wait for it instead of looking again
             pressed = self._click_button("return_home", timeout=1, on_found=result_shot)
-            for _ in range(15 if pressed else 1):
+            # BlueStacks closed 3 times on 02.11 (17:27, 17:37, 20:24), each 11-13 s after End Battle: while the village
+            # loaded behind the clouds and the bot grabbed a frame every second. No frame for the first 4 s, then every 1.5 s
+            if pressed: time.sleep(4)
+            for _ in range(10 if pressed else 1):
                 if in_home_base():
                     TEMP_CACHE["location"] = "home_base"
                     logger.info("Battle over, back home")
                     return True
-                time.sleep(1)
+                time.sleep(1.5 if pressed else 1)
         logger.warning("Return Home not found, restarting CoC instead")
         self.last_result = shots / "result_00.png" # no results screen seen: the last picture there is
         if restart: start_coc()
