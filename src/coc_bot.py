@@ -495,6 +495,13 @@ class CoC_Bot:
                     # Check home base
                     to_home_base(ref_cache=True)
                     Resource_Reader.read()
+                    # Emre 03.11: walls he upgrades by hand between rounds are counted too. Gold or elixir that went down by
+                    # 1 M or more since the bot's last look was spent by hand: the wall count is read again this round
+                    prev, now_res = getattr(self, "_end_res", None) or {}, Resource_Reader.last
+                    spent = [k for k in ("gold", "elixir") if prev.get(k) and now_res.get(k) is not None and prev[k] - now_res[k] >= 1_000_000]
+                    if spent and Settings_Handler.get("walls", "enabled", False):
+                        Cache_Manager["look_again"] = dict(Cache_Manager.get("look_again") or {}, walls_census=0)
+                        logger.info(f"Spent by hand since the last round ({', '.join(spent)}): walls counted again")
                     report("scan_done")
                     lap("village")
 
@@ -561,6 +568,7 @@ class CoC_Bot:
                     to_home_base()
                     # The attack message has just read the storage (1-2 s): no second read right after it
                     if went_builder or time.time() - Resource_Reader.read_at > 15: Resource_Reader.read()
+                    self._end_res = dict(Resource_Reader.last)
                     if general.get("close_game", True):
                         stop_coc(sleep=configs.SUSPEND_EMULATOR_ON_IDLE)
                     update_status(time.time())
